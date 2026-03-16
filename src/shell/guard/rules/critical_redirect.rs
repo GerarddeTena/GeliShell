@@ -2,7 +2,6 @@ use crate::parser::ast::Command;
 use crate::parser::token::RedirectKind;
 use crate::shell::guard::error::GuardError;
 use crate::shell::guard::Guard;
-use super::destructive_fs::token_args;
 
 /// Archivos críticos que nunca deben ser sobreescritos con >
 const CRITICAL_FILES: &[&str] = &[

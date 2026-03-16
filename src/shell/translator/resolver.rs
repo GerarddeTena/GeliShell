@@ -344,7 +344,7 @@ mod tests {
     use super::*;
     use crate::shell::reporter::{BufferedReporter, SilentReporter};
     use crate::shell::translator::commands_map::{
-        FlagDef, SubsystemTranslations, TranslationEntry,
+        SubsystemTranslations, TranslationEntry,
     };
 
     // ──────────────────────────────────────────────────────────

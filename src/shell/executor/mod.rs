@@ -99,7 +99,7 @@ impl Executor {
         &self,
         child:    &mut Child,
         config:   &ExecutionConfig,
-        reporter: &dyn Reporter,
+        _reporter: &dyn Reporter,
     ) -> Result<Option<String>, ExecutorError> {
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();

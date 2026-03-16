@@ -1,4 +1,4 @@
-use crate::parser::ast::{ASTNode, Command};
+use crate::parser::ast::Command;
 use crate::parser::token::Token;
 use crate::shell::guard::error::GuardError;
 use crate::shell::guard::Guard;

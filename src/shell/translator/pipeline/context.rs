@@ -68,7 +68,7 @@ impl CommandFragment {
     }
 
     /// String ejecutable final — usa resolved.preferred si está disponible
-    pub fn to_native_string(&self, subsystem: &Subsystem) -> String {
+    pub fn to_native_string(&self, _subsystem: &Subsystem) -> String {
         let base = self.resolved
             .as_ref()
             .map(|r| r.preferred.as_str())
