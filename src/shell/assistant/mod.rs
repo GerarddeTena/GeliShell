@@ -56,15 +56,16 @@ impl AssistantRuntime {
         parameter: AssistantParameter,
         filter: &str,
     ) -> Result<suggest::AssistantSuggestion, AssistantError> {
-        let user_prompt = suggest::build_user_prompt(parameter, filter);
+        let user_action = suggest::build_user_action(parameter, filter);
+        let retrieval_query = suggest::build_retrieval_query(parameter, filter);
         let rag_limit = 3usize;
-        let context = self.rag.retrieve(&user_prompt, rag_limit).await?;
-        let system_prompt = suggest::build_system_prompt(parameter, &context);
-        let generated = self
-            .qwen
-            .generate(system_prompt, user_prompt, context.clone())
+        let rag_context = self
+            .rag
+            .retrieve_context(&retrieval_query, rag_limit)
             .await?;
-        let suggestion = suggest::build_suggestion(parameter, generated, &context);
+        let llm_prompt = suggest::build_chatml_prompt(&user_action, &rag_context);
+        let generated = self.qwen.generate(llm_prompt).await?;
+        let suggestion = suggest::build_suggestion(generated);
         self.rag.clear_cache().await;
         Ok(suggestion)
     }

@@ -1,4 +1,3 @@
-use super::rag::RagChunk;
 use crate::shell::config::AssistantModelVariant;
 use futures_util::StreamExt;
 use std::io::Read;
@@ -127,22 +126,15 @@ impl QwenRuntime {
         Ok(artifact)
     }
 
-    pub async fn generate(
-        &mut self,
-        system_prompt: String,
-        user_prompt: String,
-        rag_context: Vec<RagChunk>,
-    ) -> Result<String, QwenError> {
+    pub async fn generate(&mut self, prompt: String) -> Result<String, QwenError> {
         let Some(active) = &mut self.active else {
             return Err(QwenError::ModelNotLoaded);
         };
         active.last_used = Instant::now();
         let model = active.artifact.variant.as_str().to_owned();
 
-        let generated = tokio::task::spawn_blocking(move || {
-            synthesize_response(&model, &system_prompt, &user_prompt, &rag_context)
-        })
-        .await?;
+        let generated =
+            tokio::task::spawn_blocking(move || synthesize_response(&model, &prompt)).await?;
 
         Ok(generated)
     }
@@ -276,51 +268,52 @@ fn model_url(variant: AssistantModelVariant) -> &'static str {
     }
 }
 
-fn synthesize_response(
-    model: &str,
-    system_prompt: &str,
-    user_prompt: &str,
-    rag_context: &[RagChunk],
-) -> String {
-    let mut lines = Vec::new();
-    lines.push(format!("[local-model: {model}]"));
-    lines.push("[SYSTEM PROMPT]".to_owned());
-    lines.extend(system_prompt.lines().map(|line| format!("  {line}")));
-    lines.push("[USER PROMPT]".to_owned());
-    lines.push(format!("- {user_prompt}"));
+fn synthesize_response(_model: &str, prompt: &str) -> String {
+    let action = extract_user_action(prompt)
+        .unwrap_or_else(|| "Action unavailable. Provide a concrete assistant action.".to_owned());
+    let normalized = action.to_ascii_lowercase();
 
-    if rag_context.is_empty() {
-        lines.push("- No vector chunks matched this query.".to_owned());
-    } else {
-        lines.push("- Context from docs.db (top matches):".to_owned());
-        for chunk in rag_context.iter().take(3) {
-            lines.push(format!(
-                "  • {} (cosine distance {:.4}): {}",
-                chunk.path,
-                chunk.distance,
-                compact_text(&chunk.text, 180)
-            ));
-        }
+    if normalized.contains("output my code") {
+        return "Describe en 1 linea el error clave y luego ejecuta: `history | Select-Object -Last 30`."
+            .to_owned();
     }
 
-    lines.join("\n")
+    if normalized.contains("copy directories") {
+        return "Usa: `cp -r <origen> <destino>` (Bash/Zsh/Fish) o `Copy-Item -Recurse <origen> <destino>` (PowerShell).".to_owned();
+    }
+
+    if normalized.contains("search in files") {
+        return "Usa: `rg \"<patron>\" .` y agrega `-g \"*.ext\"` para acotar archivos.".to_owned();
+    }
+
+    if normalized.contains("compress/extract") {
+        return "Comprimir: `tar -czf <archivo>.tar.gz <ruta>`; extraer: `tar -xzf <archivo>.tar.gz`."
+            .to_owned();
+    }
+
+    if normalized.contains("network request") {
+        return "Plantilla segura: `curl -sS -X GET \"<url>\"` o `Invoke-WebRequest -Method Get -Uri \"<url>\"`."
+            .to_owned();
+    }
+
+    if normalized.contains("process management") {
+        return "Lista primero y luego termina por PID: `ps aux`/`Get-Process` + `kill <pid>`/`Stop-Process -Id <pid>`.".to_owned();
+    }
+
+    "No encontré una plantilla para esta acción. Indica la acción exacta del menú y te doy el comando."
+        .to_owned()
 }
 
-fn compact_text(input: &str, limit: usize) -> String {
-    let normalized = input
-        .trim()
-        .replace('\n', " ")
-        .replace('\r', " ")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    if normalized.chars().count() <= limit {
-        return normalized;
+fn extract_user_action(prompt: &str) -> Option<String> {
+    let (_, user_block) = prompt.split_once("<|im_start|>user")?;
+    let user_block = user_block.trim_start_matches('\n');
+    let (action, _) = user_block.split_once("<|im_end|>")?;
+    let action = action.trim();
+    if action.is_empty() {
+        None
+    } else {
+        Some(action.to_owned())
     }
-
-    let compact = normalized.chars().take(limit).collect::<String>();
-    format!("{compact}...")
 }
 
 #[cfg(test)]
@@ -341,6 +334,22 @@ mod tests {
         let result = verify_gguf_magic_blocking(&path);
         assert!(matches!(result, Err(QwenError::InvalidGgufHeader)));
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn extract_user_action_reads_chatml_user_block() {
+        let prompt = "<|im_start|>system\nctx\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant";
+        let action = extract_user_action(prompt);
+        assert_eq!(action.as_deref(), Some("Search in files"));
+    }
+
+    #[test]
+    fn synthesize_response_does_not_echo_rag_context() {
+        let prompt = "<|im_start|>system\n[CONTEXTO RECUPERADO DE RAG]\nsecret chunk from docs db\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant";
+        let generated = synthesize_response("qwen2.5-1.5b-instruct-q4_k_m", prompt);
+
+        assert!(!generated.contains("secret chunk from docs db"));
+        assert!(generated.contains("rg"));
     }
 
     fn unique_temp_file(name: &str) -> PathBuf {

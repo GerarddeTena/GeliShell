@@ -602,16 +602,8 @@ async fn handle_assistant(
 }
 
 fn report_assistant_suggestion(suggestion: AssistantSuggestion, reporter: &dyn Reporter) {
-    reporter.info(&suggestion.title);
     for line in suggestion.body.lines() {
         reporter.info(line);
-    }
-
-    if !suggestion.sources.is_empty() {
-        reporter.info("assistant rag sources:");
-        for source in suggestion.sources {
-            reporter.info(&format!("  - {source}"));
-        }
     }
 }
 

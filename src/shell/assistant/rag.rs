@@ -116,6 +116,11 @@ impl RagEngine {
             .collect())
     }
 
+    pub async fn retrieve_context(&self, query: &str, limit: usize) -> Result<String, RagError> {
+        let chunks = self.retrieve(query, limit).await?;
+        Ok(format_chunks_for_prompt(&chunks))
+    }
+
     async fn embed_query(&self, query: &str) -> Result<Vec<f32>, RagError> {
         let endpoint = format!("{}/api/embeddings", self.ollama_url.trim_end_matches('/'));
         let response = self
@@ -144,6 +149,25 @@ impl RagEngine {
         }
         Ok(payload.embedding)
     }
+}
+
+fn format_chunks_for_prompt(chunks: &[RagChunk]) -> String {
+    if chunks.is_empty() {
+        return "Sin contexto recuperado de RAG para esta acción.".to_owned();
+    }
+
+    chunks
+        .iter()
+        .map(|chunk| {
+            format!(
+                "- Fuente: {} | Distancia coseno: {:.4}\n{}",
+                chunk.path,
+                chunk.distance,
+                chunk.text.trim()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 #[derive(Debug, Serialize)]
@@ -354,6 +378,24 @@ mod tests {
             panic!("expected KnowledgeBaseUnavailable when docs.db is missing");
         };
         assert!(details.contains("Missing docs.db"));
+    }
+
+    #[test]
+    fn format_chunks_for_prompt_is_non_empty_without_matches() {
+        let rendered = format_chunks_for_prompt(&[]);
+        assert!(rendered.contains("Sin contexto recuperado de RAG"));
+    }
+
+    #[test]
+    fn format_chunks_for_prompt_includes_source_and_text() {
+        let rendered = format_chunks_for_prompt(&[RagChunk {
+            path: "docs/kb/guardrail.md".to_owned(),
+            text: "Use canonical commands only.".to_owned(),
+            distance: 0.42,
+        }]);
+
+        assert!(rendered.contains("docs/kb/guardrail.md"));
+        assert!(rendered.contains("Use canonical commands only."));
     }
 
     fn unique_test_dir(prefix: &str) -> PathBuf {
