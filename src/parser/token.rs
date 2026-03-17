@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Word(String),
@@ -33,4 +32,3 @@ impl Token {
         }
     }
 }
-

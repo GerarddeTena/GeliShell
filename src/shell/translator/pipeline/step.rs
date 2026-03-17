@@ -19,11 +19,17 @@ pub enum PipelineError {
 
 impl PipelineError {
     pub fn fatal(step: &'static str, message: impl Into<String>) -> Self {
-        Self::Fatal { step, message: message.into() }
+        Self::Fatal {
+            step,
+            message: message.into(),
+        }
     }
 
     pub fn degraded(step: &'static str, message: impl Into<String>) -> Self {
-        Self::Degraded { step, message: message.into() }
+        Self::Degraded {
+            step,
+            message: message.into(),
+        }
     }
 
     pub fn is_fatal(&self) -> bool {
@@ -77,7 +83,7 @@ pub trait TranslationStep: Send + Sync {
     /// - Devuelve `PipelineError::Degraded` si puede continuar parcialmente
     fn process(
         &self,
-        ctx:      &mut TranslationContext,
+        ctx: &mut TranslationContext,
         reporter: &dyn Reporter,
     ) -> Result<StepResult, PipelineError>;
 }

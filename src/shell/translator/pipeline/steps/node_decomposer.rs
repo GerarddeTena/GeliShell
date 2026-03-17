@@ -1,33 +1,28 @@
 use crate::parser::ast::ASTNode;
+use crate::parser::token::Token;
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::{
     CommandFragment, FragmentOperator, TranslationContext,
 };
-use crate::shell::translator::pipeline::step::{
-    PipelineError, StepResult, TranslationStep,
-};
-use crate::parser::token::Token;
+use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 
 pub struct NodeDecomposer;
 
 impl NodeDecomposer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Descompone recursivamente un ASTNode en Vec<CommandFragment>
     /// Esta es la única función del sistema que hace match sobre ASTNode
-    fn decompose(
-        &self,
-        node:     &ASTNode,
-        out:      &mut Vec<CommandFragment>,
-        reporter: &dyn Reporter,
-    ) {
+    fn decompose(&self, node: &ASTNode, out: &mut Vec<CommandFragment>, reporter: &dyn Reporter) {
         match node {
             ASTNode::Command(cmd) => {
-                let args = cmd.args.iter()
+                let args = cmd
+                    .args
+                    .iter()
                     .filter_map(|t| match t {
-                        Token::Word(s) | Token::Quoted(s) | Token::Variable(s) => {
-                            Some(s.clone())
-                        }
+                        Token::Word(s) | Token::Quoted(s) | Token::Variable(s) => Some(s.clone()),
                         _ => None,
                     })
                     .collect();
@@ -88,15 +83,19 @@ impl NodeDecomposer {
 }
 
 impl Default for NodeDecomposer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TranslationStep for NodeDecomposer {
-    fn name(&self) -> &'static str { "NodeDecomposer" }
+    fn name(&self) -> &'static str {
+        "NodeDecomposer"
+    }
 
     fn process(
         &self,
-        ctx:      &mut TranslationContext,
+        ctx: &mut TranslationContext,
         reporter: &dyn Reporter,
     ) -> Result<StepResult, PipelineError> {
         if !ctx.fragments.is_empty() {

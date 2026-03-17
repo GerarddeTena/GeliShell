@@ -343,9 +343,7 @@ impl Resolve for SuggestionResolver {
 mod tests {
     use super::*;
     use crate::shell::reporter::{BufferedReporter, SilentReporter};
-    use crate::shell::translator::commands_map::{
-        SubsystemTranslations, TranslationEntry,
-    };
+    use crate::shell::translator::commands_map::{SubsystemTranslations, TranslationEntry};
 
     // ──────────────────────────────────────────────────────────
     // Fixtures — construyen CommandDef de test sin tocar el TOML

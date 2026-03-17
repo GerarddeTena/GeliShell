@@ -1,0 +1,366 @@
+use reqwest::StatusCode;
+use rusqlite::{Connection, params};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
+
+const EMBEDDING_DIMENSIONS: usize = 768;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RagError {
+    #[error(
+        "Error: Base de conocimiento vectorial o DLL no encontrada. Ejecute geli-update para inicializar el asistente. {details}"
+    )]
+    KnowledgeBaseUnavailable { details: String },
+
+    #[error("failed to fetch embedding for retrieval query: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("sqlite retrieval failed: {0}")]
+    Sql(#[from] rusqlite::Error),
+
+    #[error("embedding endpoint '{endpoint}' returned status {status}")]
+    HttpStatus {
+        endpoint: String,
+        status: StatusCode,
+    },
+
+    #[error("embedding model returned {got} dimensions, expected {expected}")]
+    InvalidEmbeddingDimensions { expected: usize, got: usize },
+
+    #[error(
+        "sqlite-vec extension could not be loaded. tried: {attempts:?}, last error: {last_error}"
+    )]
+    SqliteVecLoadFailed {
+        attempts: Vec<String>,
+        last_error: String,
+    },
+
+    #[error("background retrieval task failed: {0}")]
+    Join(#[from] tokio::task::JoinError),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RagChunk {
+    pub path: String,
+    pub text: String,
+    pub distance: f32,
+}
+
+#[derive(Debug)]
+pub struct RagEngine {
+    models_dir: PathBuf,
+    db_path: PathBuf,
+    sqlite_vec_path: Option<PathBuf>,
+    embedding_model: String,
+    ollama_url: String,
+    http: reqwest::Client,
+}
+
+impl RagEngine {
+    pub fn new(models_dir: PathBuf) -> Self {
+        let db_path = std::env::var("GELI_DOCS_DB_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| models_dir.join("docs.db"));
+        let sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH")
+            .ok()
+            .map(PathBuf::from);
+        let embedding_model =
+            std::env::var("GELI_EMBED_MODEL").unwrap_or_else(|_| "nomic-embed-text".to_owned());
+        let ollama_url = std::env::var("GELI_OLLAMA_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:11434".to_owned());
+
+        Self {
+            models_dir,
+            db_path,
+            sqlite_vec_path,
+            embedding_model,
+            ollama_url,
+            http: reqwest::Client::new(),
+        }
+    }
+
+    pub async fn clear_cache(&self) {}
+
+    pub async fn retrieve(&self, query: &str, limit: usize) -> Result<Vec<RagChunk>, RagError> {
+        if query.trim().is_empty() || limit == 0 {
+            return Ok(Vec::new());
+        }
+
+        let query_embedding = self.embed_query(query).await?;
+        let query_vector = embedding_to_json_array(&query_embedding);
+        let db_path = self.db_path.clone();
+        let models_dir = self.models_dir.clone();
+        let sqlite_vec_path = self.sqlite_vec_path.clone();
+
+        let rows = tokio::task::spawn_blocking(move || {
+            search_vector_db(
+                &db_path,
+                &models_dir,
+                sqlite_vec_path.as_deref(),
+                &query_vector,
+                limit,
+            )
+        })
+        .await??;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| RagChunk {
+                path: row.source,
+                text: row.text,
+                distance: row.distance,
+            })
+            .collect())
+    }
+
+    async fn embed_query(&self, query: &str) -> Result<Vec<f32>, RagError> {
+        let endpoint = format!("{}/api/embeddings", self.ollama_url.trim_end_matches('/'));
+        let response = self
+            .http
+            .post(&endpoint)
+            .json(&QueryEmbedRequest {
+                model: &self.embedding_model,
+                prompt: query,
+            })
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(RagError::HttpStatus {
+                endpoint,
+                status: response.status(),
+            });
+        }
+
+        let payload: QueryEmbedResponse = response.json().await?;
+        if payload.embedding.len() != EMBEDDING_DIMENSIONS {
+            return Err(RagError::InvalidEmbeddingDimensions {
+                expected: EMBEDDING_DIMENSIONS,
+                got: payload.embedding.len(),
+            });
+        }
+        Ok(payload.embedding)
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct QueryEmbedRequest<'a> {
+    model: &'a str,
+    prompt: &'a str,
+}
+
+#[derive(Debug, Deserialize)]
+struct QueryEmbedResponse {
+    embedding: Vec<f32>,
+}
+
+#[derive(Debug)]
+struct DbMatch {
+    source: String,
+    text: String,
+    distance: f32,
+}
+
+fn search_vector_db(
+    db_path: &Path,
+    models_dir: &Path,
+    configured_vec_path: Option<&Path>,
+    query_vector: &str,
+    limit: usize,
+) -> Result<Vec<DbMatch>, RagError> {
+    if !db_path.exists() {
+        return Err(RagError::KnowledgeBaseUnavailable {
+            details: format!("Missing docs.db at '{}'.", db_path.display()),
+        });
+    }
+
+    let conn = Connection::open(db_path)?;
+    match load_sqlite_vec_extension(&conn, models_dir, configured_vec_path) {
+        Ok(_) => {}
+        Err(RagError::SqliteVecLoadFailed {
+            attempts,
+            last_error,
+        }) => {
+            return Err(RagError::KnowledgeBaseUnavailable {
+                details: format!(
+                    "sqlite-vec load failed. tried: {:?}; last error: {}",
+                    attempts, last_error
+                ),
+            });
+        }
+        Err(other) => return Err(other),
+    }
+
+    ensure_required_schema(&conn, db_path)?;
+
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+            m.fuente,
+            m.texto_completo,
+            CAST(vec_distance_cosine(v.embedding, ?1) AS REAL) AS distance
+        FROM vec_docs v
+        JOIN docs_metadata m ON m.id = v.id
+        ORDER BY distance ASC
+        LIMIT ?2
+        ",
+    )?;
+
+    let rows = stmt.query_map(params![query_vector, limit as i64], |row| {
+        Ok(DbMatch {
+            source: row.get::<_, String>(0)?,
+            text: row.get::<_, String>(1)?,
+            distance: row.get::<_, f32>(2)?,
+        })
+    })?;
+
+    let mut matches = Vec::new();
+    for row in rows {
+        matches.push(row?);
+    }
+    Ok(matches)
+}
+
+fn ensure_required_schema(conn: &Connection, db_path: &Path) -> Result<(), RagError> {
+    let has_docs_metadata = table_exists(conn, "docs_metadata")?;
+    let has_vec_docs = table_exists(conn, "vec_docs")?;
+    if has_docs_metadata && has_vec_docs {
+        return Ok(());
+    }
+
+    Err(RagError::KnowledgeBaseUnavailable {
+        details: format!(
+            "Invalid docs.db schema at '{}'. Required tables vec_docs and docs_metadata were not found.",
+            db_path.display()
+        ),
+    })
+}
+
+fn table_exists(conn: &Connection, table: &str) -> Result<bool, RagError> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT 1
+        FROM sqlite_master
+        WHERE type IN ('table', 'view')
+          AND name = ?1
+        LIMIT 1
+        ",
+    )?;
+    let mut rows = stmt.query(params![table])?;
+    Ok(rows.next()?.is_some())
+}
+
+fn load_sqlite_vec_extension(
+    conn: &Connection,
+    models_dir: &Path,
+    configured_path: Option<&Path>,
+) -> Result<String, RagError> {
+    unsafe {
+        conn.load_extension_enable()?;
+    }
+
+    let mut attempts = Vec::new();
+    let mut last_error = "no extension candidate executed".to_owned();
+
+    for candidate in sqlite_vec_candidates(models_dir, configured_path) {
+        attempts.push(candidate.clone());
+        let load_result = unsafe { conn.load_extension(&candidate, None) };
+        match load_result {
+            Ok(()) => {
+                conn.load_extension_disable()?;
+                return Ok(candidate);
+            }
+            Err(error) => {
+                last_error = error.to_string();
+            }
+        }
+    }
+
+    conn.load_extension_disable()?;
+    Err(RagError::SqliteVecLoadFailed {
+        attempts,
+        last_error,
+    })
+}
+
+fn sqlite_vec_candidates(models_dir: &Path, configured_path: Option<&Path>) -> Vec<String> {
+    if let Some(path) = configured_path {
+        return vec![path.to_string_lossy().into_owned()];
+    }
+
+    #[cfg(target_os = "windows")]
+    let library_names = [
+        "vec0.dll",
+        "sqlite_vec.dll",
+        "sqlite-vec.dll",
+        "vec0",
+        "sqlite_vec",
+    ];
+    #[cfg(target_os = "linux")]
+    let library_names = ["vec0", "vec0.so", "sqlite_vec.so", "sqlite-vec.so"];
+    #[cfg(target_os = "macos")]
+    let library_names = ["vec0", "vec0.dylib", "sqlite_vec.dylib", "sqlite-vec.dylib"];
+
+    let mut set = BTreeSet::new();
+    for library_name in library_names {
+        set.insert(models_dir.join(library_name).to_string_lossy().into_owned());
+        set.insert(library_name.to_owned());
+    }
+    set.into_iter().collect()
+}
+
+fn embedding_to_json_array(embedding: &[f32]) -> String {
+    let mut out = String::with_capacity(embedding.len() * 12 + 2);
+    out.push('[');
+    for (index, value) in embedding.iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        out.push_str(&format!("{value:.8}"));
+    }
+    out.push(']');
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn embedding_to_json_array_is_stable() {
+        let encoded = embedding_to_json_array(&[1.0, 2.5, -3.0]);
+        assert_eq!(encoded, "[1.00000000,2.50000000,-3.00000000]");
+    }
+
+    #[test]
+    fn candidates_prefer_configured_path() {
+        let models_dir = std::env::temp_dir().join("geli_shell_rag_candidates");
+        let configured = PathBuf::from("C:\\custom\\vec0.dll");
+        let candidates = sqlite_vec_candidates(&models_dir, Some(&configured));
+        assert_eq!(candidates, vec!["C:\\custom\\vec0.dll".to_owned()]);
+    }
+
+    #[test]
+    fn missing_docs_db_returns_user_facing_error() {
+        let models_dir = unique_test_dir("rag_models");
+        let db_path = models_dir.join("docs.db");
+        let result = search_vector_db(&db_path, &models_dir, None, "[0.0,0.0]", 3);
+
+        let Err(RagError::KnowledgeBaseUnavailable { details }) = result else {
+            panic!("expected KnowledgeBaseUnavailable when docs.db is missing");
+        };
+        assert!(details.contains("Missing docs.db"));
+    }
+
+    fn unique_test_dir(prefix: &str) -> PathBuf {
+        let millis = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after unix epoch")
+            .as_millis();
+        std::env::temp_dir().join(format!("geli_shell_{prefix}_{millis}"))
+    }
+}

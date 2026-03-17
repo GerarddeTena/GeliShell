@@ -5,7 +5,7 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct ExecTrace {
     /// El string exacto que se pasó al proceso
-    pub command:   String,
+    pub command: String,
     /// El subsistema que lo ejecutó
     pub subsystem: String,
 }

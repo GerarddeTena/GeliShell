@@ -1,5 +1,5 @@
-use tokio::process::Command;
 use crate::shell::translator::subsystem::Subsystem;
+use tokio::process::Command;
 
 /// Construye el Command de tokio apropiado para el subsistema
 /// y la plataforma actual.
@@ -31,9 +31,9 @@ pub fn build_command(command: &str, subsystem: &Subsystem) -> Command {
             #[cfg(not(target_os = "windows"))]
             {
                 let shell = match subsystem {
-                    Subsystem::Zsh  => "zsh",
+                    Subsystem::Zsh => "zsh",
                     Subsystem::Fish => "fish",
-                    _               => "bash",
+                    _ => "bash",
                 };
                 let mut cmd = Command::new(shell);
                 cmd.args(["-c", command]);

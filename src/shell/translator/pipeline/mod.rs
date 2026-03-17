@@ -1,31 +1,29 @@
-
 pub mod context;
 pub mod step;
 pub mod steps;
 
+use crate::parser::ast::ASTNode;
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::commands_map::CommandMap;
 use crate::shell::translator::pipeline::context::TranslationContext;
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 use crate::shell::translator::pipeline::steps::{
-    CommandResolver, FlagResolver, NodeDecomposer,
-    SubsystemMapper, VariableExpander,
+    CommandResolver, FlagResolver, NodeDecomposer, SubsystemMapper, VariableExpander,
 };
 use crate::shell::translator::resolver::{Resolve, SuggestionResolver};
 use crate::shell::translator::subsystem::Subsystem;
-use crate::parser::ast::ASTNode;
 use std::sync::Arc;
 
 pub use context::{CommandFragment, FragmentOperator, StepSnapshot};
-pub use step::{PipelineError as TranslationError};
+pub use step::PipelineError as TranslationError;
 
 // ══════════════════════════════════════════════════════════════
 // TranslationPipeline — orchestrador
 // ══════════════════════════════════════════════════════════════
 
 pub struct TranslationPipeline {
-    steps:    Vec<Box<dyn TranslationStep>>,
-    map:      Arc<CommandMap>,
+    steps: Vec<Box<dyn TranslationStep>>,
+    map: Arc<CommandMap>,
     subsystem: Subsystem,
 }
 
@@ -38,7 +36,7 @@ impl TranslationPipeline {
 
     /// Constructor con resolver personalizado — útil para tests
     pub fn with_resolver(
-        map:      Arc<CommandMap>,
+        map: Arc<CommandMap>,
         subsystem: Subsystem,
         resolver: Arc<dyn Resolve>,
     ) -> Self {
@@ -50,7 +48,11 @@ impl TranslationPipeline {
             Box::new(SubsystemMapper::new(Arc::clone(&resolver))),
         ];
 
-        Self { steps, map, subsystem }
+        Self {
+            steps,
+            map,
+            subsystem,
+        }
     }
 
     /// Punto de entrada único — traduce un ASTNode a String nativo
@@ -58,16 +60,12 @@ impl TranslationPipeline {
     /// # Errors
     /// - `PipelineError::Fatal`    — el pipeline no puede continuar
     /// - `PipelineError::Degraded` — resultado parcial disponible
-    pub fn run(
-        &self,
-        node:     &ASTNode,
-        reporter: &dyn Reporter,
-    ) -> Result<String, PipelineError> {
+    pub fn run(&self, node: &ASTNode, reporter: &dyn Reporter) -> Result<String, PipelineError> {
         let mut ctx = TranslationContext::new(node, &self.subsystem, &self.map);
 
         for step in &self.steps {
             match step.process(&mut ctx, reporter)? {
-                StepResult::Continue     => continue,
+                StepResult::Continue => continue,
                 StepResult::Done(output) => {
                     ctx.output = Some(output.clone());
                     ctx.snapshot(step.name());
@@ -83,9 +81,7 @@ impl TranslationPipeline {
             ctx.assemble()
         };
 
-        reporter.info(&format!(
-            "pipeline: complete → '{output}'"
-        ));
+        reporter.info(&format!("pipeline: complete → '{output}'"));
 
         Ok(output)
     }
@@ -94,14 +90,14 @@ impl TranslationPipeline {
     /// En release siempre devuelve Vec vacío
     pub fn run_with_trace(
         &self,
-        node:     &ASTNode,
+        node: &ASTNode,
         reporter: &dyn Reporter,
     ) -> Result<(String, Vec<StepSnapshot>), PipelineError> {
         let mut ctx = TranslationContext::new(node, &self.subsystem, &self.map);
 
         for step in &self.steps {
             match step.process(&mut ctx, reporter)? {
-                StepResult::Continue     => continue,
+                StepResult::Continue => continue,
                 StepResult::Done(output) => {
                     ctx.output = Some(output.clone());
                     ctx.snapshot(step.name());
@@ -127,10 +123,10 @@ impl TranslationPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shell::reporter::{BufferedReporter, SilentReporter};
-    use crate::shell::translator::commands_map::load;
     use crate::parser::ast::{ASTNode, Command};
     use crate::parser::token::Token;
+    use crate::shell::reporter::{BufferedReporter, SilentReporter};
+    use crate::shell::translator::commands_map::load;
 
     fn make_command_node(name: &str, args: Vec<&str>) -> ASTNode {
         ASTNode::Command(Command {
@@ -151,31 +147,31 @@ mod tests {
 
     #[test]
     fn translates_list_to_bash() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
         let reporter = SilentReporter::new();
-        let node     = make_command_node("list", vec![]);
-        let result   = pipeline.run(&node, &reporter).unwrap();
+        let node = make_command_node("list", vec![]);
+        let result = pipeline.run(&node, &reporter).unwrap();
         assert_eq!(result, "ls");
     }
 
     #[test]
     fn translates_list_to_powershell() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(map, Subsystem::PowerShell);
         let reporter = SilentReporter::new();
-        let node     = make_command_node("list", vec![]);
-        let result   = pipeline.run(&node, &reporter).unwrap();
+        let node = make_command_node("list", vec![]);
+        let result = pipeline.run(&node, &reporter).unwrap();
         assert_eq!(result, "Get-ChildItem");
     }
 
     #[test]
     fn passthrough_for_unknown_command() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
         let reporter = SilentReporter::new();
-        let node     = make_command_node("git", vec!["status"]);
-        let result   = pipeline.run(&node, &reporter).unwrap();
+        let node = make_command_node("git", vec!["status"]);
+        let result = pipeline.run(&node, &reporter).unwrap();
         assert_eq!(result, "git status");
     }
 
@@ -185,7 +181,7 @@ mod tests {
 
     #[test]
     fn translates_and_node() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(Arc::clone(&map), Subsystem::Bash);
         let reporter = SilentReporter::new();
         let node = ASTNode::And(
@@ -198,7 +194,7 @@ mod tests {
 
     #[test]
     fn cmd_and_uses_single_ampersand() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(Arc::clone(&map), Subsystem::Cmd);
         let reporter = SilentReporter::new();
         let node = ASTNode::And(
@@ -212,11 +208,11 @@ mod tests {
 
     #[test]
     fn translates_pipeline_node() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(Arc::clone(&map), Subsystem::Bash);
         let reporter = SilentReporter::new();
         let node = ASTNode::Pipeline(vec![
-            make_command_node("list",   vec![]),
+            make_command_node("list", vec![]),
             make_command_node("search", vec!["foo"]),
         ]);
         let result = pipeline.run(&node, &reporter).unwrap();
@@ -229,10 +225,10 @@ mod tests {
 
     #[test]
     fn run_with_trace_captures_snapshots_in_debug() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
         let reporter = SilentReporter::new();
-        let node     = make_command_node("list", vec![]);
+        let node = make_command_node("list", vec![]);
         let (output, snapshots) = pipeline.run_with_trace(&node, &reporter).unwrap();
 
         assert_eq!(output, "ls");
@@ -243,10 +239,10 @@ mod tests {
 
     #[test]
     fn buffered_reporter_captures_all_step_messages() {
-        let map      = make_pipeline();
+        let map = make_pipeline();
         let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
         let reporter = BufferedReporter::new();
-        let node     = make_command_node("list", vec![]);
+        let node = make_command_node("list", vec![]);
         pipeline.run(&node, &reporter).unwrap();
 
         // Debe haber mensajes info de cada step

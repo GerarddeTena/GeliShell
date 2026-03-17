@@ -2,26 +2,30 @@
 
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
-use crate::shell::translator::pipeline::step::{
-    PipelineError, StepResult, TranslationStep,
-};
+use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 
 pub struct FlagResolver;
 
 impl FlagResolver {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for FlagResolver {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TranslationStep for FlagResolver {
-    fn name(&self) -> &'static str { "FlagResolver" }
+    fn name(&self) -> &'static str {
+        "FlagResolver"
+    }
 
     fn process(
         &self,
-        ctx:      &mut TranslationContext,
+        ctx: &mut TranslationContext,
         reporter: &dyn Reporter,
     ) -> Result<StepResult, PipelineError> {
         let subsystem = ctx.subsystem;
@@ -44,7 +48,9 @@ impl TranslationStep for FlagResolver {
                                 Some(translated) => {
                                     reporter.info(&format!(
                                         "{}: '{}' → '{}'",
-                                        self.name(), arg, translated
+                                        self.name(),
+                                        arg,
+                                        translated
                                     ));
                                     resolved_args.push(translated.to_owned());
                                 }
@@ -53,7 +59,9 @@ impl TranslationStep for FlagResolver {
                                     // Degraded — continúa sin este flag
                                     reporter.warn(&format!(
                                         "{}: flag '{}' not supported in '{}' — skipping",
-                                        self.name(), arg, subsystem.as_str()
+                                        self.name(),
+                                        arg,
+                                        subsystem.as_str()
                                     ));
                                 }
                             }

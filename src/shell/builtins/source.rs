@@ -4,7 +4,9 @@ use crate::shell::reporter::Reporter;
 pub struct SourceBuiltin;
 
 impl Builtin for SourceBuiltin {
-    fn name(&self) -> &'static str { "source" }
+    fn name(&self) -> &'static str {
+        "source"
+    }
 
     fn execute(&self, args: &[String], reporter: &dyn Reporter) -> BuiltinResult {
         let Some(path) = args.first() else {

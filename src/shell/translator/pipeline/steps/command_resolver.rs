@@ -1,25 +1,29 @@
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
-use crate::shell::translator::pipeline::step::{
-    PipelineError, StepResult, TranslationStep,
-};
+use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 
 pub struct CommandResolver;
 
 impl CommandResolver {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for CommandResolver {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TranslationStep for CommandResolver {
-    fn name(&self) -> &'static str { "CommandResolver" }
+    fn name(&self) -> &'static str {
+        "CommandResolver"
+    }
 
     fn process(
         &self,
-        ctx:      &mut TranslationContext,
+        ctx: &mut TranslationContext,
         reporter: &dyn Reporter,
     ) -> Result<StepResult, PipelineError> {
         for fragment in ctx.fragments.iter_mut() {

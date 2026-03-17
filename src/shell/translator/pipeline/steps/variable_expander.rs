@@ -2,26 +2,30 @@
 
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
-use crate::shell::translator::pipeline::step::{
-    PipelineError, StepResult, TranslationStep,
-};
+use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 
 pub struct VariableExpander;
 
 impl VariableExpander {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for VariableExpander {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TranslationStep for VariableExpander {
-    fn name(&self) -> &'static str { "VariableExpander" }
+    fn name(&self) -> &'static str {
+        "VariableExpander"
+    }
 
     fn process(
         &self,
-        ctx:      &mut TranslationContext,
+        ctx: &mut TranslationContext,
         reporter: &dyn Reporter,
     ) -> Result<StepResult, PipelineError> {
         let subsystem = ctx.subsystem;
@@ -38,10 +42,7 @@ impl TranslationStep for VariableExpander {
                 if arg.starts_with('$') {
                     let var_name = arg.trim_start_matches('$');
                     let expanded = subsystem.variable_syntax(var_name);
-                    reporter.info(&format!(
-                        "{}: '{}' → '{}'",
-                        self.name(), arg, expanded
-                    ));
+                    reporter.info(&format!("{}: '{}' → '{}'", self.name(), arg, expanded));
                     *arg = expanded;
                 }
             }

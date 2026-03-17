@@ -25,10 +25,10 @@ pub struct ExecutionConfig {
 impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
-            capture_output:        false,
-            capture_duration:      false,
+            capture_output: false,
+            capture_duration: false,
             capture_command_trace: false,
-            timeout_secs:          None,
+            timeout_secs: None,
         }
     }
 }
@@ -43,10 +43,10 @@ impl ExecutionConfig {
     /// Útil para preprod y debugging
     pub fn full() -> Self {
         Self {
-            capture_output:        true,
-            capture_duration:      true,
+            capture_output: true,
+            capture_duration: true,
             capture_command_trace: true,
-            timeout_secs:          None,
+            timeout_secs: None,
         }
     }
 

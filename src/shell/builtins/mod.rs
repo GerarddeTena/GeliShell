@@ -1,13 +1,17 @@
 pub mod cd;
 pub mod clear;
+mod customization;
 pub mod exit;
 pub mod export;
+pub mod g_jump;
 pub mod history;
 pub mod source;
 pub mod unset;
 
 use crate::parser::ast::ASTNode;
 use crate::shell::reporter::Reporter;
+use g_jump::{GJumpBuiltin, history::GHistory};
+use std::sync::{Arc, Mutex};
 
 // ══════════════════════════════════════════════════════════════
 // BuiltinResult
@@ -15,11 +19,8 @@ use crate::shell::reporter::Reporter;
 
 #[derive(Debug)]
 pub enum BuiltinResult {
-    /// El builtin manejó el comando — no pasar al executor
     Handled,
-    /// El comando no es un builtin — continúa con el flujo normal
     NotABuiltin,
-    /// El builtin pide cerrar la shell
     Exit(i32),
 }
 
@@ -29,11 +30,7 @@ pub enum BuiltinResult {
 
 pub trait Builtin: Send + Sync {
     fn name(&self) -> &'static str;
-    fn execute(
-        &self,
-        args:     &[String],
-        reporter: &dyn Reporter,
-    ) -> BuiltinResult;
+    fn execute(&self, args: &[String], reporter: &dyn Reporter) -> BuiltinResult;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -42,11 +39,14 @@ pub trait Builtin: Send + Sync {
 
 pub struct BuiltinRegistry {
     builtins: Vec<Box<dyn Builtin>>,
-    history:  Vec<String>,
+    history: Vec<String>,
+    g_history: Arc<Mutex<GHistory>>,
 }
 
 impl BuiltinRegistry {
     pub fn new() -> Self {
+        let g_history = Arc::new(Mutex::new(GHistory::load()));
+
         Self {
             builtins: vec![
                 Box::new(cd::CdBuiltin),
@@ -56,34 +56,44 @@ impl BuiltinRegistry {
                 Box::new(history::HistoryBuiltin),
                 Box::new(source::SourceBuiltin),
                 Box::new(unset::UnsetBuiltin),
+                Box::new(GJumpBuiltin::new(Arc::clone(&g_history))),
             ],
             history: Vec::new(),
+            g_history,
         }
     }
 
-    /// Añade un comando al historial interno
+    /// Registra el cwd en el historial de g
+    /// Llamar después de cada cd exitoso y después de cada comando
+    pub fn record_g_visit(&self) {
+        GJumpBuiltin::record_visit(&self.g_history);
+    }
+
     pub fn push_history(&mut self, cmd: String) {
         self.history.push(cmd);
     }
 
-    /// Devuelve el historial completo
     pub fn history(&self) -> &[String] {
         &self.history
     }
 
-    /// Comprueba si el ASTNode es un builtin y lo ejecuta
-    pub fn try_execute(
-        &mut self,
-        node:     &ASTNode,
-        reporter: &dyn Reporter,
-    ) -> BuiltinResult {
+    pub fn g_completion_paths(&self, limit: usize) -> Vec<String> {
+        match self.g_history.lock() {
+            Ok(history) => history.completion_candidates(limit),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    pub fn try_execute(&mut self, node: &ASTNode, reporter: &dyn Reporter) -> BuiltinResult {
         let ASTNode::Command(cmd) = node else {
             return BuiltinResult::NotABuiltin;
         };
 
-        // Caso especial: history necesita acceso al historial interno
+        // history especial — necesita acceso al Vec interno
         if cmd.name == "history" {
-            let args: Vec<String> = cmd.args.iter()
+            let args: Vec<String> = cmd
+                .args
+                .iter()
                 .filter_map(|t| t.as_str().map(str::to_owned))
                 .collect();
             if args.contains(&"--clear".to_owned()) {
@@ -97,8 +107,9 @@ impl BuiltinRegistry {
             return BuiltinResult::Handled;
         }
 
-        // Resto de builtins
-        let args: Vec<String> = cmd.args.iter()
+        let args: Vec<String> = cmd
+            .args
+            .iter()
             .filter_map(|t| t.as_str().map(str::to_owned))
             .collect();
 

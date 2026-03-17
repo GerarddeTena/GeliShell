@@ -224,7 +224,7 @@ fish       = "-n"
 name        = "read-paged"
 description = "View file contents page by page"
 category    = "file-ops"
-translate   = { bash = { exact = "less", suggestions = ["more", "bat"] }, zsh = { exact = "less", suggestions = ["more", "bat"] }, fish = { exact = "less", suggestions = ["more", "bat"] }, powershell = { exact = "more", suggestions = ["Out-Host -Paging"] }, cmd = { exact = "more", suggestions = [] } }
+translate   = { bash = { exact = "less", suggestions = ["more", "bat"] }, zsh = { exact = "less", suggestions = ["more", "bat"] }, fish = { exact = "less", suggestions = ["more", "bat"] }, powershell = { exact = "more", suggestions = ["Out-Host -Paging"] }, cmd = { exact = "more", suggestions = ["more /e"] } }
 
 # ──────────────────────────────────────────────
 
@@ -240,7 +240,7 @@ translate   = { bash = { exact = "touch", suggestions = ["install -m 644 /dev/nu
 name        = "tail"
 description = "Display the last lines of a file"
 category    = "file-ops"
-translate   = { bash = { exact = "tail", suggestions = ["less +G"] }, zsh = { exact = "tail", suggestions = ["less +G"] }, fish = { exact = "tail", suggestions = ["less +G"] }, powershell = { exact = "Get-Content -Tail", suggestions = ["gc -Tail"] } }
+translate   = { bash = { exact = "tail", suggestions = ["less +G"] }, zsh = { exact = "tail", suggestions = ["less +G"] }, fish = { exact = "tail", suggestions = ["less +G"] }, powershell = { exact = "Get-Content -Tail", suggestions = ["gc -Tail"] }, cmd = { exact = "more", suggestions = [] } }
 
 [[commands.flags]]
 canonical  = "--lines"
@@ -262,7 +262,7 @@ powershell = "-Wait"
 name        = "head"
 description = "Display the first lines of a file"
 category    = "file-ops"
-translate   = { bash = { exact = "head", suggestions = ["sed -n '1,10p'"] }, zsh = { exact = "head", suggestions = ["sed -n '1,10p'"] }, fish = { exact = "head", suggestions = ["sed -n '1,10p'"] }, powershell = { exact = "Get-Content -TotalCount", suggestions = ["gc -TotalCount", "Select-Object -First"] } }
+translate   = { bash = { exact = "head", suggestions = ["sed -n '1,10p'"] }, zsh = { exact = "head", suggestions = ["sed -n '1,10p'"] }, fish = { exact = "head", suggestions = ["sed -n '1,10p'"] }, powershell = { exact = "Get-Content -TotalCount", suggestions = ["gc -TotalCount", "Select-Object -First"] }, cmd = { exact = "more +1", suggestions = [] } }
 
 [[commands.flags]]
 canonical  = "--lines"
@@ -325,7 +325,7 @@ translate   = { bash = { exact = "which", suggestions = ["type", "command -v"] }
 name        = "run-background"
 description = "Run a command in the background"
 category    = "process"
-translate   = { bash = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, zsh = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, fish = { exact = "{cmd} &", suggestions = [] }, powershell = { exact = "Start-Process {cmd}", suggestions = ["Start-Job { {cmd} }"] }, cmd = { exact = "start {cmd}", suggestions = [] } }
+translate   = { bash = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, zsh = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, fish = { exact = "{cmd} &", suggestions = ["fish -c '{cmd} &'"] }, powershell = { exact = "Start-Process {cmd}", suggestions = ["Start-Job { {cmd} }"] }, cmd = { exact = "start {cmd}", suggestions = ["start /b {cmd}"] } }
 
 # ══════════════════════════════════════════════
 # network
@@ -430,7 +430,7 @@ powershell = "-NotMatch"
 name        = "count"
 description = "Count lines, words, or characters in input"
 category    = "text"
-translate   = { bash = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, zsh = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, fish = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, powershell = { exact = "Measure-Object", suggestions = ["measure", "Measure-Object -Line"] } }
+translate   = { bash = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, zsh = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, fish = { exact = "wc", suggestions = ["wc -l", "wc -w"] }, powershell = { exact = "Measure-Object", suggestions = ["measure", "Measure-Object -Line"] }, cmd = { exact = "find /c /v \"\"", suggestions = ["powershell Measure-Object"] } }
 
 [[commands.flags]]
 canonical  = "--lines"
@@ -475,7 +475,7 @@ powershell = "-Unique"
 name        = "unique"
 description = "Remove or report duplicate lines"
 category    = "text"
-translate   = { bash = { exact = "uniq", suggestions = ["sort -u", "awk '!seen[$0]++'"] }, zsh = { exact = "uniq", suggestions = ["sort -u"] }, fish = { exact = "uniq", suggestions = ["sort -u"] }, powershell = { exact = "Get-Unique", suggestions = ["gu", "Sort-Object -Unique"] } }
+translate   = { bash = { exact = "uniq", suggestions = ["sort -u", "awk '!seen[$0]++'"] }, zsh = { exact = "uniq", suggestions = ["sort -u"] }, fish = { exact = "uniq", suggestions = ["sort -u"] }, powershell = { exact = "Get-Unique", suggestions = ["gu", "Sort-Object -Unique"] }, cmd = { exact = "sort /unique", suggestions = [] } }
 
 [[commands.flags]]
 canonical  = "--count"
@@ -489,7 +489,7 @@ fish       = "-c"
 name        = "replace"
 description = "Replace text in a stream"
 category    = "text"
-translate   = { bash = { exact = "sed", suggestions = ["awk", "perl -pe"] }, zsh = { exact = "sed", suggestions = ["awk", "perl -pe"] }, fish = { exact = "sed", suggestions = ["awk"] }, powershell = { exact = "ForEach-Object { $_ -replace", suggestions = ["%{ $_ -replace", "sed"] } }
+translate   = { bash = { exact = "sed", suggestions = ["awk", "perl -pe"] }, zsh = { exact = "sed", suggestions = ["awk", "perl -pe"] }, fish = { exact = "sed", suggestions = ["awk"] }, powershell = { exact = "ForEach-Object { $_ -replace", suggestions = ["%{ $_ -replace", "sed"] }, cmd = { exact = "powershell -c \"ForEach-Object { $_ -replace\"", suggestions = [] } }
 
 # ══════════════════════════════════════════════
 # system
@@ -499,7 +499,7 @@ translate   = { bash = { exact = "sed", suggestions = ["awk", "perl -pe"] }, zsh
 name        = "clear"
 description = "Clear the terminal screen"
 category    = "system"
-translate   = { bash = { exact = "clear", suggestions = ["reset", "printf '\\033c'"] }, zsh = { exact = "clear", suggestions = ["reset"] }, fish = { exact = "clear", suggestions = ["reset"] }, powershell = { exact = "Clear-Host", suggestions = ["cls", "clear"] }, cmd = { exact = "cls", suggestions = [] } }
+translate   = { bash = { exact = "clear", suggestions = ["reset", "printf '\\033c'"] }, zsh = { exact = "clear", suggestions = ["reset"] }, fish = { exact = "clear", suggestions = ["reset"] }, powershell = { exact = "Clear-Host", suggestions = ["cls", "clear"] }, cmd = { exact = "cls", suggestions = ["echo. && cls"] } }
 
 # ──────────────────────────────────────────────
 
@@ -553,7 +553,7 @@ fish       = "-h"
 name        = "dir-size"
 description = "Show the size of a directory"
 category    = "system"
-translate   = { bash = { exact = "du -sh", suggestions = ["du -sh --max-depth=1", "ncdu"] }, zsh = { exact = "du -sh", suggestions = ["du -sh --max-depth=1", "ncdu"] }, fish = { exact = "du -sh", suggestions = ["du -sh"] }, powershell = { exact = "Get-ChildItem -Recurse | Measure-Object -Property Length -Sum", suggestions = ["(gci -Recurse | measure -Property Length -Sum).Sum"] } }
+translate   = { bash = { exact = "du -sh", suggestions = ["du -sh --max-depth=1", "ncdu"] }, zsh = { exact = "du -sh", suggestions = ["du -sh --max-depth=1", "ncdu"] }, fish = { exact = "du -sh", suggestions = ["du -sh"] }, powershell = { exact = "Get-ChildItem -Recurse | Measure-Object -Property Length -Sum", suggestions = ["(gci -Recurse | measure -Property Length -Sum).Sum"] }, cmd = { exact = "powershell -c \"(gci -Recurse | measure -Property Length -Sum).Sum\"", suggestions = [] } }
 
 # ──────────────────────────────────────────────
 
@@ -561,7 +561,7 @@ translate   = { bash = { exact = "du -sh", suggestions = ["du -sh --max-depth=1"
 name        = "history"
 description = "Show command history"
 category    = "system"
-translate   = { bash = { exact = "history", suggestions = ["cat ~/.bash_history", "fc -l"] }, zsh = { exact = "history", suggestions = ["cat ~/.zsh_history"] }, fish = { exact = "history", suggestions = ["cat ~/.local/share/fish/fish_history"] }, powershell = { exact = "Get-History", suggestions = ["h", "ghy"] }, cmd = { exact = "doskey /history", suggestions = [] } }
+translate   = { bash = { exact = "history", suggestions = ["cat ~/.bash_history", "fc -l"] }, zsh = { exact = "history", suggestions = ["cat ~/.zsh_history"] }, fish = { exact = "history", suggestions = ["cat ~/.local/share/fish/fish_history"] }, powershell = { exact = "Get-History", suggestions = ["h", "ghy"] }, cmd = { exact = "doskey /history", suggestions = ["powershell Get-History"] } }
 
 [[commands.flags]]
 canonical  = "--clear"

@@ -4,8 +4,8 @@ pub mod rules;
 use crate::parser::ast::{ASTNode, Command};
 pub use error::GuardError;
 use rules::{
-    ChmodChownGuard, CriticalRedirectGuard, DdGuard,
-    ForkBombGuard, MkfsGuard, PipeExecutionGuard, RmGuard,
+    ChmodChownGuard, CriticalRedirectGuard, DdGuard, ForkBombGuard, MkfsGuard, PipeExecutionGuard,
+    RmGuard,
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -21,12 +21,8 @@ pub trait Guard: Send + Sync {
     fn check_node(&self, node: &ASTNode) -> Result<(), GuardError> {
         match node {
             ASTNode::Command(cmd) => self.check_command(cmd),
-            ASTNode::Pipeline(commands) => {
-                commands.iter().try_for_each(|n| self.check_node(n))
-            }
-            ASTNode::And(l, r)
-            | ASTNode::Or(l, r)
-            | ASTNode::Sequence(l, r) => {
+            ASTNode::Pipeline(commands) => commands.iter().try_for_each(|n| self.check_node(n)),
+            ASTNode::And(l, r) | ASTNode::Or(l, r) | ASTNode::Sequence(l, r) => {
                 self.check_node(l)?;
                 self.check_node(r)
             }

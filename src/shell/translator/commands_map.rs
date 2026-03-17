@@ -90,8 +90,7 @@ pub struct TranslationEntry {
     pub suggestions: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[derive(Default)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct SubsystemTranslations {
     pub bash: Option<TranslationEntry>,
     pub zsh: Option<TranslationEntry>,
@@ -226,7 +225,7 @@ pub fn load() -> Result<LoadResult, CommandMapError> {
                             command: cmd.name.clone(),
                             subsystem: subsystem.to_owned(),
                         });
-                    } else if entry.suggestions.is_empty() {
+                    } else if entry.suggestions.is_empty() && subsystem != "cmd" {
                         warnings.push(ValidationWarning::EmptySuggestions {
                             command: cmd.name.clone(),
                             subsystem: subsystem.to_owned(),
@@ -251,16 +250,16 @@ mod tests {
     #[test]
     fn flag_get_by_name_returns_correct_translation() {
         let flag = FlagDef {
-            canonical:  "--recursive".to_owned(),
-            bash:       Some("-r".to_owned()),
-            zsh:        Some("-r".to_owned()),
-            fish:       Some("-r".to_owned()),
+            canonical: "--recursive".to_owned(),
+            bash: Some("-r".to_owned()),
+            zsh: Some("-r".to_owned()),
+            fish: Some("-r".to_owned()),
             powershell: Some("-Recurse".to_owned()),
-            cmd:        Some("/s".to_owned()),
+            cmd: Some("/s".to_owned()),
         };
-        assert_eq!(flag.get_by_name("bash"),       Some("-r"));
-        assert_eq!(flag.get_by_name("powershell"),  Some("-Recurse"));
-        assert_eq!(flag.get_by_name("cmd"),         Some("/s"));
-        assert_eq!(flag.get_by_name("unknown"),     None);
+        assert_eq!(flag.get_by_name("bash"), Some("-r"));
+        assert_eq!(flag.get_by_name("powershell"), Some("-Recurse"));
+        assert_eq!(flag.get_by_name("cmd"), Some("/s"));
+        assert_eq!(flag.get_by_name("unknown"), None);
     }
 }

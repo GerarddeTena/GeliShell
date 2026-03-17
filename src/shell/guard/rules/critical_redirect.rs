@@ -1,7 +1,7 @@
 use crate::parser::ast::Command;
 use crate::parser::token::RedirectKind;
-use crate::shell::guard::error::GuardError;
 use crate::shell::guard::Guard;
+use crate::shell::guard::error::GuardError;
 
 /// Archivos críticos que nunca deben ser sobreescritos con >
 const CRITICAL_FILES: &[&str] = &[
@@ -13,14 +13,17 @@ const CRITICAL_FILES: &[&str] = &[
     "/etc/crontab",
     "/boot/grub/grub.cfg",
     "/proc/sysrq-trigger",
-    "/dev/sda", "/dev/sdb",
+    "/dev/sda",
+    "/dev/sdb",
     "/dev/nvme0n1",
 ];
 
 pub struct CriticalRedirectGuard;
 
 impl CriticalRedirectGuard {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Guard for CriticalRedirectGuard {

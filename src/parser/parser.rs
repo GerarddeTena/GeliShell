@@ -19,7 +19,10 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, position: 0 }
+        Parser {
+            tokens,
+            position: 0,
+        }
     }
 
     // Consuming — igual que el Lexer, un parser usado no tiene valor
@@ -53,7 +56,9 @@ impl Parser {
                 Token::Operator(OperatorKind::Semicolon) => {
                     self.advance();
                     // ; al final de input es válido — "cmd ;" es legal en bash
-                    if matches!(self.peek(), Token::Eof) { break; }
+                    if matches!(self.peek(), Token::Eof) {
+                        break;
+                    }
                     let right = self.parse_pipeline()?;
                     left = ASTNode::Sequence(Box::new(left), Box::new(right));
                 }
@@ -89,7 +94,7 @@ impl Parser {
         // El primer token debe ser el nombre del comando
         let name = match self.advance_if_word() {
             Some(w) => w,
-            None    => return Err(ParseError::UnexpectedToken(self.peek().clone())),
+            None => return Err(ParseError::UnexpectedToken(self.peek().clone())),
         };
 
         let mut args = Vec::new();
@@ -117,15 +122,21 @@ impl Parser {
                 // Background: & al final del comando
                 Token::Operator(OperatorKind::Background) => {
                     self.advance();
-                    return Ok(ASTNode::Background(Box::new(
-                        ASTNode::Command(Command { name, args, redirections })
-                    )));
+                    return Ok(ASTNode::Background(Box::new(ASTNode::Command(Command {
+                        name,
+                        args,
+                        redirections,
+                    }))));
                 }
                 _ => break,
             }
         }
 
-        Ok(ASTNode::Command(Command { name, args, redirections }))
+        Ok(ASTNode::Command(Command {
+            name,
+            args,
+            redirections,
+        }))
     }
 
     // ----------------------------------------------------------

@@ -1,6 +1,6 @@
 use crate::parser::ast::{ASTNode, Command};
-use crate::shell::guard::error::GuardError;
 use crate::shell::guard::Guard;
+use crate::shell::guard::error::GuardError;
 
 /// Detecta patrones de fork bomb en el AST.
 ///
@@ -11,7 +11,9 @@ use crate::shell::guard::Guard;
 pub struct ForkBombGuard;
 
 impl ForkBombGuard {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Comprueba si un nodo es un pipeline donde el mismo
     /// comando aparece en ambos lados y se ejecuta en background
@@ -19,11 +21,16 @@ impl ForkBombGuard {
         if let ASTNode::Background(inner) = node {
             if let ASTNode::Pipeline(cmds) = inner.as_ref() {
                 if cmds.len() >= 2 {
-                    let names: Vec<&str> = cmds.iter().filter_map(|n| {
-                        if let ASTNode::Command(cmd) = n {
-                            Some(cmd.name.as_str())
-                        } else { None }
-                    }).collect();
+                    let names: Vec<&str> = cmds
+                        .iter()
+                        .filter_map(|n| {
+                            if let ASTNode::Command(cmd) = n {
+                                Some(cmd.name.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
                     // Todos los comandos del pipeline son iguales
                     // y hay al menos 2 — patrón de fork bomb
@@ -48,12 +55,8 @@ impl Guard for ForkBombGuard {
         // Recorre recursivamente
         match node {
             ASTNode::Command(cmd) => self.check_command(cmd),
-            ASTNode::Pipeline(cmds) => {
-                cmds.iter().try_for_each(|n| self.check_node(n))
-            }
-            ASTNode::And(l, r)
-            | ASTNode::Or(l, r)
-            | ASTNode::Sequence(l, r) => {
+            ASTNode::Pipeline(cmds) => cmds.iter().try_for_each(|n| self.check_node(n)),
+            ASTNode::And(l, r) | ASTNode::Or(l, r) | ASTNode::Sequence(l, r) => {
                 self.check_node(l)?;
                 self.check_node(r)
             }

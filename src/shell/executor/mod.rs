@@ -9,9 +9,12 @@ pub use result::{ExecTrace, ExecutionResult};
 
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::subsystem::Subsystem;
+use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Child;
+use tokio::process::{Child, ChildStderr, ChildStdout};
+use tokio::sync::Mutex as TokioMutex;
+use tokio::task::JoinHandle;
 
 // ══════════════════════════════════════════════════════════════
 // Executor
@@ -26,6 +29,36 @@ impl Executor {
         Self { subsystem }
     }
 
+    pub fn requires_tty(command: &str) -> bool {
+        let mut parts = command.split_whitespace().map(normalize_token);
+        let Some(first) = parts.next() else {
+            return false;
+        };
+
+        let entry = if matches!(first.as_str(), "sudo" | "env" | "command" | "nohup") {
+            parts.next().unwrap_or(first)
+        } else {
+            first
+        };
+
+        matches!(
+            entry.as_str(),
+            "nvim"
+                | "nvim.exe"
+                | "vim"
+                | "vim.exe"
+                | "vi"
+                | "nano"
+                | "less"
+                | "more"
+                | "man"
+                | "top"
+                | "htop"
+                | "tmux"
+                | "screen"
+        )
+    }
+
     /// Ejecuta un comando nativo del subsistema.
     ///
     /// Hace streaming de stdout/stderr en tiempo real.
@@ -38,8 +71,8 @@ impl Executor {
     /// - `ExecutorError::Timeout`       — superado el timeout
     pub async fn run(
         &self,
-        command:  &str,
-        config:   &ExecutionConfig,
+        command: &str,
+        config: &ExecutionConfig,
         reporter: &dyn Reporter,
     ) -> Result<ExecutionResult, ExecutorError> {
         // ── Validación básica ─────────────────────────────────
@@ -55,7 +88,7 @@ impl Executor {
 
         // ── Traza del comando ─────────────────────────────────
         let trace = config.capture_command_trace.then(|| ExecTrace {
-            command:   command.to_owned(),
+            command: command.to_owned(),
             subsystem: self.subsystem.as_str().to_owned(),
         });
 
@@ -64,112 +97,174 @@ impl Executor {
 
         // ── Construye y spawna el proceso ─────────────────────
         let mut cmd = platform::build_command(command, &self.subsystem);
+        cmd.kill_on_drop(true);
+        let interactive = Self::requires_tty(command);
+
+        if interactive {
+            reporter.info("executor: interactive tty mode enabled");
+            cmd.stdin(std::process::Stdio::inherit());
+            cmd.stdout(std::process::Stdio::inherit());
+            cmd.stderr(std::process::Stdio::inherit());
+
+            let child = cmd.spawn().map_err(ExecutorError::SpawnFailed)?;
+            let exit_code = if let Some(secs) = config.timeout_secs {
+                self.wait_with_timeout(child, secs).await?
+            } else {
+                self.wait(child).await?
+            };
+            let duration = start.map(|s| s.elapsed());
+
+            reporter.info(&format!("executor: finished with exit code {exit_code}"));
+
+            return Ok(ExecutionResult {
+                exit_code,
+                output: None,
+                duration,
+                trace,
+            });
+        }
+
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
-        let mut child = cmd.spawn().map_err(ExecutorError::SpawnFailed)?;
-
-        // ── Streaming de stdout y stderr ──────────────────────
-        let output = self
-            .stream_and_capture(&mut child, config, reporter)
+        let child = cmd.spawn().map_err(ExecutorError::SpawnFailed)?;
+        let (exit_code, output) = self
+            .stream_and_capture_with_timeout(child, config, reporter)
             .await?;
-
-        // ── Espera al proceso con timeout opcional ────────────
-        let exit_code = if let Some(secs) = config.timeout_secs {
-            self.wait_with_timeout(child, secs).await?
-        } else {
-            self.wait(child).await?
-        };
 
         // ── Duración ──────────────────────────────────────────
         let duration = start.map(|s| s.elapsed());
 
-        reporter.info(&format!(
-            "executor: finished with exit code {exit_code}"
-        ));
+        reporter.info(&format!("executor: finished with exit code {exit_code}"));
 
-        Ok(ExecutionResult { exit_code, output, duration, trace })
+        Ok(ExecutionResult {
+            exit_code,
+            output,
+            duration,
+            trace,
+        })
     }
 
     // ──────────────────────────────────────────────────────────
     // Streaming híbrido — imprime en tiempo real + captura
     // ──────────────────────────────────────────────────────────
 
-    async fn stream_and_capture(
+    async fn stream_and_capture_with_timeout(
         &self,
-        child:    &mut Child,
-        config:   &ExecutionConfig,
-        _reporter: &dyn Reporter,
-    ) -> Result<Option<String>, ExecutorError> {
-        let stdout = child.stdout.take();
-        let stderr = child.stderr.take();
+        mut child: Child,
+        config: &ExecutionConfig,
+        reporter: &dyn Reporter,
+    ) -> Result<(i32, Option<String>), ExecutorError> {
+        let captured = config
+            .capture_output
+            .then(|| Arc::new(TokioMutex::new(String::new())));
 
-        // Buffer acumulador — solo se usa si capture_output = true
-        let mut captured = config.capture_output.then(String::new);
+        let mut stdout_task = Self::spawn_stdout_task(child.stdout.take(), captured.clone());
+        let mut stderr_task = Self::spawn_stderr_task(child.stderr.take(), captured.clone());
 
-        // ── Streaming de stdout ───────────────────────────────
-        if let Some(stdout) = stdout {
+        let status = if let Some(secs) = config.timeout_secs {
+            let timeout = tokio::time::Duration::from_secs(secs);
+            match tokio::time::timeout(timeout, child.wait()).await {
+                Ok(result) => result.map_err(ExecutorError::SpawnFailed)?,
+                Err(_) => {
+                    if let Err(error) = child.kill().await {
+                        reporter.warn(&format!(
+                            "executor: failed to kill timed out process: {error}"
+                        ));
+                    }
+                    if let Err(error) = child.wait().await {
+                        reporter.warn(&format!(
+                            "executor: failed waiting timed out process: {error}"
+                        ));
+                    }
+
+                    Self::finish_stream_task(&mut stdout_task).await?;
+                    Self::finish_stream_task(&mut stderr_task).await?;
+                    return Err(ExecutorError::Timeout(secs));
+                }
+            }
+        } else {
+            child.wait().await.map_err(ExecutorError::SpawnFailed)?
+        };
+
+        Self::finish_stream_task(&mut stdout_task).await?;
+        Self::finish_stream_task(&mut stderr_task).await?;
+
+        let output = match captured {
+            Some(buffer) => Some(buffer.lock().await.clone()),
+            None => None,
+        };
+
+        let exit_code = status.code().ok_or(ExecutorError::KilledBySignal)?;
+
+        Ok((exit_code, output))
+    }
+
+    fn spawn_stdout_task(
+        stdout: Option<ChildStdout>,
+        captured: Option<Arc<TokioMutex<String>>>,
+    ) -> Option<JoinHandle<Result<(), std::io::Error>>> {
+        let stdout = stdout?;
+        Some(tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
-            while let Some(line) = reader
-                .next_line()
-                .await
-                .map_err(ExecutorError::SpawnFailed)?
-            {
-                // Imprime en tiempo real — siempre
+            while let Some(line) = reader.next_line().await? {
                 println!("{line}");
-
-                // Captura si config lo indica
-                if let Some(ref mut buf) = captured {
-                    buf.push_str(&line);
-                    buf.push('\n');
+                if let Some(buffer) = &captured {
+                    let mut locked = buffer.lock().await;
+                    locked.push_str(&line);
+                    locked.push('\n');
                 }
             }
-        }
+            Ok(())
+        }))
+    }
 
-        // ── Streaming de stderr ───────────────────────────────
-        if let Some(stderr) = stderr {
+    fn spawn_stderr_task(
+        stderr: Option<ChildStderr>,
+        captured: Option<Arc<TokioMutex<String>>>,
+    ) -> Option<JoinHandle<Result<(), std::io::Error>>> {
+        let stderr = stderr?;
+        Some(tokio::spawn(async move {
             let mut reader = BufReader::new(stderr).lines();
-            while let Some(line) = reader
-                .next_line()
-                .await
-                .map_err(ExecutorError::SpawnFailed)?
-            {
-                // stderr va a eprintln — siempre visible
+            while let Some(line) = reader.next_line().await? {
                 eprintln!("{line}");
-
-                if let Some(ref mut buf) = captured {
-                    buf.push_str(&line);
-                    buf.push('\n');
+                if let Some(buffer) = &captured {
+                    let mut locked = buffer.lock().await;
+                    locked.push_str(&line);
+                    locked.push('\n');
                 }
             }
-        }
+            Ok(())
+        }))
+    }
 
-        Ok(captured)
+    async fn finish_stream_task(
+        task: &mut Option<JoinHandle<Result<(), std::io::Error>>>,
+    ) -> Result<(), ExecutorError> {
+        let Some(handle) = task.take() else {
+            return Ok(());
+        };
+
+        let joined = handle.await.map_err(|error| {
+            ExecutorError::SpawnFailed(std::io::Error::other(format!(
+                "stream task join failed: {error}"
+            )))
+        })?;
+
+        joined.map_err(ExecutorError::SpawnFailed)
     }
 
     // ──────────────────────────────────────────────────────────
     // Espera al proceso
     // ──────────────────────────────────────────────────────────
 
-    async fn wait(
-        &self,
-        mut child: Child,
-    ) -> Result<i32, ExecutorError> {
-        let status = child
-            .wait()
-            .await
-            .map_err(ExecutorError::SpawnFailed)?;
+    async fn wait(&self, mut child: Child) -> Result<i32, ExecutorError> {
+        let status = child.wait().await.map_err(ExecutorError::SpawnFailed)?;
 
-        status
-            .code()
-            .ok_or(ExecutorError::KilledBySignal)
+        status.code().ok_or(ExecutorError::KilledBySignal)
     }
 
-    async fn wait_with_timeout(
-        &self,
-        mut child: Child,
-        secs:      u64,
-    ) -> Result<i32, ExecutorError> {
+    async fn wait_with_timeout(&self, mut child: Child, secs: u64) -> Result<i32, ExecutorError> {
         let timeout = tokio::time::Duration::from_secs(secs);
 
         tokio::time::timeout(timeout, child.wait())
@@ -179,6 +274,13 @@ impl Executor {
             .code()
             .ok_or(ExecutorError::KilledBySignal)
     }
+}
+
+fn normalize_token(token: &str) -> String {
+    token
+        .trim_matches('"')
+        .trim_matches('\'')
+        .to_ascii_lowercase()
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -206,7 +308,7 @@ mod tests {
     async fn executes_simple_command() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal();
+        let config = ExecutionConfig::minimal();
 
         #[cfg(not(target_os = "windows"))]
         let cmd = "echo hello";
@@ -222,7 +324,7 @@ mod tests {
     async fn captures_output_when_configured() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal().with_capture_output();
+        let config = ExecutionConfig::minimal().with_capture_output();
 
         #[cfg(not(target_os = "windows"))]
         let cmd = "echo captured_text";
@@ -238,7 +340,7 @@ mod tests {
     async fn no_output_captured_by_default() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal();
+        let config = ExecutionConfig::minimal();
 
         let result = executor
             .run("echo no_capture", &config, &reporter)
@@ -252,7 +354,7 @@ mod tests {
     async fn captures_duration_when_configured() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal().with_capture_duration();
+        let config = ExecutionConfig::minimal().with_capture_duration();
 
         let result = executor
             .run("echo timing", &config, &reporter)
@@ -267,7 +369,7 @@ mod tests {
     async fn captures_trace_when_configured() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal().with_capture_command_trace();
+        let config = ExecutionConfig::minimal().with_capture_command_trace();
 
         let result = executor
             .run("echo trace", &config, &reporter)
@@ -288,7 +390,7 @@ mod tests {
     async fn returns_error_on_empty_command() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal();
+        let config = ExecutionConfig::minimal();
 
         let result = executor.run("   ", &config, &reporter).await;
         assert!(matches!(result, Err(ExecutorError::EmptyCommand)));
@@ -298,7 +400,7 @@ mod tests {
     async fn nonzero_exit_code_on_failure() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal();
+        let config = ExecutionConfig::minimal();
 
         #[cfg(not(target_os = "windows"))]
         let cmd = "exit 1";
@@ -314,7 +416,7 @@ mod tests {
     async fn timeout_returns_error() {
         let executor = Executor::new(subsystem());
         let reporter = SilentReporter::new();
-        let config   = ExecutionConfig::minimal().with_timeout(1);
+        let config = ExecutionConfig::minimal().with_timeout(1);
 
         #[cfg(not(target_os = "windows"))]
         let cmd = "sleep 10";
@@ -356,5 +458,18 @@ mod tests {
         assert!(config.capture_duration);
         assert!(!config.capture_command_trace);
         assert_eq!(config.timeout_secs, Some(30));
+    }
+
+    #[test]
+    fn detects_nvim_as_tty_command() {
+        assert!(Executor::requires_tty("nvim Cargo.toml"));
+        assert!(Executor::requires_tty("\"nvim\" src/main.rs"));
+        assert!(Executor::requires_tty("sudo nvim Cargo.toml"));
+    }
+
+    #[test]
+    fn ignores_non_tty_command() {
+        assert!(!Executor::requires_tty("echo hello"));
+        assert!(!Executor::requires_tty("ls -la"));
     }
 }

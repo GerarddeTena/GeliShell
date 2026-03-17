@@ -1,7 +1,7 @@
+use crate::parser::ast::ASTNode;
 use crate::shell::translator::commands_map::{CommandDef, CommandMap};
 use crate::shell::translator::resolver::ResolvedCommand;
 use crate::shell::translator::subsystem::Subsystem;
-use crate::parser::ast::ASTNode;
 
 // ══════════════════════════════════════════════════════════════
 // FragmentOperator — operador que une este fragment al siguiente
@@ -9,20 +9,20 @@ use crate::parser::ast::ASTNode;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FragmentOperator {
-    And,        // &&
-    Or,         // ||
-    Sequence,   // ;
-    Pipe,       // |
+    And,      // &&
+    Or,       // ||
+    Sequence, // ;
+    Pipe,     // |
 }
 
 impl FragmentOperator {
     /// Traduce el operador a la sintaxis nativa del subsistema
     pub fn to_native(&self, subsystem: &Subsystem) -> &'static str {
         match self {
-            Self::And      => subsystem.and_operator(),
-            Self::Or       => subsystem.or_operator(),
+            Self::And => subsystem.and_operator(),
+            Self::Or => subsystem.or_operator(),
             Self::Sequence => subsystem.sequence_operator(),
-            Self::Pipe     => " | ",
+            Self::Pipe => " | ",
         }
     }
 }
@@ -60,16 +60,17 @@ impl CommandFragment {
         Self {
             command,
             args,
-            operator:    None,
-            background:  false,
+            operator: None,
+            background: false,
             command_def: None,
-            resolved:    None,
+            resolved: None,
         }
     }
 
     /// String ejecutable final — usa resolved.preferred si está disponible
     pub fn to_native_string(&self, _subsystem: &Subsystem) -> String {
-        let base = self.resolved
+        let base = self
+            .resolved
             .as_ref()
             .map(|r| r.preferred.as_str())
             .unwrap_or(&self.command);
@@ -89,9 +90,9 @@ impl CommandFragment {
 
 #[derive(Debug, Clone)]
 pub struct StepSnapshot {
-    pub step_name:  &'static str,
-    pub fragments:  Vec<CommandFragment>,
-    pub output:     Option<String>,
+    pub step_name: &'static str,
+    pub fragments: Vec<CommandFragment>,
+    pub output: Option<String>,
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -100,9 +101,9 @@ pub struct StepSnapshot {
 
 pub struct TranslationContext<'a> {
     // ── Input inmutable — compartido por todos los steps ──────
-    pub node:      &'a ASTNode,
+    pub node: &'a ASTNode,
     pub subsystem: &'a Subsystem,
-    pub map:       &'a CommandMap,
+    pub map: &'a CommandMap,
 
     // ── Estado mutable — acumulado por los steps ──────────────
     /// Fragments descompuestos por NodeDecomposer
@@ -119,17 +120,13 @@ pub struct TranslationContext<'a> {
 }
 
 impl<'a> TranslationContext<'a> {
-    pub fn new(
-        node:      &'a ASTNode,
-        subsystem: &'a Subsystem,
-        map:       &'a CommandMap,
-    ) -> Self {
+    pub fn new(node: &'a ASTNode, subsystem: &'a Subsystem, map: &'a CommandMap) -> Self {
         Self {
             node,
             subsystem,
             map,
             fragments: Vec::new(),
-            output:    None,
+            output: None,
             snapshots: Vec::new(),
         }
     }
@@ -141,7 +138,7 @@ impl<'a> TranslationContext<'a> {
         self.snapshots.push(StepSnapshot {
             step_name,
             fragments: self.fragments.clone(),
-            output:    self.output.clone(),
+            output: self.output.clone(),
         });
 
         // En release: no-op — cero overhead

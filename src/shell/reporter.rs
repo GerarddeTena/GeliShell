@@ -3,9 +3,9 @@
 /// este trait en vez de llamar a eprintln! directamente.
 
 pub trait Reporter: Send + Sync {
-    fn warn(&self,  message: &str);
+    fn warn(&self, message: &str);
     fn error(&self, message: &str);
-    fn info(&self,  message: &str);
+    fn info(&self, message: &str);
 
     // Helper con formato — no sobreescribir
     fn warn_fmt(&self, args: std::fmt::Arguments<'_>) {
@@ -56,11 +56,15 @@ macro_rules! report_info {
 pub struct StderrReporter;
 
 impl StderrReporter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for StderrReporter {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Reporter for StderrReporter {
@@ -83,17 +87,21 @@ impl Reporter for StderrReporter {
 pub struct SilentReporter;
 
 impl SilentReporter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for SilentReporter {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Reporter for SilentReporter {
-    fn warn(&self,  _message: &str) {}
+    fn warn(&self, _message: &str) {}
     fn error(&self, _message: &str) {}
-    fn info(&self,  _message: &str) {}
+    fn info(&self, _message: &str) {}
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -106,6 +114,8 @@ use std::sync::{Arc, Mutex};
 ///
 /// # Example
 /// ```rust
+/// use geli_shell::{BufferedReporter, Reporter};
+///
 /// let reporter = BufferedReporter::new();
 /// reporter.warn("algo salió mal");
 /// assert!(reporter.has_warnings());
@@ -113,16 +123,16 @@ use std::sync::{Arc, Mutex};
 /// ```
 pub struct BufferedReporter {
     warnings: Arc<Mutex<Vec<String>>>,
-    errors:   Arc<Mutex<Vec<String>>>,
-    infos:    Arc<Mutex<Vec<String>>>,
+    errors: Arc<Mutex<Vec<String>>>,
+    infos: Arc<Mutex<Vec<String>>>,
 }
 
 impl BufferedReporter {
     pub fn new() -> Self {
         Self {
             warnings: Arc::new(Mutex::new(Vec::new())),
-            errors:   Arc::new(Mutex::new(Vec::new())),
-            infos:    Arc::new(Mutex::new(Vec::new())),
+            errors: Arc::new(Mutex::new(Vec::new())),
+            infos: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -162,7 +172,9 @@ impl BufferedReporter {
 }
 
 impl Default for BufferedReporter {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Reporter for BufferedReporter {
