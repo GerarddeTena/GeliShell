@@ -9,3 +9,4 @@ pub use shell::translator::resolver::{
 };
 pub use shell::translator::subsystem::Subsystem;
 pub use shell::translator::{TranslationError, TranslationPipeline};
+pub use shell::config::bootstrap;

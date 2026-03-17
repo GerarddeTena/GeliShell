@@ -1,1 +1,85 @@
-/target
+# ======================================
+# Rust / build output
+# ======================================
+/target/
+
+# ======================================
+# Generated vector DB artifacts
+# (built locally by src/bin/build_docs_db.rs)
+# ======================================
+docs.db
+docs.db-shm
+docs.db-wal
+# NOTE: `docs/kb/*.md` is source-of-truth for RAG and must stay versioned.
+
+# ======================================
+# Runtime user data (must live in user home,
+# never versioned inside repository)
+# ======================================
+/.config/
+/geliShell/
+/models/
+/*.gguf
+/*.download.part
+/dbjson
+/db.json
+/vec0.dll
+/sqlite_vec.dll
+/sqlite-vec.dll
+/vec0.so
+/sqlite_vec.so
+/sqlite-vec.so
+/vec0.dylib
+/sqlite_vec.dylib
+/sqlite-vec.dylib
+
+# ======================================
+# Secrets / local environment
+# ======================================
+.env
+.env.*
+*.local
+
+# ======================================
+# IDE / editor
+# ======================================
+.idea/
+.vscode/
+*.iml
+
+# ======================================
+# Logs / temp / backups
+# ======================================
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ======================================
+# OS artifacts
+# ======================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ======================================
+# Generic archives / binaries
+# ======================================
+*.zip
+*.tar.gz
+*.7z
+*.class
+*.jar
+*.war
+*.ear
+
+# ======================================
+# Python residuals (tooling)
+# ======================================
+*.pyc
+*.pyo
+*.egg-info
+*.egg
+*.dist-info
+/src/bin/
