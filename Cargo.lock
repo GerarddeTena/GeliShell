@@ -313,6 +313,7 @@ dependencies = [
  "crossterm",
  "dirs",
  "futures-util",
+ "indexmap",
  "reqwest",
  "rusqlite",
  "serde",

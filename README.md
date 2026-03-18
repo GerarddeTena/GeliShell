@@ -1,124 +1,134 @@
 # GeliShell
+![Rust](https://img.shields.io/badge/rust-edition%202024-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Shell interactiva cross-platform escrita en Rust que:
+Shell interactiva cross-platform escrita en Rust.
 
-- Traduce comandos canónicos a Bash, Zsh, Fish, PowerShell o CMD.
-- Aplica reglas de seguridad antes de ejecutar.
-- Ejecuta comandos nativos con streaming y control de timeout.
-- Incluye asistente local con recuperación de contexto (RAG).
+GeliShell ofrece una capa de comandos canónicos (por ejemplo `list`, `copy`, `find`) y los traduce al subsistema activo (`bash`, `zsh`, `fish`, `powershell`, `cmd`) antes de ejecutar.
 
+## Qué hace hoy
+
+- Traduce comandos canónicos con mapa en `src/commands/commands.toml`.
+- Aplica guardrails semánticos antes de ejecutar.
+- Ejecuta comandos nativos de forma asíncrona con streaming en tiempo real y timeout opcional.
+- Incluye builtins de sesión: `cd`, `clear`, `exit`, `export`, `unset`, `history`, `source`, `g`.
+- Incluye historial persistente del REPL y navegación por frecencia (`g jump`).
+- Incluye asistente local con recuperación RAG sobre `docs.db` y catálogo interactivo `gerisabet --show-me`.
+
+## ¿Por qué GeliShell? (Filosofía)
+A diferencia de las shells tradicionales que te obligan a aprender una sintaxis nueva o limitan tu entorno, GeliShell actúa como un **metacompilador interactivo de comandos**.
+- **Escribe una vez, ejecuta en cualquier parte:** Aprende los comandos canónicos de GeliShell y úsalos indistintamente en Windows, Linux o macOS. La shell se encarga de traducirlos al subsistema subyacente.
+- **Seguridad por diseño:** El Guardrail semántico evita desastres (como un borrado recursivo accidental) interceptando el AST antes de que el sistema operativo lo vea.
+- **IA Integrada y Determinista:** No es un simple wrapper de ChatGPT. Es un sistema RAG local, ultrarrápido y confinado a la documentación técnica, diseñado para ser útil sin ser peligroso.
+
+## Requisitos Previos (Prerequisites)
+Para compilar y ejecutar GeliShell desde el código fuente, necesitas:
+- **Rust Toolchain:** Edición 2024 (1.85+ recomendado).
+- **Para el Asistente RAG (Opcional pero recomendado):**
+  - Motor Ollama ejecutándose localmente (`ollama serve`).
+  - Modelo de embeddings: `ollama pull nomic-embed-text`.
+  - Extensión `sqlite-vec` descargada y apuntada por la variable `$env:GELI_SQLITE_VEC_PATH`.
 ---
 
-## ¿Qué es GeliShell?
+## Flujo de ejecución real
 
-GeliShell es una REPL con pipeline semántico:
+Pipeline principal en `src/main.rs`:
 
 `input -> lexer -> parser(AST) -> builtins -> guard -> translator -> executor`
 
-Su objetivo es permitir una capa de comandos “canónicos” (ej. `list`, `copy`, `find`) y traducirlos al subsistema activo de forma consistente.
+Detalle por etapa:
+
+1. **Entrada REPL** (`read_repl_input`) con historial y sugerencias tipo ghost.
+2. **Lexer** (`src/parser/lexer.rs`) tokeniza con límite de 64KB.
+3. **Parser** (`src/parser/parser.rs`) construye el AST.
+4. **Builtins** (`BuiltinRegistry::try_execute`) se evalúan antes de traducir.
+5. **Guard** (`default_guard()`) bloquea o exige confirmación semántica.
+6. **TranslationPipeline** (`src/shell/translator/pipeline`) produce un comando nativo string.
+7. **Executor** (`src/shell/executor`) ejecuta async con `tokio::process::Command`.
+
+### Steps del traductor
+
+1. `NodeDecomposer` (`ASTNode -> Vec<CommandFragment>`)
+2. `CommandResolver`
+3. `FlagResolver`
+4. `VariableExpander`
+5. `SubsystemMapper`
 
 ---
 
-## Características principales
-
-- Traductor de comandos canónicos con mapa en `src/commands/commands.toml`.
-- Soporte multi-subsistema: Bash, Zsh, Fish, PowerShell y CMD.
-- Guardrails de seguridad para operaciones destructivas y patrones peligrosos.
-- Builtins de sesión: `cd`, `clear`, `exit`, `export`, `unset`, `history`, `source`, `g`.
-- Historial persistente de comandos y navegación inteligente tipo z/fzf (`g jump`).
-- UI interactiva: help menu, config menu y assistant menu.
-- RAG local sobre `docs.db` con `sqlite-vec`.
-
----
-
-## Arquitectura de alto nivel
-
-### Flujo de ejecución
-
-1. **Entrada REPL** (`read_repl_input`) con historial + sugerencias.
-2. **Lexer** (`src/parser/lexer.rs`) tokeniza (límite 64KB).
-3. **Parser** (`src/parser/parser.rs`) construye AST.
-4. **Builtins** (`src/shell/builtins`) se ejecutan antes del traductor.
-5. **Guard** (`src/shell/guard`) valida riesgos semánticos.
-6. **TranslationPipeline** (`src/shell/translator/pipeline`) transforma AST a comando nativo.
-7. **Executor** (`src/shell/executor`) ejecuta de forma async con streaming stdout/stderr.
-
-### Pipeline de traducción (steps)
-
-1. `NodeDecomposer` (AST -> `Vec<CommandFragment>`)
-2. `CommandResolver` (lookup canónico en `CommandMap`)
-3. `FlagResolver` (flags canónicos -> flags nativos)
-4. `VariableExpander` (`$VAR` -> sintaxis de subsistema)
-5. `SubsystemMapper` (resolución final por subsistema)
-
----
-
-## Módulos clave
+## Arquitectura por módulos
 
 | Módulo | Ruta | Responsabilidad |
 | --- | --- | --- |
-| Parser | `src/parser/*` | Lexer + Parser + AST |
-| Translator | `src/shell/translator/*` | Resolución canónica + mapping por subsistema |
-| Guard | `src/shell/guard/*` | Bloqueo/confirmación de comandos peligrosos |
-| Executor | `src/shell/executor/*` | Spawn async + streaming + timeout |
+| Parser | `src/parser/*` | Lexer, parser, AST, tokens |
+| Translator | `src/shell/translator/*` | Mapa canónico, resolución, pipeline por subsistema |
+| Guard | `src/shell/guard/*` | Reglas de seguridad sobre AST |
+| Executor | `src/shell/executor/*` | Spawn async, streaming stdout/stderr, timeout |
 | Builtins | `src/shell/builtins/*` | Comandos internos de sesión |
-| TUI | `src/shell/tui/*` | Menús interactivos y lectura avanzada de input |
-| Assistant | `src/shell/assistant/*` | Bootstrap de modelo + RAG + sugerencias |
-| Config | `src/shell/config/*` | Carga/guardado config, bootstrap de runtime e historial |
+| Config | `src/shell/config/*` | Bootstrap runtime, config, historial persistente |
+| TUI | `src/shell/tui/*` | Menús interactivos y captura avanzada de input |
+| Assistant | `src/shell/assistant/*` | Bootstrap de modelo, RAG, sugerencias |
+| Selector | `src/shell/selector/*` | Selector modal de alternativas (actualmente desacoplado del flujo final) |
 
 ---
 
-## Comandos integrados (Builtins)
+## Builtins disponibles
 
-| Comando | Descripción |
+| Comando | Comportamiento actual |
 | --- | --- |
-| `cd <ruta>` | Cambia directorio y actualiza `PWD` / `OLDPWD` |
-| `clear` | Limpia pantalla + scrollback |
+| `cd <ruta>` | Cambia directorio y actualiza `PWD`/`OLDPWD` |
+| `clear` | Limpia pantalla/buffer |
 | `exit [code]` | Termina la shell |
-| `export K=V` | Define variables de entorno de sesión |
-| `unset K` | Elimina variables de entorno |
-| `history` / `history --clear` | Muestra o limpia historial de comandos |
-| `g` / `g <pattern>` / `g -` / `g --clear` | Navegación inteligente por frecency |
-| `source <file>` | Stub actual (motor de scripting pendiente) |
+| `export K=V` | Define variable de entorno de sesión |
+| `unset K` | Elimina variable de entorno |
+| `history` / `history --clear` | Muestra o limpia historial de sesión en memoria |
+| `g` / `g <pattern>` / `g -` / `g --clear` | Navegación inteligente por frecencia |
+| `source <file>` | Stub: reporta que el motor de scripting aún no está disponible |
 
 ---
 
-## Triggers y atajos
+## Atajos y triggers
 
 ### Triggers escritos
 
-- `geli-helpme` -> abre Help Menu.
-- `geli-config-me` -> abre Config Menu.
-- `gerisabet` -> abre Assistant Menu.
-- `:stop` / `:stop*` -> intercepta stop de comando en ejecución.
-- `:search` / `:search*` -> shortcut para búsqueda interactiva (skeleton actual).
+- `geli-helpme` abre Help Menu.
+- `geli-config-me` abre Config Menu.
+- `gerisabet` abre Assistant Menu.
+- `gerisabet --how-to "<consulta>"` solicita recomendación ejecutable con confirmación.
+- `gerisabet --show-me` abre el catálogo TUI de comandos RAG (categorías + tabla filtrada por subsistema).
+- `:stop` / `:stop*` interceptan stop.
+- `:search` / `:search*` interceptan search (UI de búsqueda aún skeleton).
 
-### Teclado (REPL)
+### Teclado REPL
 
-- `Ctrl+D`: salir.
-- `Ctrl+H` o `Ctrl+?`: help.
-- `Ctrl+L`: clear.
-- `Ctrl+Alt+S`: config menu.
-- `Ctrl+Alt+G`: assistant menu.
-- `Ctrl+S`: search action.
-- `Tab` / `Right`: autocomplete “ghost”.
+- `Ctrl + D`: salir.
+- `Ctrl + H` o `Ctrl + ?`: help.
+- `Ctrl + L`: clear.
+- `Ctrl + Alt + S`: config menu.
+- `Ctrl + Alt + G`: assistant menu.
+- `Ctrl + S`: acción search.
+- `Tab` o `Right`: autocompletado ghost.
 - `Up` / `Down`: historial.
 
 ---
 
 ## Mapa de comandos canónicos
 
-Archivo fuente: `src/commands/commands.toml`
+Fuente: `src/commands/commands.toml`
 
-- ~39 comandos canónicos.
-- Categorías: `filesystem`, `file-ops`, `process`, `network`, `text`, `system`, `dev`.
-- Traducciones por subsistema + sugerencias + flags canónicos.
+Estado actual del archivo:
 
-Ejemplo de estructura:
+- 20 comandos canónicos cargados (`[[commands]]`).
+- Categorías activas: `filesystem`, `file-ops`, `process`, `network`, `text`, `system`, `dev`.
+- Traducción por subsistema con `exact` y `suggestions`.
+- Flags canónicos por comando en `[[commands.flags]]`.
+
+Estructura usada:
 
 ```toml
 [[commands]]
 name = "list"
+description = "List directory contents"
 category = "filesystem"
 translate = {
   bash = { exact = "ls", suggestions = ["ls -la"] },
@@ -137,56 +147,100 @@ cmd = "/s"
 
 ## Seguridad (Guardrails)
 
-Reglas activas (`default_guard()`):
+Reglas activas en `default_guard()`:
 
-- `RmGuard`: bloquea `rm` recursivo+forzado hacia raíces críticas.
-- `ChmodChownGuard`: bloquea `chmod/chown -R` en rutas protegidas.
-- `DdGuard`: bloquea escrituras `dd of=/dev/...` a block devices.
-- `MkfsGuard`: requiere confirmación explícita (`--yes-i-know-what-i-am-doing`).
-- `CriticalRedirectGuard`: bloquea redirecciones a archivos críticos (`/etc/passwd`, `/etc/shadow`, etc.).
-- `PipeExecutionGuard`: bloquea patrones `curl|bash` / `wget|sh`.
-- `ForkBombGuard`: detecta patrón de fork bomb en AST.
+- `RmGuard`
+- `ChmodChownGuard`
+- `DdGuard`
+- `MkfsGuard`
+- `CriticalRedirectGuard`
+- `PipeExecutionGuard`
+- `ForkBombGuard`
+
+Tipos de error relevantes (`src/shell/guard/error.rs`):
+
+- `DestructiveFs`
+- `DiskDestroyer`
+- `CriticalRedirect`
+- `PipeExecution`
+- `ForkBomb`
+- `RequiresConfirmation`
+- `BlacklistedCommand`
+- `ForbiddenArgument`
 
 ---
-
+## Interfaz de Usuario Avanzada (TUI)
+GeliShell abandona la rigidez del prompt tradicional en favor de una experiencia inmersiva utilizando `crossterm`:
+- **Máquinas de Estado Modales:** Navegación por menús complejos sin ensuciar el historial de la terminal (Alternate Screen).
+- **Catálogo Interactivo (`--show-me`):** Explora y ejecuta comandos del RAG desde una máquina de estados (`CategoryList` y `CommandTable`) construida dinámicamente desde SQLite, sin hardcodeo de categorías/operaciones.
+- **Filtrado por subsistema + placeholders:** En Estado B filtra por subsistema activo cuando aplica (con fallback visible) y resuelve parámetros `<marcador>` antes de confirmar ejecución.
+---
 ## Assistant y RAG local
 
 Componentes:
 
-- `src/shell/assistant/qwen.rs`: bootstrap y gestión de artefacto GGUF.
-- `src/shell/assistant/rag.rs`: retrieval semántico en `docs.db` vía `sqlite-vec`.
-- `src/shell/assistant/params.rs`: menú de prompts predefinidos.
-- `src/shell/assistant/suggest.rs`: composición de prompt/salida.
+- `src/shell/assistant/qwen.rs`: gestión de artefactos GGUF y runtime del asistente.
+- `src/shell/assistant/rag.rs`: retrieval semántico en SQLite (`docs.db`) con `sqlite-vec`.
+- `src/shell/assistant/params.rs`: parámetros predefinidos del menú.
+- `src/shell/assistant/suggest.rs`: prompts y parseo de salida (`--how-to`).
 
-Variables de entorno relevantes:
+Variables de entorno utilizadas:
 
 - `GELI_DOCS_DB_PATH`
 - `GELI_SQLITE_VEC_PATH`
-- `GELI_EMBED_MODEL` (default `nomic-embed-text`)
-- `GELI_OLLAMA_URL` (default `http://127.0.0.1:11434`)
+- `GELI_EMBED_MODEL` (default: `nomic-embed-text`)
+- `GELI_OLLAMA_URL` (default: `http://127.0.0.1:11434`)
+> **IMPORTANTE**
+> - El retrieval RAG está integrado.
+> - La respuesta del asistente se sintetiza localmente a partir del contexto recuperado.
+> - La base RAG no se incluye en el repo: usa `rebuild-rag.ps1` para generarla localmente.
+---
 
-Estado actual:
+## Configuración y rutas de runtime
 
-- El retrieval RAG vectorial está integrado.
-- La generación de respuesta del asistente actualmente usa una síntesis local por plantillas (no inferencia GGUF completa end-to-end en este estado del código).
+`ShellConfig` se persiste en `config.toml` con bloques:
+
+- `[behavior]` (`selector_mode`: `always` | `auto` | `once`)
+- `[subsystem]` (`override_subsystem`)
+- `[execution]` (captura/timeout)
+- `[visual]` (colores ANSI + tipografía)
+- `[customization]` (comandos personalizados)
+- `[assistant]` (modelo, `rag_top_k`, auto-unload)
+
+Rutas canónicas:
+
+- Config: `~/.config/geliShell/config.toml`
+- Historial REPL: `~/.config/geliShell/history.txt`
+- Historial de `g`: `~/.config/geliShell/g_history.toml`
+- Docs RAG: `~/.config/geliShell/docs/docs.db`
+- Modelos/assistant: `~/.config/geliShell/models/`
+  - `qwen/*.gguf` (según variante configurada)
+  - `vec0.dll` (Windows) / variante de plataforma
+
+Resolución del root:
+- Windows: `%USERPROFILE%\.config\geliShell`
+- Unix: `$HOME/.config/geliShell`
+
+Override opcional:
+- `GELI_DOCS_DB_PATH` apunta a una ruta explícita y tiene prioridad sobre la ruta canónica.
 
 ---
 
-## How-to rápido (lo más relevante)
+## Uso rápido
 
-### 1) Ejecutar GeliShell
+### Ejecutar la shell
 
 ```powershell
 cargo run
 ```
 
-Alternativa binario compilado:
+O binario ya compilado:
 
 ```powershell
 .\target\debug\geli_shell.exe
 ```
 
-### 2) Forzar subsistema de traducción
+### Forzar subsistema
 
 Temporal por entorno:
 
@@ -194,16 +248,14 @@ Temporal por entorno:
 $env:GELI_SUBSYSTEM = "powershell"
 ```
 
-Persistente en config (`~/.config/geliShell/config.toml`):
+Persistente en config:
 
 ```toml
 [subsystem]
 override_subsystem = "powershell"
 ```
 
-### 3) Personalizar comandos propios
-
-En `config.toml`:
+### Comandos personalizados
 
 ```toml
 [[customization.custom_commands]]
@@ -211,49 +263,26 @@ name = "ll"
 template = "list --all --long"
 ```
 
-Luego en REPL:
+### Uso de `g`
 
 ```text
-ll
+g
+g rust
+g -
+g --clear
 ```
 
-### 4) Usar navegación inteligente `g`
+### Rebuild de base RAG
 
-```text
-g           # muestra top de rutas aprendidas
-g rust      # salta al mejor match por frecency
-g -         # vuelve a OLDPWD
-g --clear   # limpia historial de g
-```
-
-### 5) Usar menús interactivos
-
-```text
-geli-helpme
-geli-config-me
-gerisabet
-```
-
-### 6) Reconstruir Knowledge Base RAG (incluye docs + scripting KB)
-
-Script recomendado en raíz:
+Script helper:
 
 ```powershell
 .\rebuild-rag.ps1
 ```
 
-Con parámetros:
+Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db` (o en la ruta indicada por `-DocsDbPath`).
 
-```powershell
-.\rebuild-rag.ps1 `
-  -DocsDbPath "$env:USERPROFILE\.config\geliShell\models\docs.db" `
-  -VecDllPath "$env:USERPROFILE\.config\geliShell\models\vec0.dll" `
-  -BatchSize 16 `
-  -Model "nomic-embed-text" `
-  -OllamaUrl "http://127.0.0.1:11434"
-```
-
-Script low-level equivalente:
+CLI low-level:
 
 ```powershell
 cargo run --bin build_docs_db -- --help
@@ -265,21 +294,25 @@ cargo run --bin build_docs_db -- --help
 
 ```text
 src/
-  main.rs                       # loop REPL y orquestación
-  parser/                       # lexer, parser, AST, tokens
+  main.rs
+  lib.rs
+  parser/
   shell/
-    builtins/                   # cd, clear, export, unset, history, source, g
-    guard/                      # reglas de seguridad
-    translator/                 # map canónico + pipeline + resolver
-    executor/                   # ejecución async
-    config/                     # config, bootstrap, historial
-    tui/                        # help/config/assistant menus + input
-    assistant/                  # qwen/rag/suggest/params
-  commands/commands.toml        # mapa de traducción
-docs/
-  kb/                           # documentación base para RAG
-scripting-*-rag.md             # KB operativa (básico/medio/avanzado)
-rebuild-rag.ps1                # rebuild automático de docs.db
+    assistant/
+    banner.rs
+    builtins/
+    config/
+    executor/
+    guard/
+    reporter.rs
+    selector/
+    translator/
+    tui/
+      show_me/
+  commands/commands.toml
+  bin/build_docs_db.rs
+docs/kb/
+rebuild-rag.ps1
 ```
 
 ---
@@ -294,25 +327,13 @@ cargo test
 cargo run
 ```
 
-`Cargo.toml` usa Rust 2024 y dependencias clave como `tokio`, `crossterm`, `rusqlite`, `reqwest`, `serde`, `thiserror`.
+El proyecto usa Rust 2024 (`edition = "2024"`) y crates como `tokio`, `crossterm`, `rusqlite`, `reqwest`, `serde`, `thiserror`.
 
 ---
 
-## Limitaciones actuales (estado del repo)
+## Limitaciones y estado actual
 
-- `source` builtin es un stub (pendiente de motor de scripting).
-- El selector modal existe (`src/shell/selector`) pero su acople total al flujo principal aún está incompleto.
-- El asistente está orientado a plantillas seguras + RAG; la inferencia GGUF completa aún no está cerrada en esta versión.
-
----
-
-## Rutas de runtime
-
-- Config: `~/.config/geliShell/config.toml`
-- Historial REPL: `~/.config/geliShell/history.txt`
-- Historial `g`: `~/.config/geliShell/g_history.toml`
-- Modelos/docs assistant: `~/.config/geliShell/models/`
-  - `docs.db`
-  - `vec0.dll` (o `.so`/`.dylib` por plataforma)
-
-En Windows, el root de config usa `%USERPROFILE%\.config\geliShell`.
+- `source` builtin sigue en modo stub.
+- El selector modal existe (`src/shell/selector`), pero `SelectorMode` todavía no altera la ejecución final en `src/main.rs`.
+- La acción `:search` está interceptada, pero la UI de búsqueda avanzada sigue en estado skeleton.
+- El asistente depende de contexto RAG y síntesis local; no está en modo LLM completo de generación libre.
