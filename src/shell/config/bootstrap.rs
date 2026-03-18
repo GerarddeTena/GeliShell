@@ -77,17 +77,22 @@ async fn migrate_legacy_files(target_config_dir: &Path) -> Result<Vec<String>, s
         return Ok(Vec::new());
     }
 
+    let docs_db_relative = ShellConfig::docs_db_path(Path::new(""))
+        .to_string_lossy()
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .to_owned();
     let relative_files = [
-        "config.toml",
-        "history.txt",
-        "models/docs.db",
-        "models/vec0.dll",
-        "models/dbjson",
-        "models/db.json",
+        "config.toml".to_owned(),
+        "history.txt".to_owned(),
+        docs_db_relative,
+        "models/vec0.dll".to_owned(),
+        "models/dbjson".to_owned(),
+        "models/db.json".to_owned(),
     ];
 
     let mut migrated = Vec::new();
-    for relative in relative_files {
+    for relative in &relative_files {
         let source = join_relative(&legacy, relative);
         let target = join_relative(target_config_dir, relative);
         if let Some(parent) = target.parent() {
@@ -257,7 +262,7 @@ mod tests {
             .await
             .expect("test base dir should be created");
         let source = base.join("source.docs.db");
-        let target = base.join("models").join("docs.db");
+        let target = ShellConfig::docs_db_path(&base);
         tokio::fs::write(&source, b"test-db")
             .await
             .expect("source file should be written");
@@ -281,14 +286,14 @@ mod tests {
             .await
             .expect("test base dir should be created");
         let source = base.join("source.docs.db");
-        let target = base.join("models").join("docs.db");
+        let target = ShellConfig::docs_db_path(&base);
         tokio::fs::create_dir_all(
             target
                 .parent()
                 .expect("target parent should exist for create_dir_all"),
         )
         .await
-        .expect("models dir should be created");
+        .expect("docs dir should be created");
         tokio::fs::write(&source, b"new")
             .await
             .expect("source file should be written");

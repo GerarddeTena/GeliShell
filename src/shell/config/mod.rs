@@ -3,7 +3,7 @@ pub mod first_run;
 pub mod history_store;
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 // ══════════════════════════════════════════════════════════════
@@ -249,8 +249,14 @@ impl ShellConfig {
         Self::geli_config_dir().join("models")
     }
 
+    pub fn docs_db_path(base: &Path) -> PathBuf {
+        base.join("docs").join("docs.db")
+    }
+
     pub fn assistant_docs_db_path() -> PathBuf {
-        Self::assistant_models_dir().join("docs.db")
+        std::env::var("GELI_DOCS_DB_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| Self::docs_db_path(&Self::geli_config_dir()))
     }
 
     pub fn assistant_docs_dir() -> PathBuf {

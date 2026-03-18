@@ -1,3 +1,4 @@
+use geli_shell::shell::config::ShellConfig;
 use reqwest::StatusCode;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
@@ -56,7 +57,7 @@ impl IngestOptions {
     fn from_env_and_args() -> Result<Self, IngestError> {
         let cwd = std::env::current_dir()?;
         let mut docs_dir = cwd.join("docs").join("kb");
-        let mut db_path = cwd.join("docs.db");
+        let mut db_path = ShellConfig::assistant_docs_db_path();
         let mut sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH").ok();
         let mut batch_size = 16usize;
         let mut model =
@@ -133,17 +134,19 @@ fn next_arg_value(
 }
 
 fn print_usage() {
+    let default_db_path = ShellConfig::assistant_docs_db_path();
     println!(
         "Usage:
   cargo run --bin build_docs_db -- [options]
 
 Options:
   --docs-dir <path>      Markdown docs directory (default: ./docs/kb)
-  --db-path <path>       SQLite output file (default: ./docs.db)
+  --db-path <path>       SQLite output file (default: {})
   --sqlite-vec <path>    sqlite-vec extension path (or use GELI_SQLITE_VEC_PATH)
   --batch-size <n>       Embedding batch size (default: 16)
   --model <name>         Embedding model (default: nomic-embed-text)
-  --ollama-url <url>     Local embedding endpoint (default: http://127.0.0.1:11434)"
+  --ollama-url <url>     Local embedding endpoint (default: http://127.0.0.1:11434)",
+        default_db_path.display()
     );
 }
 
