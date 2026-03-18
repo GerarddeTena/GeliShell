@@ -194,8 +194,8 @@ impl CommandMap {
     }
 }
 
-pub fn load() -> Result<LoadResult, CommandMapError> {
-    let file: CommandsFile = toml::from_str(&RAW_COMMANDS)?;
+pub fn load_from_str(raw_commands: &str) -> Result<LoadResult, CommandMapError> {
+    let file: CommandsFile = toml::from_str(raw_commands)?;
 
     if file.commands.is_empty() {
         return Err(CommandMapError::Empty);
@@ -241,6 +241,10 @@ pub fn load() -> Result<LoadResult, CommandMapError> {
         map: CommandMap { index },
         warnings,
     })
+}
+
+pub fn load() -> Result<LoadResult, CommandMapError> {
+    load_from_str(RAW_COMMANDS)
 }
 
 #[cfg(test)]

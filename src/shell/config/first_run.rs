@@ -35,8 +35,6 @@ const OPTIONS: &[WizardOption] = &[
 pub fn run_first_run_wizard() -> Result<ShellConfig, ConfigError> {
     let mut stdout = stdout();
     terminal::enable_raw_mode().map_err(ConfigError::Read)?;
-
-    // Oculta el cursor durante el wizard
     execute!(stdout, cursor::Hide).map_err(ConfigError::Read)?;
 
     let result = show_wizard(&mut stdout);
@@ -49,11 +47,21 @@ pub fn run_first_run_wizard() -> Result<ShellConfig, ConfigError> {
 fn show_wizard(stdout: &mut impl Write) -> Result<ShellConfig, ConfigError> {
     let mut selected = 0usize;
 
-    // ── Guarda la posición inicial del cursor ─────────────────
-    // Primer render desde la posición actual
-    let start_row = cursor::position().map(|(_, row)| row).unwrap_or(0);
+    // ── Posición absoluta garantizada ─────────────────────────
+    // En Windows Terminal (conpty) el cursor puede estar en una
+    // posición inesperada al activar raw_mode. Movemos a (0,0)
+    // explícitamente antes de leer la posición real para el modal.
+    execute!(
+        stdout,
+        terminal::Clear(ClearType::All),
+        cursor::MoveTo(0, 0),
+    )
+        .map_err(ConfigError::Read)?;
 
-    // Render inicial
+    let start_row = cursor::position()
+        .map(|(_, row)| row)
+        .unwrap_or(0);
+
     render_wizard(stdout, selected, start_row)?;
 
     loop {
@@ -96,13 +104,11 @@ fn render_wizard(
     selected: usize,
     start_row: u16,
 ) -> Result<(), ConfigError> {
-    // ── Siempre vuelve a la fila inicial — posición absoluta ──
-    execute!(stdout, cursor::MoveTo(0, start_row),).map_err(ConfigError::Read)?;
+    execute!(stdout, cursor::MoveTo(0, start_row)).map_err(ConfigError::Read)?;
 
     let width = 60usize;
     let border = "─".repeat(width - 2);
 
-    // Header
     execute!(
         stdout,
         SetForegroundColor(Color::Cyan),
@@ -121,9 +127,8 @@ fn render_wizard(
         Print(format!("│{:^width$}│\r\n", " ", width = width - 2)),
         ResetColor,
     )
-    .map_err(ConfigError::Read)?;
+        .map_err(ConfigError::Read)?;
 
-    // Opciones
     for (i, opt) in OPTIONS.iter().enumerate() {
         let is_selected = i == selected;
 
@@ -138,7 +143,7 @@ fn render_wizard(
                 )),
                 ResetColor,
             )
-            .map_err(ConfigError::Read)?;
+                .map_err(ConfigError::Read)?;
         } else {
             execute!(
                 stdout,
@@ -150,11 +155,10 @@ fn render_wizard(
                 )),
                 ResetColor,
             )
-            .map_err(ConfigError::Read)?;
+                .map_err(ConfigError::Read)?;
         }
     }
 
-    // Footer
     execute!(
         stdout,
         SetForegroundColor(Color::Cyan),
@@ -167,14 +171,12 @@ fn render_wizard(
         Print(format!("└{}┘\r\n", border)),
         ResetColor,
     )
-    .map_err(ConfigError::Read)?;
+        .map_err(ConfigError::Read)?;
 
     stdout.flush().map_err(ConfigError::Read)?;
     Ok(())
 }
 
-/// Limpia el modal volviendo a la fila de inicio
-/// y borrando línea por línea hacia abajo
 fn clear_from(stdout: &mut impl Write, start_row: u16, lines: usize) -> Result<(), ConfigError> {
     for i in 0..lines {
         execute!(
@@ -182,10 +184,9 @@ fn clear_from(stdout: &mut impl Write, start_row: u16, lines: usize) -> Result<(
             cursor::MoveTo(0, start_row + i as u16),
             terminal::Clear(ClearType::CurrentLine),
         )
-        .map_err(ConfigError::Read)?;
+            .map_err(ConfigError::Read)?;
     }
-    // Deja el cursor en la fila de inicio limpia
-    execute!(stdout, cursor::MoveTo(0, start_row),).map_err(ConfigError::Read)?;
+    execute!(stdout, cursor::MoveTo(0, start_row)).map_err(ConfigError::Read)?;
     stdout.flush().map_err(ConfigError::Read)?;
     Ok(())
 }

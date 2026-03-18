@@ -31,6 +31,7 @@ use geli_shell::{
 };
 use std::collections::BTreeSet;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal;
@@ -102,13 +103,18 @@ async fn main() {
     };
 
     // ── Carga el mapa de comandos ─────────────────────────────
-    let result = match translator::load() {
-        Ok(r) => r,
+    let (result, command_map_source) = match load_command_map_for_startup() {
+        Ok(loaded) => loaded,
         Err(e) => {
-            reporter.error(&e.to_string());
+            reporter.error(&e);
             std::process::exit(1);
         }
     };
+    reporter.info(&format!(
+        "command map: loaded {} commands from {}",
+        result.map.len(),
+        command_map_source
+    ));
     result.report(&reporter);
 
     // ── Inicializa el sistema ─────────────────────────────────
@@ -203,13 +209,23 @@ async fn main() {
             if let Err(error) = command_history.append_async(&input).await {
                 reporter.warn(&format!("history append failed: {error}"));
             }
-            if handle_config_menu(&mut config, &reporter).await {
+
+            if input.eq_ignore_ascii_case("geli-reset-config") {
+                // Borra config.toml — el wizard se lanzará en el próximo inicio
+                match ShellConfig::reset().await {
+                    Ok(()) => {
+                        reporter.info("config reset — restart GeliShell to run the setup wizard");
+                    }
+                    Err(error) => {
+                        reporter.error(&format!("reset failed: {error}"));
+                    }
+                }
+            } else if handle_config_menu(&mut config, &reporter).await {
                 completion_pool = build_completion_pool(map.as_ref(), &config);
                 assistant.refresh_config(&config);
             }
             continue;
         }
-
         match parse_assistant_invocation(&input) {
             Ok(Some(AssistantInvocation::Menu)) => {
                 if let Err(error) = command_history.append_async(&input).await {
@@ -409,6 +425,71 @@ async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporter) -
     }
 }
 
+fn load_command_map_for_startup() -> Result<(translator::LoadResult, String), String> {
+    for path in command_map_runtime_candidates() {
+        let Ok(metadata) = std::fs::metadata(&path) else {
+            continue;
+        };
+        if !metadata.is_file() {
+            continue;
+        }
+
+        let raw = std::fs::read_to_string(&path)
+            .map_err(|error| format!("command map read failed ({}): {error}", path.display()))?;
+        let parsed = translator::load_from_str(&raw)
+            .map_err(|error| format!("command map parse failed ({}): {error}", path.display()))?;
+
+        return Ok((parsed, format!("runtime ({})", path.display())));
+    }
+
+    let embedded = translator::load().map_err(|error| error.to_string())?;
+    Ok((embedded, "embedded".to_owned()))
+}
+
+fn command_map_runtime_candidates() -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Ok(raw_path) = std::env::var("GELI_COMMANDS_PATH") {
+        if !raw_path.trim().is_empty() {
+            candidates.push(PathBuf::from(raw_path.trim()));
+        }
+    }
+
+    candidates.push(ShellConfig::geli_config_dir().join("commands.toml"));
+
+    if let Ok(cwd) = std::env::current_dir() {
+        append_command_map_patterns(&cwd, &mut candidates);
+    }
+
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            append_command_map_patterns(exe_dir, &mut candidates);
+            if let Some(parent) = exe_dir.parent() {
+                append_command_map_patterns(parent, &mut candidates);
+            }
+        }
+    }
+
+    let mut seen = BTreeSet::new();
+    let mut deduped = Vec::new();
+    for candidate in candidates {
+        let key = candidate
+            .to_string_lossy()
+            .replace('\\', "/")
+            .to_ascii_lowercase();
+        if seen.insert(key) {
+            deduped.push(candidate);
+        }
+    }
+    deduped
+}
+
+fn append_command_map_patterns(base: &Path, out: &mut Vec<PathBuf>) {
+    out.push(base.join("commands.toml"));
+    out.push(base.join("commands").join("commands.toml"));
+    out.push(base.join("src").join("commands").join("commands.toml"));
+}
+
 fn build_completion_pool(map: &CommandMap, config: &ShellConfig) -> Vec<String> {
     let mut set = BTreeSet::new();
 
@@ -551,7 +632,7 @@ fn is_help_trigger(input: &str) -> bool {
 }
 
 fn is_config_trigger(input: &str) -> bool {
-    input.eq_ignore_ascii_case("geli-config-me")
+    input.eq_ignore_ascii_case("geli-config-me") || input.eq_ignore_ascii_case("geli-reset-config")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

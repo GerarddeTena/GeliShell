@@ -88,12 +88,34 @@ pub async fn show_model_bootstrap_progress(
 
     let mut state = BootstrapState::default();
 
+    let loop_result = run_bootstrap_loop(&mut out, &mut rx, &mut state).await;
+
+    // Cleanup garantizado — se ejecuta independientemente del resultado
+    // del loop. El orden importa: primero disable_raw_mode, luego
+    // LeaveAlternateScreen para que conpty restaure el modo correcto.
+    let _ = terminal::disable_raw_mode();
+    let _ = execute!(
+        out,
+        terminal::Clear(ClearType::All),
+        cursor::MoveTo(0, 0),
+        cursor::Show,
+        terminal::LeaveAlternateScreen,
+    );
+
+    loop_result
+}
+
+async fn run_bootstrap_loop(
+    out: &mut impl Write,
+    rx: &mut mpsc::UnboundedReceiver<BootstrapEvent>,
+    state: &mut BootstrapState,
+) -> io::Result<()> {
     loop {
         while let Ok(event) = rx.try_recv() {
             state.apply(event);
         }
 
-        render_bootstrap_frame(&mut out, &state)?;
+        render_bootstrap_frame(out, state)?;
 
         if state.done {
             break;
@@ -125,14 +147,6 @@ pub async fn show_model_bootstrap_progress(
         tokio::time::sleep(std::time::Duration::from_millis(40)).await;
     }
 
-    execute!(
-        out,
-        terminal::Clear(ClearType::All),
-        cursor::MoveTo(0, 0),
-        cursor::Show,
-        terminal::LeaveAlternateScreen,
-    )?;
-    terminal::disable_raw_mode()?;
     Ok(())
 }
 
