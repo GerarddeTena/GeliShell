@@ -14,3 +14,4 @@ reqwest = { version = "0.12.28", default-features = false, features = ["rustls-t
 futures-util = "0.3.31"
 rusqlite = { version = "0.32.1", features = ["bundled", "load_extension"] }
 sha2 = "0.10.8"
+indexmap = "2.7.1"

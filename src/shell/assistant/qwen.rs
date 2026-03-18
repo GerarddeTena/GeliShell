@@ -269,39 +269,77 @@ fn model_url(variant: AssistantModelVariant) -> &'static str {
 }
 
 fn synthesize_response(_model: &str, prompt: &str) -> String {
-    let action = extract_user_action(prompt)
-        .unwrap_or_else(|| "Action unavailable. Provide a concrete assistant action.".to_owned());
-    let normalized = action.to_ascii_lowercase();
+    let rag_context = extract_rag_context(prompt).unwrap_or_default();
+    let user_action = extract_user_action(prompt).unwrap_or_default();
 
-    if normalized.contains("output my code") {
-        return "Describe en 1 linea el error clave y luego ejecuta: `history | Select-Object -Last 30`."
-            .to_owned();
+    if expects_how_to_contract(prompt) {
+        let subsystem = extract_how_to_subsystem(prompt);
+        let command = select_command_from_context(
+            &rag_context,
+            subsystem.as_deref(),
+            Some(user_action.as_str()),
+        )
+        .or_else(|| fallback_context_line(&rag_context))
+        .unwrap_or_else(|| "contexto_rag_sin_comando".to_owned());
+
+        let explanation = build_how_to_explanation(&rag_context, subsystem.as_deref());
+        return format!("EXPLANATION: {explanation}\nCOMMAND: {command}");
     }
 
-    if normalized.contains("copy directories") {
-        return "Usa: `cp -r <origen> <destino>` (Bash/Zsh/Fish) o `Copy-Item -Recurse <origen> <destino>` (PowerShell).".to_owned();
+    select_command_from_context(&rag_context, None, Some(user_action.as_str()))
+        .or_else(|| fallback_context_line(&rag_context))
+        .unwrap_or_else(|| "No encontré una solución en el contexto recuperado de RAG.".to_owned())
+}
+
+fn expects_how_to_contract(prompt: &str) -> bool {
+    prompt.contains("REGLA: Tu respuesta debe tener este formato exacto de dos líneas")
+        && prompt.contains("EXPLANATION:")
+        && prompt.contains("COMMAND:")
+}
+
+fn extract_rag_context(prompt: &str) -> Option<String> {
+    if let Some(context) = extract_between(prompt, "[CONTEXTO]", "[FIN CONTEXTO]") {
+        let trimmed = context.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_owned());
+        }
     }
 
-    if normalized.contains("search in files") {
-        return "Usa: `rg \"<patron>\" .` y agrega `-g \"*.ext\"` para acotar archivos.".to_owned();
+    if let Some((_, tail)) = prompt.split_once("[CONTEXTO RECUPERADO DE RAG]") {
+        let context = tail
+            .split_once("<|im_end|>")
+            .map(|(context, _)| context)
+            .unwrap_or(tail)
+            .trim();
+        if !context.is_empty() {
+            return Some(context.to_owned());
+        }
     }
 
-    if normalized.contains("compress/extract") {
-        return "Comprimir: `tar -czf <archivo>.tar.gz <ruta>`; extraer: `tar -xzf <archivo>.tar.gz`."
-            .to_owned();
-    }
+    None
+}
 
-    if normalized.contains("network request") {
-        return "Plantilla segura: `curl -sS -X GET \"<url>\"` o `Invoke-WebRequest -Method Get -Uri \"<url>\"`."
-            .to_owned();
-    }
+fn extract_between<'a>(text: &'a str, start: &str, end: &str) -> Option<&'a str> {
+    let (_, tail) = text.split_once(start)?;
+    let (inside, _) = tail.split_once(end)?;
+    Some(inside)
+}
 
-    if normalized.contains("process management") {
-        return "Lista primero y luego termina por PID: `ps aux`/`Get-Process` + `kill <pid>`/`Stop-Process -Id <pid>`.".to_owned();
+fn extract_how_to_subsystem(prompt: &str) -> Option<String> {
+    let marker = "subsistema:";
+    let lowercase = prompt.to_ascii_lowercase();
+    let marker_idx = lowercase.find(marker)?;
+    let tail = &prompt[marker_idx + marker.len()..];
+    let subsystem = tail
+        .split(|ch| ch == ',' || ch == '\n')
+        .next()?
+        .trim()
+        .trim_end_matches('.');
+    if subsystem.is_empty() {
+        None
+    } else {
+        Some(subsystem.to_owned())
     }
-
-    "No encontré una plantilla para esta acción. Indica la acción exacta del menú y te doy el comando."
-        .to_owned()
 }
 
 fn extract_user_action(prompt: &str) -> Option<String> {
@@ -314,6 +352,239 @@ fn extract_user_action(prompt: &str) -> Option<String> {
     } else {
         Some(action.to_owned())
     }
+}
+
+#[derive(Debug, Clone)]
+struct CommandCandidate {
+    command: String,
+    line_label: Option<String>,
+    line_index: usize,
+}
+
+fn select_command_from_context(
+    rag_context: &str,
+    subsystem: Option<&str>,
+    user_action: Option<&str>,
+) -> Option<String> {
+    let lines: Vec<&str> = rag_context.lines().map(str::trim).collect();
+    if lines.is_empty() {
+        return None;
+    }
+
+    let candidates = command_candidates(&lines);
+    if candidates.is_empty() {
+        return None;
+    }
+
+    let subsystem_targets = subsystem_labels(subsystem);
+    let candidate_pool: Vec<&CommandCandidate> = if subsystem_targets.is_empty() {
+        candidates.iter().collect()
+    } else {
+        let matched: Vec<&CommandCandidate> = candidates
+            .iter()
+            .filter(|candidate| {
+                line_matches_subsystem(candidate.line_label.as_deref(), &subsystem_targets)
+            })
+            .collect();
+        if matched.is_empty() {
+            candidates.iter().collect()
+        } else {
+            matched
+        }
+    };
+
+    let action_tokens = tokenize(user_action.unwrap_or_default());
+    let mut best: Option<(i32, usize, String)> = None;
+
+    for candidate in candidate_pool {
+        let start = candidate.line_index.saturating_sub(2);
+        let end = usize::min(candidate.line_index + 2, lines.len().saturating_sub(1));
+        let window = lines[start..=end].join(" ").to_ascii_lowercase();
+        let token_score = action_tokens
+            .iter()
+            .filter(|token| window.contains(token.as_str()))
+            .count() as i32;
+
+        let score = token_score * 5;
+        let should_replace = match &best {
+            None => true,
+            Some((best_score, best_index, _)) => {
+                score > *best_score || (score == *best_score && candidate.line_index < *best_index)
+            }
+        };
+
+        if should_replace {
+            best = Some((score, candidate.line_index, candidate.command.clone()));
+        }
+    }
+
+    best.map(|(_, _, command)| command)
+}
+
+fn command_candidates(lines: &[&str]) -> Vec<CommandCandidate> {
+    let mut out = Vec::new();
+
+    for (line_index, line) in lines.iter().enumerate() {
+        if line.is_empty() || is_context_metadata_line(line) {
+            continue;
+        }
+
+        if let Some(command) = extract_command_from_line(line) {
+            out.push(CommandCandidate {
+                command,
+                line_label: label_for_line(line),
+                line_index,
+            });
+        }
+    }
+
+    out
+}
+
+fn extract_command_from_line(line: &str) -> Option<String> {
+    let lowercase = line.to_ascii_lowercase();
+    if lowercase.starts_with("## intención:") || lowercase.starts_with("# intención:") {
+        return None;
+    }
+
+    if let Some(backtick_start) = line.find('`') {
+        let rest = &line[backtick_start + 1..];
+        if let Some(backtick_end) = rest.find('`') {
+            let command = rest[..backtick_end].trim();
+            if !command.is_empty() {
+                return Some(command.to_owned());
+            }
+        }
+    }
+
+    let (_, tail) = line.split_once(':')?;
+    let command = tail.trim().trim_matches('`');
+    if looks_command_like(command) {
+        Some(command.to_owned())
+    } else {
+        None
+    }
+}
+
+fn label_for_line(line: &str) -> Option<String> {
+    let lowercase = line.to_ascii_lowercase();
+    if lowercase.contains("bash/zsh") {
+        Some("bash/zsh".to_owned())
+    } else if lowercase.contains("powershell") {
+        Some("powershell".to_owned())
+    } else if lowercase.contains("fish") {
+        Some("fish".to_owned())
+    } else if lowercase.contains("cmd") {
+        Some("cmd".to_owned())
+    } else if lowercase.contains("bash") {
+        Some("bash".to_owned())
+    } else if lowercase.contains("zsh") {
+        Some("zsh".to_owned())
+    } else {
+        None
+    }
+}
+
+fn subsystem_labels(subsystem: Option<&str>) -> Vec<&'static str> {
+    let Some(subsystem) = subsystem else {
+        return Vec::new();
+    };
+    let normalized = subsystem.trim().to_ascii_lowercase();
+
+    if normalized.contains("power") {
+        vec!["powershell"]
+    } else if normalized.contains("fish") {
+        vec!["fish"]
+    } else if normalized.contains("cmd") || normalized.contains("command prompt") {
+        vec!["cmd"]
+    } else if normalized.contains("zsh") {
+        vec!["bash/zsh", "zsh", "bash"]
+    } else if normalized.contains("bash") {
+        vec!["bash/zsh", "bash", "zsh"]
+    } else {
+        Vec::new()
+    }
+}
+
+fn line_matches_subsystem(line_label: Option<&str>, targets: &[&str]) -> bool {
+    if targets.is_empty() {
+        return true;
+    }
+    let Some(line_label) = line_label else {
+        return false;
+    };
+    targets.iter().any(|target| *target == line_label)
+}
+
+fn fallback_context_line(rag_context: &str) -> Option<String> {
+    for line in rag_context.lines().map(str::trim) {
+        if line.is_empty() || is_context_metadata_line(line) {
+            continue;
+        }
+        if let Some(intent) = line.strip_prefix("## Intención:") {
+            let cleaned = intent.trim();
+            if !cleaned.is_empty() {
+                return Some(cleaned.to_owned());
+            }
+            continue;
+        }
+        return Some(line.trim_matches('`').to_owned());
+    }
+    None
+}
+
+fn is_context_metadata_line(line: &str) -> bool {
+    let lowercase = line.to_ascii_lowercase();
+    lowercase.starts_with("- fuente:")
+        || lowercase.starts_with("distancia coseno:")
+        || lowercase.starts_with("[contexto]")
+        || lowercase.starts_with("[fin contexto]")
+}
+
+fn looks_command_like(candidate: &str) -> bool {
+    let cleaned = candidate.trim();
+    if cleaned.is_empty() {
+        return false;
+    }
+    let lowercase = cleaned.to_ascii_lowercase();
+    if lowercase.starts_with("intención") || lowercase.starts_with("fuente") {
+        return false;
+    }
+    let first_token = cleaned.split_whitespace().next().unwrap_or_default();
+    first_token
+        .chars()
+        .any(|ch| ch.is_ascii_alphanumeric() || "$./\\_-".contains(ch))
+}
+
+fn build_how_to_explanation(rag_context: &str, subsystem: Option<&str>) -> String {
+    if let Some(intent) = extract_intent_line(rag_context) {
+        return format!("Comando extraído del contexto para la intención: {intent}");
+    }
+
+    if let Some(subsystem) = subsystem {
+        return format!("Comando extraído del contexto RAG para el subsistema {subsystem}");
+    }
+
+    "Comando extraído del contexto RAG.".to_owned()
+}
+
+fn extract_intent_line(rag_context: &str) -> Option<String> {
+    for line in rag_context.lines().map(str::trim) {
+        if let Some(intent) = line.strip_prefix("## Intención:") {
+            let cleaned = intent.trim();
+            if !cleaned.is_empty() {
+                return Some(cleaned.to_owned());
+            }
+        }
+    }
+    None
+}
+
+fn tokenize(text: &str) -> Vec<String> {
+    text.split(|ch: char| !ch.is_alphanumeric())
+        .filter(|token| token.len() >= 3)
+        .map(|token| token.to_ascii_lowercase())
+        .collect()
 }
 
 #[cfg(test)]
@@ -344,12 +615,33 @@ mod tests {
     }
 
     #[test]
-    fn synthesize_response_does_not_echo_rag_context() {
-        let prompt = "<|im_start|>system\n[CONTEXTO RECUPERADO DE RAG]\nsecret chunk from docs db\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant";
+    fn synthesize_response_extracts_command_from_rag_context() {
+        let prompt = "<|im_start|>system\n[CONTEXTO]\n## Intención: Buscar texto por patrón\n- Bash/Zsh: `rg \"<patron>\" <ruta_base>`\n- PowerShell: `Select-String -Path \"<ruta_base>\\*\" -Pattern \"<patron>\" -Recurse`\n[FIN CONTEXTO]\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant\n";
         let generated = synthesize_response("qwen2.5-1.5b-instruct-q4_k_m", prompt);
 
-        assert!(!generated.contains("secret chunk from docs db"));
-        assert!(generated.contains("rg"));
+        assert_eq!(generated, "rg \"<patron>\" <ruta_base>");
+    }
+
+    #[test]
+    fn strict_how_to_prompt_produces_two_line_contract() {
+        let prompt = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsistema: powershell, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXTO]\n## Intención: Listar contenido de un directorio\n- Bash/Zsh: `ls -la <ruta_directorio>`\n- Fish: `ls -la <ruta_directorio>`\n- PowerShell: `Get-ChildItem -Force -Path <ruta_directorio>`\n- CMD: `dir <ruta_directorio>`\n[FIN CONTEXTO]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\nhazlo\n<|im_end|>\n<|im_start|>assistant\n";
+        let generated = synthesize_response("qwen2.5-0.5b-instruct-q4_k_m", prompt);
+        let lines: Vec<&str> = generated.lines().collect();
+
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].starts_with("EXPLANATION: "));
+        assert!(lines[1].starts_with("COMMAND: "));
+        assert_eq!(
+            lines[1],
+            "COMMAND: Get-ChildItem -Force -Path <ruta_directorio>"
+        );
+    }
+
+    #[test]
+    fn extract_rag_context_supports_new_context_markers() {
+        let prompt = "<|im_start|>system\n[CONTEXTO]\nchunk one\n[FIN CONTEXTO]\n<|im_end|>\n<|im_start|>user\nx\n<|im_end|>";
+        let context = extract_rag_context(prompt);
+        assert_eq!(context.as_deref(), Some("chunk one"));
     }
 
     fn unique_temp_file(name: &str) -> PathBuf {

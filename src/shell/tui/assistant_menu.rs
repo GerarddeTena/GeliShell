@@ -46,6 +46,33 @@ pub fn show_assistant_menu() -> io::Result<AssistantMenuSelection> {
     result
 }
 
+pub fn show_how_to_confirmation_panel(explanation: &str, command: &str) -> io::Result<bool> {
+    let mut out = stdout();
+    terminal::enable_raw_mode()?;
+    execute!(
+        out,
+        terminal::EnterAlternateScreen,
+        terminal::Clear(ClearType::All),
+        cursor::MoveTo(0, 0),
+        cursor::Hide,
+    )?;
+
+    let result = run_how_to_confirmation_panel(&mut out, explanation, command);
+
+    let cleanup_screen = execute!(
+        out,
+        terminal::Clear(ClearType::All),
+        cursor::MoveTo(0, 0),
+        cursor::Show,
+        terminal::LeaveAlternateScreen,
+    );
+    let cleanup_raw = terminal::disable_raw_mode();
+
+    cleanup_screen?;
+    cleanup_raw?;
+    result
+}
+
 pub async fn show_model_bootstrap_progress(
     mut rx: mpsc::UnboundedReceiver<BootstrapEvent>,
 ) -> io::Result<()> {
@@ -106,6 +133,117 @@ pub async fn show_model_bootstrap_progress(
         terminal::LeaveAlternateScreen,
     )?;
     terminal::disable_raw_mode()?;
+    Ok(())
+}
+
+fn run_how_to_confirmation_panel(
+    out: &mut impl Write,
+    explanation: &str,
+    command: &str,
+) -> io::Result<bool> {
+    render_how_to_confirmation_panel(out, explanation, command)?;
+
+    loop {
+        let Event::Key(key) = event::read()? else {
+            continue;
+        };
+        if key.kind == KeyEventKind::Release {
+            continue;
+        }
+
+        let ctrl_c =
+            key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
+
+        match key.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => return Ok(true),
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => return Ok(false),
+            KeyCode::Enter => return Ok(false),
+            _ if ctrl_c => return Ok(false),
+            _ => {}
+        }
+    }
+}
+
+fn render_how_to_confirmation_panel(
+    out: &mut impl Write,
+    explanation: &str,
+    command: &str,
+) -> io::Result<()> {
+    execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
+
+    let width = 98usize;
+    let border = "─".repeat(width - 2);
+
+    execute!(
+        out,
+        SetForegroundColor(Color::Cyan),
+        Print(format!("┌{}┐\r\n", border)),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            "GeliShell Assistant --how-to",
+            width = width - 3
+        )),
+        Print(format!("├{}┤\r\n", border)),
+        ResetColor,
+    )?;
+
+    execute!(
+        out,
+        SetForegroundColor(Color::DarkGrey),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            "Explicación:",
+            width = width - 3
+        )),
+        ResetColor,
+    )?;
+
+    for line in wrap_lines(explanation, width - 6) {
+        execute!(
+            out,
+            SetForegroundColor(Color::Yellow),
+            Print(format!("│  {:<width$}│\r\n", line, width = width - 6)),
+            ResetColor,
+        )?;
+    }
+
+    execute!(
+        out,
+        SetForegroundColor(Color::DarkGrey),
+        Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
+        Print(format!("│ {:<width$}│\r\n", "Comando:", width = width - 3)),
+        ResetColor,
+    )?;
+
+    for line in wrap_lines(command, width - 6) {
+        execute!(
+            out,
+            SetForegroundColor(Color::Green),
+            Print(format!("│  {:<width$}│\r\n", line, width = width - 6)),
+            ResetColor,
+        )?;
+    }
+
+    execute!(
+        out,
+        SetForegroundColor(Color::DarkGrey),
+        Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            "¿Deseas ejecutarlo? [y/n]",
+            width = width - 3
+        )),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            "y = ejecutar · n/Esc/Enter/Ctrl+C = cancelar",
+            width = width - 3
+        )),
+        SetForegroundColor(Color::Cyan),
+        Print(format!("└{}┘\r\n", border)),
+        ResetColor,
+    )?;
+
+    out.flush()?;
     Ok(())
 }
 

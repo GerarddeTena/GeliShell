@@ -1,3 +1,4 @@
+use crate::shell::config::ShellConfig;
 use reqwest::StatusCode;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
@@ -61,9 +62,7 @@ pub struct RagEngine {
 
 impl RagEngine {
     pub fn new(models_dir: PathBuf) -> Self {
-        let db_path = std::env::var("GELI_DOCS_DB_PATH")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| models_dir.join("docs.db"));
+        let db_path = ShellConfig::assistant_docs_db_path();
         let sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH")
             .ok()
             .map(PathBuf::from);
@@ -371,7 +370,7 @@ mod tests {
     #[test]
     fn missing_docs_db_returns_user_facing_error() {
         let models_dir = unique_test_dir("rag_models");
-        let db_path = models_dir.join("docs.db");
+        let db_path = unique_test_dir("rag_docs").join("docs.db");
         let result = search_vector_db(&db_path, &models_dir, None, "[0.0,0.0]", 3);
 
         let Err(RagError::KnowledgeBaseUnavailable { details }) = result else {

@@ -14,6 +14,9 @@ pub enum AssistantError {
 
     #[error("{0}")]
     Rag(#[from] rag::RagError),
+
+    #[error("{0}")]
+    Suggestion(#[from] suggest::SuggestionError),
 }
 
 pub struct AssistantRuntime {
@@ -58,7 +61,7 @@ impl AssistantRuntime {
     ) -> Result<suggest::AssistantSuggestion, AssistantError> {
         let user_action = suggest::build_user_action(parameter, filter);
         let retrieval_query = suggest::build_retrieval_query(parameter, filter);
-        let rag_limit = 3usize;
+        let rag_limit = self.settings.rag_top_k.max(1);
         let rag_context = self
             .rag
             .retrieve_context(&retrieval_query, rag_limit)
@@ -66,6 +69,24 @@ impl AssistantRuntime {
         let llm_prompt = suggest::build_chatml_prompt(&user_action, &rag_context);
         let generated = self.qwen.generate(llm_prompt).await?;
         let suggestion = suggest::build_suggestion(generated);
+        self.rag.clear_cache().await;
+        Ok(suggestion)
+    }
+
+    pub async fn run_how_to(
+        &mut self,
+        subsystem: &str,
+        query: &str,
+    ) -> Result<suggest::HowToSuggestion, AssistantError> {
+        let retrieval_query = suggest::build_how_to_retrieval_query(query, subsystem)?;
+        let rag_limit = self.settings.rag_top_k.max(1);
+        let rag_context = self
+            .rag
+            .retrieve_context(&retrieval_query, rag_limit)
+            .await?;
+        let llm_prompt = suggest::build_how_to_chatml_prompt(subsystem, &rag_context, query.trim());
+        let generated = self.qwen.generate(llm_prompt).await?;
+        let suggestion = suggest::parse_how_to_response(&generated)?;
         self.rag.clear_cache().await;
         Ok(suggestion)
     }

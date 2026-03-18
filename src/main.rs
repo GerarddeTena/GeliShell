@@ -13,18 +13,19 @@ use geli_shell::{
             ConfigError, SelectorMode, ShellConfig, VisualConfig, bootstrap::ensure_runtime_layout,
             history_store::PersistentCommandHistory,
         },
-        executor::Executor,
+        executor::{ExecutionConfig as ExecutorConfig, Executor},
         guard::default_guard,
         reporter::SilentReporter,
         translator::{self, CommandMap, Subsystem, TranslationPipeline},
         tui::{
             assistant_menu::{
                 AssistantMenuSelection, show_assistant_error_panel, show_assistant_menu,
-                show_model_bootstrap_progress,
+                show_how_to_confirmation_panel, show_model_bootstrap_progress,
             },
             config_menu::{ConfigMenuSelection, show_config_menu},
             help_menu::{HelpMenuAction, show_help_menu},
             repl_input::{ReplInputAction, SpecialCommand, parse_special_command, read_repl_input},
+            show_me::run_show_me_tui,
         },
     },
 };
@@ -209,12 +210,52 @@ async fn main() {
             continue;
         }
 
-        if is_assistant_trigger(&input) {
-            if let Err(error) = command_history.append_async(&input).await {
-                reporter.warn(&format!("history append failed: {error}"));
+        match parse_assistant_invocation(&input) {
+            Ok(Some(AssistantInvocation::Menu)) => {
+                if let Err(error) = command_history.append_async(&input).await {
+                    reporter.warn(&format!("history append failed: {error}"));
+                }
+                handle_assistant(&mut assistant, &config, &reporter).await;
+                continue;
             }
-            handle_assistant(&mut assistant, &config, &reporter).await;
-            continue;
+            Ok(Some(AssistantInvocation::HowTo { query })) => {
+                if let Err(error) = command_history.append_async(&input).await {
+                    reporter.warn(&format!("history append failed: {error}"));
+                }
+                handle_assistant_how_to(
+                    &mut assistant,
+                    &config,
+                    &subsystem,
+                    &guard,
+                    &executor,
+                    &exec_config,
+                    &builtins,
+                    &reporter,
+                    &query,
+                )
+                .await;
+                continue;
+            }
+            Ok(Some(AssistantInvocation::ShowMe)) => {
+                if let Err(error) = command_history.append_async(&input).await {
+                    reporter.warn(&format!("history append failed: {error}"));
+                }
+                handle_assistant_show_me(
+                    &subsystem,
+                    &guard,
+                    &executor,
+                    &exec_config,
+                    &builtins,
+                    &reporter,
+                )
+                .await;
+                continue;
+            }
+            Ok(None) => {}
+            Err(error) => {
+                reporter.error(&error);
+                continue;
+            }
         }
 
         if let Some(special) = parse_special_command(&input) {
@@ -513,8 +554,69 @@ fn is_config_trigger(input: &str) -> bool {
     input.eq_ignore_ascii_case("geli-config-me")
 }
 
-fn is_assistant_trigger(input: &str) -> bool {
-    input.eq_ignore_ascii_case("gerisabet")
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AssistantInvocation {
+    Menu,
+    HowTo { query: String },
+    ShowMe,
+}
+
+fn parse_assistant_invocation(input: &str) -> Result<Option<AssistantInvocation>, String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let mut parts = trimmed.splitn(2, char::is_whitespace);
+    let head = parts.next().unwrap_or_default();
+    if !head.eq_ignore_ascii_case("gerisabet") {
+        return Ok(None);
+    }
+
+    let args = parts.next().unwrap_or("").trim();
+    if args.is_empty() {
+        return Ok(Some(AssistantInvocation::Menu));
+    }
+
+    if let Some(show_me_tail) = args.strip_prefix("--show-me") {
+        if show_me_tail.trim().is_empty() {
+            return Ok(Some(AssistantInvocation::ShowMe));
+        }
+        return Err("gerisabet --show-me does not accept extra arguments".to_owned());
+    }
+
+    let Some(how_to_raw) = args.strip_prefix("--how-to") else {
+        return Err(format!(
+            "gerisabet: unsupported arguments '{args}'. Use: gerisabet --show-me | gerisabet --how-to \"<query>\""
+        ));
+    };
+
+    let query = strip_wrapping_quotes(how_to_raw.trim()).trim();
+    if query.is_empty() {
+        return Err("gerisabet --how-to requires a non-empty query".to_owned());
+    }
+
+    Ok(Some(AssistantInvocation::HowTo {
+        query: query.to_owned(),
+    }))
+}
+
+fn strip_wrapping_quotes(input: &str) -> &str {
+    if input.len() < 2 {
+        return input;
+    }
+
+    let bytes = input.as_bytes();
+    let starts_with_double = bytes.first() == Some(&b'"');
+    let ends_with_double = bytes.last() == Some(&b'"');
+    let starts_with_single = bytes.first() == Some(&b'\'');
+    let ends_with_single = bytes.last() == Some(&b'\'');
+
+    if (starts_with_double && ends_with_double) || (starts_with_single && ends_with_single) {
+        &input[1..input.len() - 1]
+    } else {
+        input
+    }
 }
 
 fn handle_help_menu(config: &ShellConfig, reporter: &dyn Reporter) -> bool {
@@ -601,6 +703,186 @@ async fn handle_assistant(
     assistant.release_resources().await;
 }
 
+async fn handle_assistant_show_me(
+    subsystem: &Subsystem,
+    guard: &dyn Guard,
+    executor: &Executor,
+    exec_config: &ExecutorConfig,
+    builtins: &BuiltinRegistry,
+    reporter: &dyn Reporter,
+) {
+    let selected_command = match run_show_me_tui(reporter) {
+        Ok(Some(command)) => command,
+        Ok(None) => return,
+        Err(error) => {
+            reporter.error(&format!("assistant --show-me failed: {error}"));
+            return;
+        }
+    };
+
+    let tokens = match Lexer::new(&selected_command).tokenize() {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            reporter.error(&format!(
+                "assistant --show-me generated invalid command: {error}"
+            ));
+            return;
+        }
+    };
+
+    let ast = match Parser::new(tokens).parse() {
+        Ok(ast) => ast,
+        Err(error) => {
+            reporter.error(&format!(
+                "assistant --show-me generated unparseable command: {error}"
+            ));
+            return;
+        }
+    };
+
+    if let Err(error) = guard.check(&ast) {
+        reporter.error(&format!(
+            "assistant --show-me command blocked by guard: {error}"
+        ));
+        return;
+    }
+
+    reporter.info(&format!(
+        "assistant --show-me executing in {}: {}",
+        subsystem.as_str(),
+        selected_command
+    ));
+
+    tokio::select! {
+        result = executor.run(&selected_command, exec_config, reporter) => {
+            match result {
+                Ok(exec_result) => {
+                    builtins.record_g_visit();
+                    if !exec_result.success() {
+                        reporter.warn(&format!("assistant --show-me exit code: {}", exec_result.exit_code));
+                    }
+                }
+                Err(error) => reporter.error(&format!("assistant --show-me execution failed: {error}")),
+            }
+        }
+        _ = signal::ctrl_c() => {
+            println!();
+            reporter.warn("^C - assistant --show-me command cancelled");
+        }
+    }
+}
+
+async fn handle_assistant_how_to(
+    assistant: &mut AssistantRuntime,
+    config: &ShellConfig,
+    subsystem: &Subsystem,
+    guard: &dyn Guard,
+    executor: &Executor,
+    exec_config: &ExecutorConfig,
+    builtins: &BuiltinRegistry,
+    reporter: &dyn Reporter,
+    query: &str,
+) {
+    assistant.refresh_config(config);
+
+    let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
+    let bootstrap_future = assistant.ensure_model_ready(progress_tx);
+    let progress_future = show_model_bootstrap_progress(progress_rx);
+    let (bootstrap_result, progress_result) = tokio::join!(bootstrap_future, progress_future);
+
+    if let Err(error) = progress_result {
+        reporter.error(&format!("assistant bootstrap ui failed: {error}"));
+    }
+
+    if let Err(error) = bootstrap_result {
+        reporter.error(&format!("assistant bootstrap failed: {error}"));
+        assistant.release_resources().await;
+        return;
+    }
+
+    let suggestion = match assistant.run_how_to(subsystem.as_str(), query).await {
+        Ok(suggestion) => suggestion,
+        Err(error) => {
+            if let Err(ui_error) = show_assistant_error_panel(&error.to_string()) {
+                reporter.error(&format!("assistant error panel failed: {ui_error}"));
+            }
+            reporter.error(&format!("assistant how-to failed: {error}"));
+            assistant.release_resources().await;
+            return;
+        }
+    };
+
+    let should_execute =
+        match show_how_to_confirmation_panel(&suggestion.explanation, &suggestion.command) {
+            Ok(should_execute) => should_execute,
+            Err(error) => {
+                reporter.error(&format!("assistant how-to prompt failed: {error}"));
+                assistant.release_resources().await;
+                return;
+            }
+        };
+
+    if !should_execute {
+        reporter.info("assistant --how-to cancelled by user");
+        assistant.release_resources().await;
+        return;
+    }
+
+    let tokens = match Lexer::new(&suggestion.command).tokenize() {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            reporter.error(&format!("assistant generated invalid command: {error}"));
+            assistant.release_resources().await;
+            return;
+        }
+    };
+
+    let ast = match Parser::new(tokens).parse() {
+        Ok(ast) => ast,
+        Err(error) => {
+            reporter.error(&format!("assistant generated unparseable command: {error}"));
+            assistant.release_resources().await;
+            return;
+        }
+    };
+
+    if let Err(error) = guard.check(&ast) {
+        reporter.error(&format!("assistant command blocked by guard: {error}"));
+        assistant.release_resources().await;
+        return;
+    }
+
+    reporter.info(&format!(
+        "assistant explanation: {}",
+        suggestion.explanation
+    ));
+    reporter.info(&format!(
+        "assistant executing in {}: {}",
+        subsystem.as_str(),
+        suggestion.command
+    ));
+
+    tokio::select! {
+        result = executor.run(&suggestion.command, exec_config, reporter) => {
+            match result {
+                Ok(exec_result) => {
+                    builtins.record_g_visit();
+                    if !exec_result.success() {
+                        reporter.warn(&format!("assistant command exit code: {}", exec_result.exit_code));
+                    }
+                }
+                Err(error) => reporter.error(&format!("assistant command execution failed: {error}")),
+            }
+        }
+        _ = signal::ctrl_c() => {
+            println!();
+            reporter.warn("^C — assistant command cancelled");
+        }
+    }
+
+    assistant.release_resources().await;
+}
+
 fn report_assistant_suggestion(suggestion: AssistantSuggestion, reporter: &dyn Reporter) {
     for line in suggestion.body.lines() {
         reporter.info(line);
@@ -651,4 +933,44 @@ fn render_prompt(subsystem: &Subsystem, visual: &VisualConfig) -> String {
          {name}{bold}Geli$hell{reset}{dim}>{reset} ",
         subsystem.as_str().to_uppercase(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_assistant_menu_invocation() {
+        let parsed = parse_assistant_invocation("gerisabet").unwrap();
+        assert_eq!(parsed, Some(AssistantInvocation::Menu));
+    }
+
+    #[test]
+    fn parses_how_to_invocation_with_quotes() {
+        let parsed = parse_assistant_invocation("gerisabet --how-to \"listar archivos\"").unwrap();
+        assert_eq!(
+            parsed,
+            Some(AssistantInvocation::HowTo {
+                query: "listar archivos".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn parses_show_me_invocation() {
+        let parsed = parse_assistant_invocation("gerisabet --show-me").unwrap();
+        assert_eq!(parsed, Some(AssistantInvocation::ShowMe));
+    }
+
+    #[test]
+    fn rejects_how_to_without_query() {
+        let parsed = parse_assistant_invocation("gerisabet --how-to");
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn rejects_show_me_with_extra_arguments() {
+        let parsed = parse_assistant_invocation("gerisabet --show-me now");
+        assert!(parsed.is_err());
+    }
 }
