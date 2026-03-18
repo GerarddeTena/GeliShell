@@ -8,7 +8,7 @@ GeliShell ofrece una capa de comandos canónicos (por ejemplo `list`, `copy`, `f
 
 ## Qué hace hoy
 
-- Traduce comandos canónicos con mapa en `src/commands/commands.toml`.
+- Traduce comandos canónicos con mapa TOML (runtime con fallback embebido).
 - Aplica guardrails semánticos antes de ejecutar.
 - Ejecuta comandos nativos de forma asíncrona con streaming en tiempo real y timeout opcional.
 - Incluye builtins de sesión: `cd`, `clear`, `exit`, `export`, `unset`, `history`, `source`, `g`.
@@ -114,7 +114,14 @@ Detalle por etapa:
 
 ## Mapa de comandos canónicos
 
-Fuente: `src/commands/commands.toml`
+Fuente por defecto (fallback): `src/commands/commands.toml`
+
+Orden de carga en startup:
+
+1. `GELI_COMMANDS_PATH` (si está definido y apunta a archivo).
+2. `~/.config/geliShell/commands.toml`.
+3. `commands.toml` / `commands/commands.toml` / `src/commands/commands.toml` cerca del `cwd` y del ejecutable.
+4. Mapa embebido en binario (`include_str!`) como último fallback.
 
 Estado actual del archivo:
 
