@@ -126,7 +126,7 @@ mod tests {
     use crate::parser::ast::{ASTNode, Command};
     use crate::parser::token::Token;
     use crate::shell::reporter::{BufferedReporter, SilentReporter};
-    use crate::shell::translator::commands_map::load;
+    use crate::shell::translator::commands_map::{load, load_from_str};
 
     fn make_command_node(name: &str, args: Vec<&str>) -> ASTNode {
         ASTNode::Command(Command {
@@ -138,6 +138,11 @@ mod tests {
 
     fn make_pipeline() -> Arc<CommandMap> {
         let result = load().expect("commands.toml must be valid in tests");
+        Arc::new(result.map)
+    }
+
+    fn make_pipeline_from_toml(raw_toml: &str) -> Arc<CommandMap> {
+        let result = load_from_str(raw_toml).expect("inline command map fixture must be valid");
         Arc::new(result.map)
     }
 
@@ -249,6 +254,32 @@ mod tests {
         assert!(
             reporter.infos().len() >= 3,
             "expected info messages from steps, got: {:?}",
+            reporter.infos()
+        );
+    }
+
+    #[test]
+    fn translates_inline_custom_command_and_reports_canonical_match() {
+        let raw_toml = r#"
+[[commands]]
+name = "gerisabet"
+description = "assistant command"
+category = "dev"
+translate = { bash = { exact = "echo", suggestions = [] }, zsh = { exact = "echo", suggestions = [] }, fish = { exact = "echo", suggestions = [] }, powershell = { exact = "Write-Output", suggestions = ["echo"] }, cmd = { exact = "echo", suggestions = [] } }
+"#;
+        let map = make_pipeline_from_toml(raw_toml);
+        let pipeline = TranslationPipeline::new(map, Subsystem::PowerShell);
+        let reporter = BufferedReporter::new();
+        let node = make_command_node("gerisabet", vec!["hola"]);
+
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "Write-Output hola");
+        assert!(
+            reporter
+                .infos()
+                .iter()
+                .any(|msg| msg.contains("gerisabet") && msg.contains("canonical match found")),
+            "expected canonical match trace in infos, got: {:?}",
             reporter.infos()
         );
     }

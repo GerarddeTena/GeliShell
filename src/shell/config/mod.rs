@@ -32,12 +32,8 @@ pub enum ConfigError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SelectorMode {
-    /// Muestra el selector modal siempre que haya opciones
     Always,
-    /// Ejecuta la primera opción automáticamente sin preguntar
     Auto,
-    /// Muestra el selector una vez por comando en la sesión
-    /// y recuerda la elección hasta que se cierre la shell
     Once,
 }
 
@@ -58,7 +54,7 @@ impl std::fmt::Display for SelectorMode {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ShellConfig — estructura completa persistida
+// ShellConfig
 // ══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,7 +71,6 @@ pub struct ShellConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BehaviorConfig {
-    /// Cuándo mostrar el selector de alternativas
     pub selector_mode: SelectorMode,
 }
 
@@ -90,7 +85,6 @@ impl Default for BehaviorConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SubsystemConfig {
-    /// Override manual del subsistema — vacío = auto-detect
     pub override_subsystem: String,
 }
 
@@ -108,7 +102,6 @@ pub struct ExecutionConfig {
     pub capture_output: bool,
     pub capture_duration: bool,
     pub capture_command_trace: bool,
-    /// 0 = sin límite
     pub timeout_secs: u64,
 }
 
@@ -235,12 +228,10 @@ impl ShellConfig {
         Self::platform_config_root().join("geliShell")
     }
 
-    /// Ruta canónica del archivo de configuración
     pub fn config_path() -> PathBuf {
         Self::geli_config_dir().join("config.toml")
     }
 
-    /// Ruta canónica del historial de comandos del prompt principal
     pub fn command_history_path() -> PathBuf {
         Self::geli_config_dir().join("history.txt")
     }
@@ -263,7 +254,6 @@ impl ShellConfig {
         Self::geli_config_dir().join("docs")
     }
 
-    /// Carga desde disco de forma asíncrona.
     pub async fn load_async() -> Result<Self, ConfigError> {
         let path = Self::config_path();
         if tokio::fs::metadata(&path).await.is_err() {
@@ -274,7 +264,6 @@ impl ShellConfig {
         Ok(config)
     }
 
-    /// Persiste en disco de forma asíncrona.
     pub async fn save_async(&self) -> Result<(), ConfigError> {
         let path = Self::config_path();
         if let Some(parent) = path.parent() {
@@ -285,12 +274,26 @@ impl ShellConfig {
         Ok(())
     }
 
-    /// true si la configuración tiene override de subsistema
+    /// Elimina el archivo de configuración del disco.
+    ///
+    /// El siguiente inicio detectará `ConfigError::NotFound`
+    /// y lanzará el first_run wizard automáticamente.
+    ///
+    /// Si el archivo ya no existe devuelve `Ok(())` silenciosamente —
+    /// el estado final deseado (no existe config) ya se cumple.
+    pub async fn reset() -> Result<(), ConfigError> {
+        let path = Self::config_path();
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(ConfigError::Read(error)),
+        }
+    }
+
     pub fn has_subsystem_override(&self) -> bool {
         !self.subsystem.override_subsystem.is_empty()
     }
 
-    /// Convierte ExecutionConfig de shell a executor::ExecutionConfig
     pub fn to_executor_config(&self) -> crate::shell::executor::ExecutionConfig {
         let mut cfg = crate::shell::executor::ExecutionConfig::minimal();
         if self.execution.capture_output {

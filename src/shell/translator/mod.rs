@@ -7,7 +7,7 @@ pub mod subsystem;
 
 pub use commands_map::{
     CommandDef, CommandMap, CommandMapError, FlagDef, LoadResult, SubsystemTranslations,
-    TranslationEntry, ValidationWarning, load,
+    TranslationEntry, ValidationWarning, load, load_from_str,
 };
 pub use pipeline::{TranslationError, TranslationPipeline};
 pub use resolver::{Resolve, ResolvedCommand, ResolverError, SuggestionResolver};
