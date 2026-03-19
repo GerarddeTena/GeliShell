@@ -38,6 +38,22 @@ use tokio::signal;
 
 #[tokio::main]
 async fn main() {
+    // ── Anti-Inception: prevenir ejecución anidada ────────────
+    if std::env::var("GELISHELL_ACTIVE").is_ok() {
+        eprintln!("Error: GeliShell ya está en ejecución.");
+        std::process::exit(1);
+    }
+    unsafe {
+        std::env::set_var("GELISHELL_ACTIVE", "1");
+    }
+
+    // ── Parseo de flags CLI ───────────────────────────────────
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        handle_cli_args(&args[1..]).await;
+        return;
+    }
+
     let reporter = StderrReporter::new();
 
     match ensure_runtime_layout().await {
@@ -279,6 +295,26 @@ async fn main() {
             continue;
         }
 
+        // ── Intercepción de comandos geli internos ────────────────
+        if let Some(action) = parse_geli_internal_command(&input) {
+            if let Err(error) = command_history.append_async(&input).await {
+                reporter.warn(&format!("history append failed: {error}"));
+            }
+            handle_geli_internal_command(
+                action,
+                &mut config,
+                &mut assistant,
+                &subsystem,
+                &guard,
+                &executor,
+                &exec_config,
+                &builtins,
+                &reporter,
+            )
+            .await;
+            continue;
+        }
+
         if let Err(error) = command_history.append_async(&input).await {
             reporter.warn(&format!("history append failed: {error}"));
         }
@@ -353,7 +389,10 @@ async fn main() {
                                 ));
                             }
                         }
-                        Err(e) => reporter.error(&e.to_string()),
+                        Err(e) => {
+                            reporter.error(&e.to_string());
+                            let _ = std::io::Write::flush(&mut std::io::stderr());
+                        }
                     }
                 }
                 _ = signal::ctrl_c() => {
@@ -374,7 +413,10 @@ async fn main() {
                                 ));
                             }
                         }
-                        Err(e) => reporter.error(&e.to_string()),
+                        Err(e) => {
+                            reporter.error(&e.to_string());
+                            let _ = std::io::Write::flush(&mut std::io::stderr());
+                        }
                     }
                 }
                 _ = signal::ctrl_c() => {
@@ -503,9 +545,6 @@ fn build_completion_pool(map: &CommandMap, config: &ShellConfig) -> Vec<String> 
         "unset",
         "g",
         "gerisabet",
-        "geli-helpme",
-        "geli-config-me",
-        "geli-",
     ] {
         set.insert(builtin.to_owned());
     }
@@ -606,11 +645,17 @@ async fn wait_for_runtime_special_command() -> SpecialCommand {
 
     loop {
         line.clear();
-        match reader.read_line(&mut line).await {
-            Ok(0) | Err(_) => {
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // Timeout pequeño para evitar bloqueo permanente cuando el comando falla rápido
+        match tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            reader.read_line(&mut line),
+        )
+        .await
+        {
+            Ok(Ok(0)) | Ok(Err(_)) | Err(_) => {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
-            Ok(_) => {
+            Ok(Ok(_)) => {
                 if let Some(command) = parse_special_command(line.trim()) {
                     return command;
                 }
@@ -628,11 +673,11 @@ fn run_clear(config: &ShellConfig, reporter: &dyn Reporter) {
 }
 
 fn is_help_trigger(input: &str) -> bool {
-    matches!(input, "geli-helpme" | "^?" | "^H" | "\u{8}" | "\u{7f}")
+    matches!(input, "^?" | "^H" | "\u{8}" | "\u{7f}")
 }
 
 fn is_config_trigger(input: &str) -> bool {
-    input.eq_ignore_ascii_case("geli-config-me") || input.eq_ignore_ascii_case("geli-reset-config")
+    input.eq_ignore_ascii_case("geli-reset-config")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1014,6 +1059,228 @@ fn render_prompt(subsystem: &Subsystem, visual: &VisualConfig) -> String {
          {name}{bold}Geli$hell{reset}{dim}>{reset} ",
         subsystem.as_str().to_uppercase(),
     )
+}
+
+async fn handle_cli_args(args: &[String]) {
+    let reporter = StderrReporter::new();
+
+    if args.is_empty() {
+        return;
+    }
+
+    let first = args[0].as_str();
+
+    match first {
+        "--help" | "-h" => {
+            print_cli_help();
+            std::process::exit(0);
+        }
+        "--config-me" => {
+            let mut config = match ShellConfig::load_async().await {
+                Ok(cfg) => cfg,
+                Err(_) => ShellConfig::default(),
+            };
+
+            if handle_config_menu(&mut config, &reporter).await {
+                reporter.info("config updated");
+            }
+            std::process::exit(0);
+        }
+        "--how-to" => {
+            if args.len() < 2 {
+                eprintln!("Error: --how-to requires a query argument");
+                eprintln!("Usage: geli --how-to \"<query>\"");
+                std::process::exit(1);
+            }
+            let query = args[1..].join(" ");
+            let query = strip_wrapping_quotes(&query);
+
+            if query.trim().is_empty() {
+                eprintln!("Error: --how-to query cannot be empty");
+                std::process::exit(1);
+            }
+
+            reporter.info("initializing assistant for --how-to...");
+            execute_how_to_cli(&query, &reporter).await;
+            std::process::exit(0);
+        }
+        "--show-me" => {
+            if args.len() > 1 {
+                eprintln!("Error: --show-me does not accept additional arguments");
+                std::process::exit(1);
+            }
+
+            reporter.info("initializing assistant for --show-me...");
+            execute_show_me_cli(&reporter).await;
+            std::process::exit(0);
+        }
+        unknown => {
+            eprintln!("Error: unknown flag '{unknown}'");
+            eprintln!();
+            print_cli_help();
+            std::process::exit(1);
+        }
+    }
+}
+
+fn print_cli_help() {
+    println!("GeliShell 0.1.0");
+    println!();
+    println!("USAGE:");
+    println!("    geli [FLAGS]");
+    println!();
+    println!("FLAGS:");
+    println!("    --help, -h           Show this help message");
+    println!("    --config-me          Open configuration menu");
+    println!("    --how-to <query>     Ask the assistant how to do something");
+    println!("    --show-me            Interactive command search with assistant");
+    println!();
+    println!("If no flags are provided, GeliShell will start in interactive mode.");
+}
+
+async fn execute_how_to_cli(query: &str, reporter: &dyn Reporter) {
+    let config = match ShellConfig::load_async().await {
+        Ok(cfg) => cfg,
+        Err(_) => ShellConfig::default(),
+    };
+
+    let subsystem = if config.has_subsystem_override() {
+        Subsystem::from_str(&config.subsystem.override_subsystem)
+            .unwrap_or_else(|| Subsystem::detect(reporter))
+    } else {
+        Subsystem::detect(reporter)
+    };
+
+    let guard = default_guard();
+    let executor = Executor::new(subsystem.clone());
+    let exec_config = config.to_executor_config();
+    let builtins = BuiltinRegistry::new();
+    let mut assistant = AssistantRuntime::new(&config);
+
+    handle_assistant_how_to(
+        &mut assistant,
+        &config,
+        &subsystem,
+        &guard,
+        &executor,
+        &exec_config,
+        &builtins,
+        reporter,
+        query,
+    )
+    .await;
+}
+
+async fn execute_show_me_cli(reporter: &dyn Reporter) {
+    let config = match ShellConfig::load_async().await {
+        Ok(cfg) => cfg,
+        Err(_) => ShellConfig::default(),
+    };
+
+    let subsystem = if config.has_subsystem_override() {
+        Subsystem::from_str(&config.subsystem.override_subsystem)
+            .unwrap_or_else(|| Subsystem::detect(reporter))
+    } else {
+        Subsystem::detect(reporter)
+    };
+
+    let guard = default_guard();
+    let executor = Executor::new(subsystem.clone());
+    let exec_config = config.to_executor_config();
+    let builtins = BuiltinRegistry::new();
+
+    handle_assistant_show_me(&subsystem, &guard, &executor, &exec_config, &builtins, reporter)
+        .await;
+}
+
+#[derive(Debug, Clone)]
+enum GeliInternalCommand {
+    Help,
+    ConfigMe,
+    HowTo { query: String },
+    ShowMe,
+    NoArgs,
+}
+
+fn parse_geli_internal_command(input: &str) -> Option<GeliInternalCommand> {
+    let trimmed = input.trim();
+
+    // Debe empezar exactamente con "geli" (no "gelis", "gelish", etc.)
+    let parts: Vec<&str> = trimmed.split_whitespace().collect();
+    if parts.is_empty() || parts[0] != "geli" {
+        return None;
+    }
+
+    // Si solo escribieron "geli" sin argumentos
+    if parts.len() == 1 {
+        return Some(GeliInternalCommand::NoArgs);
+    }
+
+    match parts[1] {
+        "--help" | "-h" => Some(GeliInternalCommand::Help),
+        "--config-me" => Some(GeliInternalCommand::ConfigMe),
+        "--show-me" => Some(GeliInternalCommand::ShowMe),
+        "--how-to" => {
+            if parts.len() > 2 {
+                let query = parts[2..].join(" ");
+                let query = strip_wrapping_quotes(&query);
+                Some(GeliInternalCommand::HowTo {
+                    query: query.to_owned(),
+                })
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+async fn handle_geli_internal_command(
+    action: GeliInternalCommand,
+    config: &mut ShellConfig,
+    assistant: &mut AssistantRuntime,
+    subsystem: &Subsystem,
+    guard: &dyn Guard,
+    executor: &Executor,
+    exec_config: &ExecutorConfig,
+    builtins: &BuiltinRegistry,
+    reporter: &dyn Reporter,
+) {
+    match action {
+        GeliInternalCommand::NoArgs => {
+            reporter.warn("Ya estás dentro de GeliShell. Usa 'exit' para salir o 'geli --help' para ver comandos disponibles.");
+        }
+        GeliInternalCommand::Help => {
+            print_cli_help();
+        }
+        GeliInternalCommand::ConfigMe => {
+            if handle_config_menu(config, reporter).await {
+                reporter.info("config updated");
+            }
+        }
+        GeliInternalCommand::HowTo { query } => {
+            if query.trim().is_empty() {
+                reporter.error("--how-to requires a non-empty query");
+                return;
+            }
+            handle_assistant_how_to(
+                assistant,
+                config,
+                subsystem,
+                guard,
+                executor,
+                exec_config,
+                builtins,
+                reporter,
+                &query,
+            )
+            .await;
+        }
+        GeliInternalCommand::ShowMe => {
+            handle_assistant_show_me(subsystem, guard, executor, exec_config, builtins, reporter)
+                .await;
+        }
+    }
 }
 
 #[cfg(test)]

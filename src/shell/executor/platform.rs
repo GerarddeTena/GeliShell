@@ -11,11 +11,13 @@ pub fn build_command(command: &str, subsystem: &Subsystem) -> Command {
         Subsystem::PowerShell => {
             let mut cmd = Command::new("powershell");
             cmd.args(["-NoProfile", "-NonInteractive", "-Command", command]);
+            cmd.env("GELISHELL_ACTIVE", "1");
             cmd
         }
         Subsystem::Cmd => {
             let mut cmd = Command::new("cmd");
             cmd.args(["/C", command]);
+            cmd.env("GELISHELL_ACTIVE", "1");
             cmd
         }
         // Bash, Zsh, Fish — todos entienden sh -c en Unix
@@ -26,6 +28,7 @@ pub fn build_command(command: &str, subsystem: &Subsystem) -> Command {
                 // Git Bash / WSL path
                 let mut cmd = Command::new("sh");
                 cmd.args(["-c", command]);
+                cmd.env("GELISHELL_ACTIVE", "1");
                 cmd
             }
             #[cfg(not(target_os = "windows"))]
@@ -37,6 +40,7 @@ pub fn build_command(command: &str, subsystem: &Subsystem) -> Command {
                 };
                 let mut cmd = Command::new(shell);
                 cmd.args(["-c", command]);
+                cmd.env("GELISHELL_ACTIVE", "1");
                 cmd
             }
         }

@@ -54,6 +54,85 @@ function Ask-YesNo {
     return ($answer -eq "y" -or $answer -eq "yes")
 }
 
+function Write-StatusLine {
+    param([bool]$Ok, [string]$Label, [string]$Detail)
+    $icon  = if ($Ok) { "  [OK]" } else { "  [--]" }
+    $color = if ($Ok) { "Green" } else { "DarkGray" }
+    Write-Host "$icon $Label" -ForegroundColor $color
+    if ($Detail) { Write-Host "       $Detail" -ForegroundColor DarkGray }
+}
+
+function Invoke-Vec0Download {
+    param([string]$DestPath)
+    Write-Info "fetching latest release info from GitHub API..."
+    try {
+        $Headers = @{
+            "User-Agent" = "GeliShell-Installer/0.1"
+            "Accept"     = "application/vnd.github+json"
+        }
+        $Release = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/asg017/sqlite-vec/releases/latest" `
+            -Headers $Headers `
+            -TimeoutSec 15
+
+        $Tag = $Release.tag_name
+        Write-Info "latest sqlite-vec release: $Tag"
+
+        $Asset = $Release.assets | Where-Object {
+            $_.name -match "loadable-windows-x86_64\.zip$"
+        } | Select-Object -First 1
+
+        if (-not $Asset) {
+            Write-Warn "Windows x64 loadable zip not found in release $Tag"
+            Write-Info "Available assets:"
+            $Release.assets | ForEach-Object { Write-Info "  $($_.name)" }
+            return $false
+        }
+
+        $TempZip = Join-Path $env:TEMP "sqlite-vec-$Tag.zip"
+        $TempDir = Join-Path $env:TEMP "sqlite-vec-extract-$Tag"
+
+        Write-Info "downloading: $($Asset.name) ..."
+        Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -TimeoutSec 120
+
+        if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
+        Expand-Archive -Path $TempZip -DestinationPath $TempDir -Force
+
+        $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "vec0.dll" |
+                Select-Object -First 1
+
+        if (-not $Dll) {
+            $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "*.dll" |
+                    Select-Object -First 1
+        }
+
+        if (-not $Dll) {
+            Write-Warn "vec0.dll not found inside the downloaded archive."
+            return $false
+        }
+
+        $Parent = Split-Path $DestPath -Parent
+        if (-not (Test-Path $Parent)) {
+            New-Item -ItemType Directory -Path $Parent -Force | Out-Null
+        }
+        Copy-Item -Path $Dll.FullName -Destination $DestPath -Force
+
+        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+        Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
+
+        Write-Ok "vec0.dll installed at: $DestPath"
+        return $true
+
+    } catch {
+        Write-Warn "Download failed: $_"
+        Write-Info "Manual install:"
+        Write-Info "  1. https://github.com/asg017/sqlite-vec/releases"
+        Write-Info "  2. sqlite-vec-*-loadable-windows-x86_64.zip"
+        Write-Info "  3. Extract vec0.dll → $DestPath"
+        return $false
+    }
+}
+
 # ── Banner ────────────────────────────────────────────────────
 
 Write-Host ""
@@ -241,77 +320,6 @@ if (-not $Vec0Available) {
     }
 }
 
-function Invoke-Vec0Download {
-    param([string]$DestPath)
-    Write-Info "fetching latest release info from GitHub API..."
-    try {
-        $Headers  = @{
-            "User-Agent" = "GeliShell-Installer/0.1"
-            "Accept"     = "application/vnd.github+json"
-        }
-        $Release = Invoke-RestMethod `
-            -Uri "https://api.github.com/repos/asg017/sqlite-vec/releases/latest" `
-            -Headers $Headers `
-            -TimeoutSec 15
-
-        $Tag   = $Release.tag_name
-        Write-Info "latest sqlite-vec release: $Tag"
-
-        $Asset = $Release.assets | Where-Object {
-            $_.name -match "loadable-windows-x86_64\.zip$"
-        } | Select-Object -First 1
-
-        if (-not $Asset) {
-            Write-Warn "Windows x64 loadable zip not found in release $Tag"
-            Write-Info "Available assets:"
-            $Release.assets | ForEach-Object { Write-Info "  $($_.name)" }
-            return $false
-        }
-
-        $TempZip = Join-Path $env:TEMP "sqlite-vec-$Tag.zip"
-        $TempDir = Join-Path $env:TEMP "sqlite-vec-extract-$Tag"
-
-        Write-Info "downloading: $($Asset.name) ..."
-        Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -TimeoutSec 120
-
-        if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
-        Expand-Archive -Path $TempZip -DestinationPath $TempDir -Force
-
-        $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "vec0.dll" |
-                Select-Object -First 1
-
-        if (-not $Dll) {
-            $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "*.dll" |
-                    Select-Object -First 1
-        }
-
-        if (-not $Dll) {
-            Write-Warn "vec0.dll not found inside the downloaded archive."
-            return $false
-        }
-
-        $Parent = Split-Path $DestPath -Parent
-        if (-not (Test-Path $Parent)) {
-            New-Item -ItemType Directory -Path $Parent -Force | Out-Null
-        }
-        Copy-Item -Path $Dll.FullName -Destination $DestPath -Force
-
-        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-        Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
-
-        Write-Ok "vec0.dll installed at: $DestPath"
-        return $true
-
-    } catch {
-        Write-Warn "Download failed: $_"
-        Write-Info "Manual install:"
-        Write-Info "  1. https://github.com/asg017/sqlite-vec/releases"
-        Write-Info "  2. sqlite-vec-*-loadable-windows-x86_64.zip"
-        Write-Info "  3. Extract vec0.dll → $DestPath"
-        return $false
-    }
-}
-
 # ══════════════════════════════════════════════════════════════
 # STEP 4 — Ollama
 # ══════════════════════════════════════════════════════════════
@@ -399,14 +407,6 @@ Write-Host "  ──────────────────────
 Write-Host "  GeliShell Installation Summary" -ForegroundColor Magenta
 Write-Host "  ──────────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host ""
-
-function Write-StatusLine {
-    param([bool]$Ok, [string]$Label, [string]$Detail)
-    $icon  = if ($Ok) { "  [OK]" } else { "  [--]" }
-    $color = if ($Ok) { "Green" } else { "DarkGray" }
-    Write-Host "$icon $Label" -ForegroundColor $color
-    if ($Detail) { Write-Host "       $Detail" -ForegroundColor DarkGray }
-}
 
 Write-StatusLine -Ok $true          -Label "geli.exe"    -Detail $BinaryDest
 Write-StatusLine -Ok $SqliteOk      -Label "SQLite"      -Detail "sqlite3 in PATH"
