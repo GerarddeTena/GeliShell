@@ -54,7 +54,7 @@ pub struct RagChunk {
 pub struct RagEngine {
     models_dir: PathBuf,
     db_path: PathBuf,
-    sqlite_vec_path: Option<PathBuf>,
+    sqlite_vec_path: Option<String>,
     embedding_model: String,
     ollama_url: String,
     http: reqwest::Client,
@@ -63,9 +63,7 @@ pub struct RagEngine {
 impl RagEngine {
     pub fn new(models_dir: PathBuf) -> Self {
         let db_path = ShellConfig::assistant_docs_db_path();
-        let sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH")
-            .ok()
-            .map(PathBuf::from);
+        let sqlite_vec_path = resolve_sqlite_vec_path(&models_dir);
         let embedding_model =
             std::env::var("GELI_EMBED_MODEL").unwrap_or_else(|_| "nomic-embed-text".to_owned());
         let ollama_url = std::env::var("GELI_OLLAMA_URL")
@@ -190,7 +188,7 @@ struct DbMatch {
 fn search_vector_db(
     db_path: &Path,
     models_dir: &Path,
-    configured_vec_path: Option<&Path>,
+    configured_vec_path: Option<&str>,
     query_vector: &str,
     limit: usize,
 ) -> Result<Vec<DbMatch>, RagError> {
@@ -279,7 +277,7 @@ fn table_exists(conn: &Connection, table: &str) -> Result<bool, RagError> {
 fn load_sqlite_vec_extension(
     conn: &Connection,
     models_dir: &Path,
-    configured_path: Option<&Path>,
+    configured_path: Option<&str>,
 ) -> Result<String, RagError> {
     unsafe {
         conn.load_extension_enable()?;
@@ -309,9 +307,9 @@ fn load_sqlite_vec_extension(
     })
 }
 
-fn sqlite_vec_candidates(models_dir: &Path, configured_path: Option<&Path>) -> Vec<String> {
+fn sqlite_vec_candidates(models_dir: &Path, configured_path: Option<&str>) -> Vec<String> {
     if let Some(path) = configured_path {
-        return vec![path.to_string_lossy().into_owned()];
+        return vec![normalize_path_str(path)];
     }
 
     #[cfg(target_os = "windows")]
@@ -329,10 +327,48 @@ fn sqlite_vec_candidates(models_dir: &Path, configured_path: Option<&Path>) -> V
 
     let mut set = BTreeSet::new();
     for library_name in library_names {
-        set.insert(models_dir.join(library_name).to_string_lossy().into_owned());
+        set.insert(normalize_path(&models_dir.join(library_name)));
         set.insert(library_name.to_owned());
     }
     set.into_iter().collect()
+}
+
+fn resolve_sqlite_vec_path(models_dir: &Path) -> Option<String> {
+    if let Ok(raw) = std::env::var("GELI_SQLITE_VEC_PATH") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            let candidate = PathBuf::from(trimmed);
+            if candidate.exists() {
+                return Some(normalize_path(&candidate));
+            }
+        }
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        let candidate = home
+            .join(".config")
+            .join("geliShell")
+            .join("models")
+            .join("vec0.dll");
+        if candidate.exists() {
+            return Some(normalize_path(&candidate));
+        }
+    }
+
+    let models_candidate = models_dir.join("vec0.dll");
+    if models_candidate.exists() {
+        return Some(normalize_path(&models_candidate));
+    }
+
+    None
+}
+
+fn normalize_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn normalize_path_str(path: &str) -> String {
+    path.replace('\\', "/")
 }
 
 fn embedding_to_json_array(embedding: &[f32]) -> String {
@@ -362,8 +398,8 @@ mod tests {
     #[test]
     fn candidates_prefer_configured_path() {
         let models_dir = std::env::temp_dir().join("geli_shell_rag_candidates");
-        let configured = PathBuf::from("C:\\custom\\vec0.dll");
-        let candidates = sqlite_vec_candidates(&models_dir, Some(&configured));
+        let configured = "C:\\custom\\vec0.dll";
+        let candidates = sqlite_vec_candidates(&models_dir, Some(configured));
         assert_eq!(candidates, vec!["C:\\custom\\vec0.dll".to_owned()]);
     }
 

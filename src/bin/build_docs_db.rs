@@ -58,7 +58,9 @@ impl IngestOptions {
         let cwd = std::env::current_dir()?;
         let mut docs_dir = cwd.join("docs").join("kb");
         let mut db_path = ShellConfig::assistant_docs_db_path();
-        let mut sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH").ok();
+        let mut sqlite_vec_path = std::env::var("GELI_SQLITE_VEC_PATH")
+            .ok()
+            .filter(|raw| !raw.trim().is_empty());
         let mut batch_size = 16usize;
         let mut model =
             std::env::var("GELI_EMBED_MODEL").unwrap_or_else(|_| "nomic-embed-text".to_owned());
@@ -106,6 +108,10 @@ impl IngestOptions {
                     )));
                 }
             }
+        }
+
+        if sqlite_vec_path.as_deref().map(|p| p.trim().is_empty()).unwrap_or(true) {
+            sqlite_vec_path = resolve_default_sqlite_vec_path();
         }
 
         if !docs_dir.exists() {
@@ -669,7 +675,7 @@ fn load_sqlite_vec_extension(
 
 fn sqlite_vec_candidates(configured_path: Option<&str>) -> Vec<String> {
     if let Some(path) = configured_path {
-        return vec![path.to_owned()];
+        return vec![normalize_path_str(path)];
     }
 
     #[cfg(target_os = "windows")]
@@ -702,6 +708,28 @@ fn sqlite_vec_candidates(configured_path: Option<&str>) -> Vec<String> {
             "sqlite-vec.dylib".to_owned(),
         ]
     }
+}
+
+fn resolve_default_sqlite_vec_path() -> Option<String> {
+    if let Some(home) = dirs::home_dir() {
+        let candidate = home
+            .join(".config")
+            .join("geliShell")
+            .join("models")
+            .join("vec0.dll");
+        if candidate.exists() {
+            return Some(normalize_path(&candidate));
+        }
+    }
+    None
+}
+
+fn normalize_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn normalize_path_str(path: &str) -> String {
+    path.replace('\\', "/")
 }
 
 fn embedding_to_json_array(embedding: &[f32]) -> String {

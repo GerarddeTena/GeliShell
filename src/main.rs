@@ -35,6 +35,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
@@ -433,7 +434,30 @@ async fn main() {
                 }
             }
         }
+
+        drain_crossterm_events(&reporter);
     }
+}
+
+fn drain_crossterm_events(_reporter: &dyn Reporter) {
+    use crossterm::event::{poll, read};
+
+    // Drain all pending crossterm events to prevent buffered input
+    // from interfering with the next REPL iteration
+    for _ in 0..50 {
+        match poll(Duration::from_millis(0)) {
+            Ok(true) => {
+                if read().is_err() {
+                    break;
+                }
+            }
+            Ok(false) => break,
+            Err(_) => break,
+        }
+    }
+
+    // Small delay to let the terminal settle
+    std::thread::sleep(Duration::from_millis(10));
 }
 
 async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporter) -> bool {
