@@ -21,13 +21,104 @@ A diferencia de las shells tradicionales que te obligan a aprender una sintaxis 
 - **Seguridad por diseño:** El Guardrail semántico evita desastres (como un borrado recursivo accidental) interceptando el AST antes de que el sistema operativo lo vea.
 - **IA Integrada y Determinista:** No es un simple wrapper de ChatGPT. Es un sistema RAG local, ultrarrápido y confinado a la documentación técnica, diseñado para ser útil sin ser peligroso.
 
-## Requisitos Previos (Prerequisites)
-Para compilar y ejecutar GeliShell desde el código fuente, necesitas:
-- **Rust Toolchain:** Edición 2024 (1.85+ recomendado).
-- **Para el Asistente RAG (Opcional pero recomendado):**
-  - Motor Ollama ejecutándose localmente (`ollama serve`).
-  - Modelo de embeddings: `ollama pull nomic-embed-text`.
-  - Extensión `sqlite-vec` descargada y apuntada por la variable `$env:GELI_SQLITE_VEC_PATH`.
+## Instalación (scripts oficiales)
+
+Esta guía usa como fuente de verdad `install.ps1`, `install.sh` e `install.bat`.
+
+### Requisitos mínimos
+
+- Tener Rust instalado (el instalador **no** instala Rust).
+- Compilar primero el binario release desde la raíz del proyecto:
+
+```powershell
+cargo build --release
+```
+
+### Qué instala el setup
+
+- **Core obligatorio:**
+  - Binario `geli` (`geli.exe` en Windows) en tu carpeta de binarios de usuario.
+  - Ajuste de `PATH` de usuario para poder ejecutar `geli` globalmente.
+- **Assistant/RAG opcional:**
+  - Verificación de `sqlite3` (intenta instalarlo si aceptas).
+  - Descarga de `sqlite-vec` (`vec0.dll`/`vec0.so`/`vec0.dylib`).
+  - Verificación de `ollama`.
+  - Generación de `docs.db` con `cargo run --bin build_docs_db` (si no usas `--skip-docs`/`-SkipDocs`).
+
+### Windows (PowerShell)
+
+`install.ps1` acepta:
+
+- `-Force`: sobrescribe archivos existentes.
+- `-SkipDocs`: omite la generación de `docs.db`.
+- `-BinDir "C:\\ruta\\bin"`: carpeta personalizada para `geli.exe`.
+
+Ejemplos:
+
+```powershell
+.\install.ps1
+.\install.ps1 -Force
+.\install.ps1 -SkipDocs
+.\install.ps1 -BinDir "C:\bin"
+```
+
+### Windows (CMD)
+
+`install.bat` es un wrapper de `install.ps1`:
+
+- Llama a `powershell.exe -ExecutionPolicy Bypass` **solo para ese proceso**.
+- Reenvía todos los argumentos con `%*`.
+
+Ejemplos:
+
+```bat
+install.bat
+install.bat -Force -SkipDocs
+install.bat -BinDir "C:\bin"
+```
+
+### Linux/macOS (Bash)
+
+`install.sh` acepta:
+
+- `--force` o `-f`: sobrescribe archivos existentes.
+- `--skip-docs`: omite la generación de `docs.db`.
+- `--bin-dir <ruta>` o `--bin-dir=<ruta>`: carpeta personalizada para `geli`.
+
+Ejemplos:
+
+```bash
+./install.sh
+./install.sh --force
+./install.sh --skip-docs
+./install.sh --bin-dir "$HOME/.local/bin"
+```
+
+### Rutas por defecto
+
+- **Windows**
+  - Binario: `%USERPROFILE%\.local\bin\geli.exe`
+  - Config: `%USERPROFILE%\.config\geliShell\`
+  - sqlite-vec: `%USERPROFILE%\.config\geliShell\models\vec0.dll`
+  - RAG DB: `%USERPROFILE%\.config\geliShell\docs\docs.db`
+- **Linux/macOS**
+  - Binario: `~/.local/bin/geli`
+  - Config: `~/.config/geliShell/`
+  - sqlite-vec: `~/.config/geliShell/models/vec0.so` (Linux) / `vec0.dylib` (macOS)
+  - RAG DB: `~/.config/geliShell/docs/docs.db`
+
+### Verificación final
+
+Al terminar la instalación:
+
+1. Abre una terminal nueva (si el script modificó `PATH`).
+2. Ejecuta:
+
+```powershell
+geli
+```
+
+Si faltan componentes opcionales, el core de GeliShell sigue funcionando y puedes completar Assistant/RAG después.
 ---
 
 ## Flujo de ejecución real
