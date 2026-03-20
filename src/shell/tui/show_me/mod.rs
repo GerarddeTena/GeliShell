@@ -9,6 +9,7 @@ use self::{
     placeholder::resolve_placeholders,
 };
 use crate::shell::{
+    config::VisualConfig,
     reporter::{Reporter, SilentReporter},
     translator::Subsystem,
 };
@@ -16,7 +17,7 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    style::{Color, Print, ResetColor, SetForegroundColor},
+    style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{self, ClearType},
 };
 use std::io::{self, Write, stdout};
@@ -48,12 +49,16 @@ struct CommandEntry {
 
 pub(crate) struct ShowMeTui<'a> {
     catalog: &'a CatalogTree,
+    visual: &'a VisualConfig,
     subsystem: Subsystem,
     state: ShowMeState,
     modal_start_row: Option<u16>,
 }
 
-pub fn run_show_me_tui(reporter: &dyn Reporter) -> Result<Option<String>, ShowMeError> {
+pub fn run_show_me_tui(
+    reporter: &dyn Reporter,
+    visual: &VisualConfig,
+) -> Result<Option<String>, ShowMeError> {
     let db_path = DocsDb::resolve_path();
     let rows = match DocsDb::load(&db_path) {
         Ok(rows) => rows,
@@ -72,15 +77,16 @@ pub fn run_show_me_tui(reporter: &dyn Reporter) -> Result<Option<String>, ShowMe
         return Ok(None);
     }
 
-    let mut tui = ShowMeTui::new(&catalog);
+    let mut tui = ShowMeTui::new(&catalog, visual);
     tui.run(reporter)
 }
 
 impl<'a> ShowMeTui<'a> {
-    pub(crate) fn new(catalog: &'a CatalogTree) -> Self {
+    pub(crate) fn new(catalog: &'a CatalogTree, visual: &'a VisualConfig) -> Self {
         let subsystem = Subsystem::detect(&SilentReporter::new());
         Self {
             catalog,
+            visual,
             subsystem,
             state: ShowMeState::CategoryList { selected: 0 },
             modal_start_row: None,
@@ -323,10 +329,13 @@ impl<'a> ShowMeTui<'a> {
             out,
             cursor::MoveTo(0, 0),
             terminal::Clear(ClearType::All),
-            SetForegroundColor(Color::Cyan),
-            Print("GeliShell Assistant --show-me\r\n"),
+            SetForegroundColor(Color::AnsiValue(self.visual.prompt_name_ansi256)),
+            Print(" 󰊠  GeliShell Assistant "),
+            SetForegroundColor(Color::AnsiValue(self.visual.prompt_dim_ansi256)),
+            Print("--show-me\r\n"),
             ResetColor,
-            Print("Select a category and press Enter.\r\n\r\n")
+            SetForegroundColor(Color::AnsiValue(self.visual.terminal_foreground_ansi256)),
+            Print(" Select a category:\r\n\r\n")
         )
         .map_err(terminal_error)?;
 
@@ -334,16 +343,16 @@ impl<'a> ShowMeTui<'a> {
             if index == selected {
                 execute!(
                     out,
-                    SetForegroundColor(Color::Green),
-                    Print(format!("❯ {category}\r\n")),
+                    SetForegroundColor(Color::AnsiValue(self.visual.prompt_subsystem_ansi256)),
+                    Print(format!(" 󰄾 {category}\r\n")),
                     ResetColor
                 )
                 .map_err(terminal_error)?;
             } else {
                 execute!(
                     out,
-                    SetForegroundColor(Color::DarkGrey),
-                    Print(format!("  {category}\r\n")),
+                    SetForegroundColor(Color::AnsiValue(self.visual.prompt_dim_ansi256)),
+                    Print(format!("   {category}\r\n")),
                     ResetColor
                 )
                 .map_err(terminal_error)?;
@@ -353,8 +362,8 @@ impl<'a> ShowMeTui<'a> {
         execute!(
             out,
             Print("\r\n"),
-            SetForegroundColor(Color::DarkGrey),
-            Print("↑↓ move  ·  Enter open  ·  Esc/Backspace/q exit\r\n"),
+            SetForegroundColor(Color::AnsiValue(self.visual.prompt_dim_ansi256)),
+            Print(" ↑↓ move  ·  Enter open  ·  Esc/Backspace/q exit\r\n"),
             ResetColor
         )
         .map_err(terminal_error)?;
@@ -406,25 +415,37 @@ impl<'a> ShowMeTui<'a> {
             "(sin filtro de subsistema)"
         };
 
+        let border_color = Color::AnsiValue(self.visual.prompt_subsystem_ansi256);
+        let title_color = Color::AnsiValue(self.visual.prompt_name_ansi256);
+        let dim_color = Color::AnsiValue(self.visual.prompt_dim_ansi256);
+
         execute!(
             out,
             cursor::MoveTo(0, start_row),
-            SetForegroundColor(Color::Cyan),
-            Print(format!("┌─ Category: {category}\r\n")),
+            SetForegroundColor(border_color),
+            Print("╭─ "),
+            SetForegroundColor(title_color),
+            Print(format!("Category: {category}")),
+            SetForegroundColor(border_color),
+            Print("\r\n"),
             ResetColor,
             cursor::MoveTo(0, start_row + 1),
-            SetForegroundColor(Color::DarkGrey),
-            Print(format!("│ Levels: {levels}\r\n")),
+            SetForegroundColor(border_color),
+            Print("│ "),
+            SetForegroundColor(dim_color),
+            Print(format!("Levels: {levels}\r\n")),
             ResetColor,
             cursor::MoveTo(0, start_row + 2),
-            SetForegroundColor(Color::DarkGrey),
+            SetForegroundColor(border_color),
+            Print("│ "),
+            SetForegroundColor(dim_color),
             Print(format!(
-                "│ Subsystem: {} {filter_note}\r\n",
+                "Subsystem: {} {filter_note}\r\n",
                 self.subsystem.as_str()
             )),
             ResetColor,
             cursor::MoveTo(0, start_row + 3),
-            SetForegroundColor(Color::DarkGrey),
+            SetForegroundColor(border_color),
             Print("│\r\n"),
             ResetColor
         )
@@ -434,8 +455,10 @@ impl<'a> ShowMeTui<'a> {
             execute!(
                 out,
                 cursor::MoveTo(0, start_row + 4),
-                SetForegroundColor(Color::DarkGrey),
-                Print("│ No commands found for this category.\r\n"),
+                SetForegroundColor(border_color),
+                Print("│ "),
+                SetForegroundColor(dim_color),
+                Print("No commands found for this category.\r\n"),
                 ResetColor
             )
             .map_err(terminal_error)?;
@@ -445,28 +468,35 @@ impl<'a> ShowMeTui<'a> {
             for (row_offset, absolute_index) in (scroll..visible_end).enumerate() {
                 let entry = &entries[absolute_index];
                 let is_selected = absolute_index == selected;
-                let marker = if is_selected { "❯" } else { " " };
+                let marker = if is_selected { "󰄾" } else { " " };
                 let line = truncate(
                     &format!("{marker} [{}] {}", entry.operation, entry.command),
                     108,
                 );
                 let row = start_row + 4 + row_offset as u16;
 
+                execute!(out, cursor::MoveTo(0, row)).map_err(terminal_error)?;
+
                 if is_selected {
+                    // Highlighted row
                     execute!(
                         out,
-                        cursor::MoveTo(0, row),
-                        SetForegroundColor(Color::Green),
-                        Print(format!("│ {line}\r\n")),
-                        ResetColor
+                        SetForegroundColor(border_color),
+                        Print("│ "),
+                        SetAttribute(Attribute::Reverse),
+                        SetForegroundColor(Color::AnsiValue(self.visual.prompt_path_ansi256)), // foreground used as bg due to reverse
+                        Print(format!("{line:<100}")), // Padding for consistent highlight bar
+                        SetAttribute(Attribute::Reset),
+                        Print("\r\n")
                     )
                     .map_err(terminal_error)?;
                 } else {
                     execute!(
                         out,
-                        cursor::MoveTo(0, row),
-                        SetForegroundColor(Color::DarkGrey),
-                        Print(format!("│ {line}\r\n")),
+                        SetForegroundColor(border_color),
+                        Print("│ "),
+                        SetForegroundColor(dim_color),
+                        Print(format!("{line}\r\n")),
                         ResetColor
                     )
                     .map_err(terminal_error)?;
@@ -480,7 +510,7 @@ impl<'a> ShowMeTui<'a> {
             execute!(
                 out,
                 cursor::MoveTo(0, row),
-                SetForegroundColor(Color::DarkGrey),
+                SetForegroundColor(border_color),
                 Print("│\r\n"),
                 ResetColor
             )
@@ -492,12 +522,14 @@ impl<'a> ShowMeTui<'a> {
         execute!(
             out,
             cursor::MoveTo(0, footer_row),
-            SetForegroundColor(Color::DarkGrey),
-            Print("│ Enter select command  ·  Esc/Backspace/q back\r\n"),
+            SetForegroundColor(border_color),
+            Print("│ "),
+            SetForegroundColor(dim_color),
+            Print("Enter select command  ·  Esc/Backspace/q back\r\n"),
             ResetColor,
             cursor::MoveTo(0, footer_row + 1),
-            SetForegroundColor(Color::Cyan),
-            Print("└────────────────────────────────────────────────────────────────────────────────────────\r\n"),
+            SetForegroundColor(border_color),
+            Print("╰────────────────────────────────────────────────────────────────────────────────────────\r\n"),
             ResetColor
         )
         .map_err(terminal_error)?;

@@ -69,13 +69,16 @@ impl Default for StderrReporter {
 
 impl Reporter for StderrReporter {
     fn warn(&self, message: &str) {
-        eprintln!("⚠  {message}");
+        // Yellow [ 󰀦 ]
+        eprintln!("\x1b[38;5;220m[ 󰀦 ]\x1b[0m  {message}");
     }
     fn error(&self, message: &str) {
-        eprintln!("✖  {message}");
+        // Red [ 󰅖 ]
+        eprintln!("\x1b[38;5;196m[ 󰅖 ]\x1b[0m  {message}");
     }
     fn info(&self, message: &str) {
-        eprintln!("ℹ  {message}");
+        // Blue/Cyan [ 󰋼 ]
+        eprintln!("\x1b[38;5;39m[ 󰋼 ]\x1b[0m  {message}");
     }
 }
 

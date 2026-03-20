@@ -3,28 +3,35 @@ use crossterm::{
     style::{Color, SetBackgroundColor, SetForegroundColor},
 };
 use geli_shell::{
-    Guard, Reporter, StderrReporter,
     parser::{lexer::Lexer, parser::Parser},
     shell::{
-        assistant::{AssistantRuntime, suggest::AssistantSuggestion},
-        builtins::{BuiltinRegistry, BuiltinResult, clear::clear_console_buffer},
-        config::first_run::run_first_run_wizard,
+        assistant::{suggest::AssistantSuggestion, AssistantRuntime},
+        builtins::{
+            clear::clear_console_buffer, BuiltinRegistry, BuiltinResult,
+        },
         config::{
-            ConfigError, SelectorMode, ShellConfig, VisualConfig, bootstrap::ensure_runtime_layout,
+            first_run::run_first_run_wizard,
             history_store::PersistentCommandHistory,
+            bootstrap::ensure_runtime_layout, // ensure_runtime_layout is in bootstrap.rs
+            ConfigError, SelectorMode, ShellConfig, VisualConfig,
         },
         executor::{ExecutionConfig as ExecutorConfig, Executor},
-        guard::default_guard,
-        reporter::SilentReporter,
+        guard::{default_guard, Guard},
+        reporter::{Reporter, SilentReporter, StderrReporter},
+        // selector::modal::ModalSelector, // run_selector_modal does not exist, ModalSelector does
         translator::{self, CommandMap, Subsystem, TranslationPipeline},
         tui::{
             assistant_menu::{
-                AssistantMenuSelection, show_assistant_error_panel, show_assistant_menu,
+                show_assistant_error_panel, show_assistant_menu,
                 show_how_to_confirmation_panel, show_model_bootstrap_progress,
+                AssistantMenuSelection,
             },
-            config_menu::{ConfigMenuSelection, show_config_menu},
-            help_menu::{HelpMenuAction, show_help_menu},
-            repl_input::{ReplInputAction, SpecialCommand, parse_special_command, read_repl_input},
+            config_menu::{show_config_menu, ConfigMenuSelection},
+            help_menu::{show_help_menu, HelpMenuAction},
+            repl_input::{
+                parse_special_command, read_repl_input, ReplInputAction,
+                SpecialCommand,
+            },
             show_me::run_show_me_tui,
         },
     },
@@ -273,15 +280,65 @@ async fn main() {
                 if let Err(error) = command_history.append_async(&input).await {
                     reporter.warn(&format!("history append failed: {error}"));
                 }
-                handle_assistant_show_me(
-                    &subsystem,
-                    &guard,
-                    &executor,
-                    &exec_config,
-                    &builtins,
-                    &reporter,
-                )
-                .await;
+                let selected_command = match run_show_me_tui(&reporter, &config.visual) {
+                    Ok(Some(cmd)) => cmd,
+                    Ok(None) => continue,
+                    Err(e) => {
+                        reporter.warn(&format!("show-me failed: {e}"));
+                        continue;
+                    }
+                };
+
+                let tokens = match Lexer::new(&selected_command).tokenize() {
+                    Ok(tokens) => tokens,
+                    Err(error) => {
+                        reporter.error(&format!(
+                            "assistant --show-me generated invalid command: {error}"
+                        ));
+                        continue;
+                    }
+                };
+
+                let ast = match Parser::new(tokens).parse() {
+                    Ok(ast) => ast,
+                    Err(error) => {
+                        reporter.error(&format!(
+                            "assistant --show-me generated unparseable command: {error}"
+                        ));
+                        continue;
+                    }
+                };
+
+                if let Err(error) = guard.check(&ast) {
+                    reporter.error(&format!(
+                        "assistant --show-me command blocked by guard: {error}"
+                    ));
+                    continue;
+                }
+
+                reporter.info(&format!(
+                    "assistant --show-me executing in {}: {}",
+                    subsystem.as_str(),
+                    selected_command
+                ));
+
+                tokio::select! {
+                    result = executor.run(&selected_command, &exec_config, &reporter) => {
+                        match result {
+                            Ok(exec_result) => {
+                                builtins.record_g_visit();
+                                if !exec_result.success() {
+                                    reporter.warn(&format!("assistant --show-me exit code: {}", exec_result.exit_code));
+                                }
+                            }
+                            Err(error) => reporter.error(&format!("assistant --show-me execution failed: {error}")),
+                        }
+                    }
+                    _ = signal::ctrl_c() => {
+                        println!();
+                        reporter.warn("^C - assistant --show-me command cancelled");
+                    }
+                }
                 continue;
             }
             Ok(None) => {}
@@ -860,12 +917,13 @@ async fn handle_assistant_show_me(
     exec_config: &ExecutorConfig,
     builtins: &BuiltinRegistry,
     reporter: &dyn Reporter,
+    visual: &VisualConfig,
 ) {
-    let selected_command = match run_show_me_tui(reporter) {
-        Ok(Some(command)) => command,
+    let selected_command = match run_show_me_tui(reporter, visual) {
+        Ok(Some(cmd)) => cmd,
         Ok(None) => return,
-        Err(error) => {
-            reporter.error(&format!("assistant --show-me failed: {error}"));
+        Err(e) => {
+            reporter.error(&format!("show-me failed: {e}"));
             return;
         }
     };
@@ -1070,19 +1128,43 @@ fn render_prompt(subsystem: &Subsystem, visual: &VisualConfig) -> String {
         }
     };
 
-    let path = format!("\x1b[38;5;{}m", visual.prompt_path_ansi256);
-    let subsystem_color = format!("\x1b[38;5;{}m", visual.prompt_subsystem_ansi256);
-    let name = format!("\x1b[38;5;{}m", visual.prompt_name_ansi256);
-    let dim = format!("\x1b[38;5;{}m", visual.prompt_dim_ansi256);
-    let bold = "\x1b[1m";
-    let reset = "\x1b[0m";
+    // Colores definidos en configuración
+    // let fg = visual.terminal_foreground_ansi256;
+    // let bg = visual.terminal_background_ansi256;
+    let path_color = visual.prompt_path_ansi256;
+    let sub_color = visual.prompt_subsystem_ansi256;
+    let name_color = visual.prompt_name_ansi256;
+    let dim_color = visual.prompt_dim_ansi256;
 
-    format!(
-        "{path}{bold}{cwd}{reset} \
-         {dim}_{reset}{subsystem_color}{}{reset}{dim}_{reset} \
-         {name}{bold}Geli$hell{reset}{dim}>{reset} ",
-        subsystem.as_str().to_uppercase(),
-    )
+    // Glyphs (Powerline + Nerd Fonts)
+    let icon = "󰊠";
+    let sep = "";
+    let prompt_char = "❯";
+
+    // Segmentos
+    // [ 󰊠 GeliShell ]
+    let segment_1 = format!(
+        "\x1b[38;5;{name_color}m[ {icon} GeliShell ]\x1b[0m"
+    );
+
+    // _SUBSYSTEM_
+    let segment_2 = format!(
+        "\x1b[38;5;{dim_color}m{sep} \x1b[38;5;{sub_color}m_{}_\x1b[38;5;{dim_color}m\x1b[0m",
+        subsystem.as_str().to_uppercase()
+    );
+
+    // ~/path
+    let segment_3 = format!(
+        "\x1b[38;5;{path_color}m{cwd}\x1b[0m"
+    );
+
+    // ❯
+    let prompt = format!(
+        "\x1b[1m\x1b[38;5;{name_color}m{prompt_char}\x1b[0m "
+    );
+
+    // Composición final
+    format!("{segment_1} {segment_2} {segment_3} {prompt}")
 }
 
 async fn handle_cli_args(args: &[String]) {
@@ -1213,8 +1295,16 @@ async fn execute_show_me_cli(reporter: &dyn Reporter) {
     let exec_config = config.to_executor_config();
     let builtins = BuiltinRegistry::new();
 
-    handle_assistant_show_me(&subsystem, &guard, &executor, &exec_config, &builtins, reporter)
-        .await;
+    handle_assistant_show_me(
+        &subsystem,
+        &guard,
+        &executor,
+        &exec_config,
+        &builtins,
+        reporter,
+        &config.visual,
+    )
+    .await;
 }
 
 #[derive(Debug, Clone)]
@@ -1301,8 +1391,16 @@ async fn handle_geli_internal_command(
             .await;
         }
         GeliInternalCommand::ShowMe => {
-            handle_assistant_show_me(subsystem, guard, executor, exec_config, builtins, reporter)
-                .await;
+            handle_assistant_show_me(
+                subsystem,
+                guard,
+                executor,
+                exec_config,
+                builtins,
+                reporter,
+                &config.visual,
+            )
+            .await;
         }
     }
 }
