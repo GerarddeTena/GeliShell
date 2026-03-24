@@ -1,6 +1,7 @@
 pub mod assistant;
 pub mod banner;
 pub mod builtins;
+pub mod commands;
 pub mod config;
 pub mod executor;
 pub mod guard;

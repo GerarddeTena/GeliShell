@@ -1,0 +1,85 @@
+[meta]
+name = "python"
+description = "Python packaging and testing commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "create virtualenv"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "python -m venv <EnvDir>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "python -m venv <EnvDir>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "python -m venv <EnvDir>"
+
+[[ops]]
+operation = "install requirements"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pip install -r <RequirementsFile>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "pip install -r <RequirementsFile>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "pip install -r <RequirementsFile>"
+
+[[ops]]
+operation = "run tests"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pytest -k <Pattern>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "pytest -k <Pattern>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "pytest -k <Pattern>"
+
+[[ops]]
+operation = "freeze dependencies"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pip freeze > <OutputFile>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "pip freeze > <OutputFile>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "pip freeze > <OutputFile>"
+
+[[ops]]
+operation = "build wheel"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "python -m build --wheel"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "python -m build --wheel"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "python -m build --wheel"
+

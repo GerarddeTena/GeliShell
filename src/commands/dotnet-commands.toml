@@ -1,0 +1,259 @@
+# ══════════════════════════════════════════════
+# dotnet / lifecycle & execution
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "dotnet-restore"
+description = "Restores the dependencies and tools of a project"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet restore", suggestions = ["dotnet restore --force"] }, zsh = { exact = "dotnet restore", suggestions = ["dotnet restore --force"] }, fish = { exact = "dotnet restore", suggestions = ["dotnet restore --force"] }, powershell = { exact = "dotnet restore", suggestions = ["dotnet restore --force"] }, cmd = { exact = "dotnet restore", suggestions = ["dotnet restore --force"] } }
+
+[[commands.flags]]
+canonical  = "--force"
+bash       = "--force"
+zsh        = "--force"
+fish       = "--force"
+powershell = "--force"
+cmd        = "--force"
+
+[[commands.flags]]
+canonical  = "--no-cache"
+bash       = "--no-cache"
+zsh        = "--no-cache"
+fish       = "--no-cache"
+powershell = "--no-cache"
+cmd        = "--no-cache"
+
+[[commands.flags]]
+canonical  = "--ignore-failed-sources"
+bash       = "--ignore-failed-sources"
+zsh        = "--ignore-failed-sources"
+fish       = "--ignore-failed-sources"
+powershell = "--ignore-failed-sources"
+cmd        = "--ignore-failed-sources"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "dotnet-run"
+description = "Runs source code without any explicit compile or launch commands"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet run", suggestions = ["dotnet run -c Release"] }, zsh = { exact = "dotnet run", suggestions = ["dotnet run -c Release"] }, fish = { exact = "dotnet run", suggestions = ["dotnet run -c Release"] }, powershell = { exact = "dotnet run", suggestions = ["dotnet run -c Release"] }, cmd = { exact = "dotnet run", suggestions = ["dotnet run -c Release"] } }
+
+[[commands.flags]]
+canonical  = "--configuration"
+bash       = "-c"
+zsh        = "-c"
+fish       = "-c"
+powershell = "-c"
+cmd        = "-c"
+
+[[commands.flags]]
+canonical  = "--project"
+bash       = "--project"
+zsh        = "--project"
+fish       = "--project"
+powershell = "--project"
+cmd        = "--project"
+
+[[commands.flags]]
+canonical  = "--framework"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"
+
+[[commands.flags]]
+canonical  = "--no-build"
+bash       = "--no-build"
+zsh        = "--no-build"
+fish       = "--no-build"
+powershell = "--no-build"
+cmd        = "--no-build"
+
+[[commands.flags]]
+canonical  = "--no-restore"
+bash       = "--no-restore"
+zsh        = "--no-restore"
+fish       = "--no-restore"
+powershell = "--no-restore"
+cmd        = "--no-restore"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "dotnet-test"
+description = "Runs unit tests using the test runner specified in a test project"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet test", suggestions = ["dotnet test --no-build"] }, zsh = { exact = "dotnet test", suggestions = ["dotnet test --no-build"] }, fish = { exact = "dotnet test", suggestions = ["dotnet test --no-build"] }, powershell = { exact = "dotnet test", suggestions = ["dotnet test --no-build"] }, cmd = { exact = "dotnet test", suggestions = ["dotnet test --no-build"] } }
+
+[[commands.flags]]
+canonical  = "--configuration"
+bash       = "-c"
+zsh        = "-c"
+fish       = "-c"
+powershell = "-c"
+cmd        = "-c"
+
+[[commands.flags]]
+canonical  = "--logger"
+bash       = "-l"
+zsh        = "-l"
+fish       = "-l"
+powershell = "-l"
+cmd        = "-l"
+
+[[commands.flags]]
+canonical  = "--filter"
+bash       = "--filter"
+zsh        = "--filter"
+fish       = "--filter"
+powershell = "--filter"
+cmd        = "--filter"
+
+[[commands.flags]]
+canonical  = "--collect"
+bash       = "--collect"
+zsh        = "--collect"
+fish       = "--collect"
+powershell = "--collect"
+cmd        = "--collect"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "dotnet-publish"
+description = "Publishes the application and its dependencies to a folder for deployment"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet publish", suggestions = ["dotnet publish -c Release -o ./publish"] }, zsh = { exact = "dotnet publish", suggestions = ["dotnet publish -c Release -o ./publish"] }, fish = { exact = "dotnet publish", suggestions = ["dotnet publish -c Release -o ./publish"] }, powershell = { exact = "dotnet publish", suggestions = ["dotnet publish -c Release -o ./publish"] }, cmd = { exact = "dotnet publish", suggestions = ["dotnet publish -c Release -o ./publish"] } }
+
+[[commands.flags]]
+canonical  = "--output"
+bash       = "-o"
+zsh        = "-o"
+fish       = "-o"
+powershell = "-o"
+cmd        = "-o"
+
+[[commands.flags]]
+canonical  = "--configuration"
+bash       = "-c"
+zsh        = "-c"
+fish       = "-c"
+powershell = "-c"
+cmd        = "-c"
+
+[[commands.flags]]
+canonical  = "--runtime"
+bash       = "-r"
+zsh        = "-r"
+fish       = "-r"
+powershell = "-r"
+cmd        = "-r"
+
+[[commands.flags]]
+canonical  = "--self-contained"
+bash       = "--self-contained"
+zsh        = "--self-contained"
+fish       = "--self-contained"
+powershell = "--self-contained"
+cmd        = "--self-contained"
+
+[[commands.flags]]
+canonical  = "--no-self-contained"
+bash       = "--no-self-contained"
+zsh        = "--no-self-contained"
+fish       = "--no-self-contained"
+powershell = "--no-self-contained"
+cmd        = "--no-self-contained"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "dotnet-clean"
+description = "Cleans the output of a project"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet clean", suggestions = ["dotnet clean -c Release"] }, zsh = { exact = "dotnet clean", suggestions = ["dotnet clean -c Release"] }, fish = { exact = "dotnet clean", suggestions = ["dotnet clean -c Release"] }, powershell = { exact = "dotnet clean", suggestions = ["dotnet clean -c Release"] }, cmd = { exact = "dotnet clean", suggestions = ["dotnet clean -c Release"] } }
+
+[[commands.flags]]
+canonical  = "--configuration"
+bash       = "-c"
+zsh        = "-c"
+fish       = "-c"
+powershell = "-c"
+cmd        = "-c"
+
+[[commands.flags]]
+canonical  = "--framework"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"
+
+# ══════════════════════════════════════════════
+# dotnet / formatting & packaging
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "dotnet-format"
+description = "Formats code to match editorconfig settings"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet format", suggestions = ["dotnet format whitespace"] }, zsh = { exact = "dotnet format", suggestions = ["dotnet format whitespace"] }, fish = { exact = "dotnet format", suggestions = ["dotnet format whitespace"] }, powershell = { exact = "dotnet format", suggestions = ["dotnet format whitespace"] }, cmd = { exact = "dotnet format", suggestions = ["dotnet format whitespace"] } }
+
+[[commands.flags]]
+canonical  = "--verify-no-changes"
+bash       = "--verify-no-changes"
+zsh        = "--verify-no-changes"
+fish       = "--verify-no-changes"
+powershell = "--verify-no-changes"
+cmd        = "--verify-no-changes"
+
+[[commands.flags]]
+canonical  = "--include"
+bash       = "--include"
+zsh        = "--include"
+fish       = "--include"
+powershell = "--include"
+cmd        = "--include"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "dotnet-pack"
+description = "Creates a NuGet package for the project"
+category    = "dotnet"
+translate   = { bash = { exact = "dotnet pack", suggestions = ["dotnet pack -c Release"] }, zsh = { exact = "dotnet pack", suggestions = ["dotnet pack -c Release"] }, fish = { exact = "dotnet pack", suggestions = ["dotnet pack -c Release"] }, powershell = { exact = "dotnet pack", suggestions = ["dotnet pack -c Release"] }, cmd = { exact = "dotnet pack", suggestions = ["dotnet pack -c Release"] } }
+
+[[commands.flags]]
+canonical  = "--output"
+bash       = "-o"
+zsh        = "-o"
+fish       = "-o"
+powershell = "-o"
+cmd        = "-o"
+
+[[commands.flags]]
+canonical  = "--configuration"
+bash       = "-c"
+zsh        = "-c"
+fish       = "-c"
+powershell = "-c"
+cmd        = "-c"
+
+[[commands.flags]]
+canonical  = "--include-source"
+bash       = "--include-source"
+zsh        = "--include-source"
+fish       = "--include-source"
+powershell = "--include-source"
+cmd        = "--include-source"
+
+[[commands.flags]]
+canonical  = "--include-symbols"
+bash       = "--include-symbols"
+zsh        = "--include-symbols"
+fish       = "--include-symbols"
+powershell = "--include-symbols"
+cmd        = "--include-symbols"

@@ -1,0 +1,85 @@
+[meta]
+name = "npm"
+description = "Node.js and npm commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "initialize package"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm init -y"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm init -y"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm init -y"
+
+[[ops]]
+operation = "install dependency"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm install <PackageName>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm install <PackageName>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm install <PackageName>"
+
+[[ops]]
+operation = "run script"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm run <ScriptName>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm run <ScriptName>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm run <ScriptName>"
+
+[[ops]]
+operation = "update packages"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm update"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm update"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm update"
+
+[[ops]]
+operation = "run audit fix"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm audit fix --force"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm audit fix --force"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm audit fix --force"
+

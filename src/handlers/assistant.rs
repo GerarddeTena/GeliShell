@@ -1,8 +1,7 @@
-use crate::utils::strip_wrapping_quotes;
 use geli_shell::{
     parser::{lexer::Lexer, parser::Parser},
     shell::{
-        assistant::{suggest::AssistantSuggestion, AssistantRuntime},
+        assistant::AssistantRuntime,
         builtins::BuiltinRegistry,
         config::{ShellConfig, VisualConfig},
         executor::{ExecutionConfig as ExecutorConfig, Executor},
@@ -11,108 +10,14 @@ use geli_shell::{
         translator::Subsystem,
         tui::{
             assistant_menu::{
-                show_assistant_error_panel, show_assistant_menu, show_how_to_confirmation_panel,
-                show_model_bootstrap_progress, AssistantMenuSelection,
+                show_assistant_error_panel, show_how_to_confirmation_panel,
+                show_model_bootstrap_progress,
             },
             show_me::run_show_me_tui,
         },
     },
 };
 use tokio::signal;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AssistantInvocation {
-    Menu,
-    HowTo { query: String },
-    ShowMe,
-}
-
-pub fn parse_assistant_invocation(input: &str) -> Result<Option<AssistantInvocation>, String> {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-
-    let mut parts = trimmed.splitn(2, char::is_whitespace);
-    let head = parts.next().unwrap_or_default();
-    if !head.eq_ignore_ascii_case("gerisabet") {
-        return Ok(None);
-    }
-
-    let args = parts.next().unwrap_or("").trim();
-    if args.is_empty() {
-        return Ok(Some(AssistantInvocation::Menu));
-    }
-
-    if let Some(show_me_tail) = args.strip_prefix("--show-me") {
-        if show_me_tail.trim().is_empty() {
-            return Ok(Some(AssistantInvocation::ShowMe));
-        }
-        return Err("gerisabet --show-me does not accept extra arguments".to_owned());
-    }
-
-    let Some(how_to_raw) = args.strip_prefix("--how-to") else {
-        return Err(format!(
-            "gerisabet: unsupported arguments '{args}'. Use: gerisabet --show-me | gerisabet --how-to \"<query>\""
-        ));
-    };
-
-    let query = strip_wrapping_quotes(how_to_raw.trim()).trim();
-    if query.is_empty() {
-        return Err("gerisabet --how-to requires a non-empty query".to_owned());
-    }
-
-    Ok(Some(AssistantInvocation::HowTo {
-        query: query.to_owned(),
-    }))
-}
-
-pub async fn handle_assistant(
-    assistant: &mut AssistantRuntime,
-    config: &ShellConfig,
-    reporter: &dyn Reporter,
-) {
-    assistant.refresh_config(config);
-
-    let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
-    let bootstrap_future = assistant.ensure_model_ready(progress_tx);
-    let progress_future = show_model_bootstrap_progress(progress_rx);
-    let (bootstrap_result, progress_result) = tokio::join!(bootstrap_future, progress_future);
-
-    if let Err(error) = progress_result {
-        reporter.error(&format!("assistant bootstrap ui failed: {error}"));
-    }
-
-    if let Err(error) = bootstrap_result {
-        reporter.error(&format!("assistant bootstrap failed: {error}"));
-        return;
-    }
-
-    let selection = match show_assistant_menu() {
-        Ok(selection) => selection,
-        Err(error) => {
-            reporter.error(&format!("assistant panel failed: {error}"));
-            assistant.release_resources().await;
-            return;
-        }
-    };
-
-    let AssistantMenuSelection::Selected { parameter, filter } = selection else {
-        assistant.release_resources().await;
-        return;
-    };
-
-    match assistant.run_parameter(parameter, &filter).await {
-        Ok(suggestion) => report_assistant_suggestion(suggestion, reporter),
-        Err(error) => {
-            if let Err(ui_error) = show_assistant_error_panel(&error.to_string()) {
-                reporter.error(&format!("assistant error panel failed: {ui_error}"));
-            }
-            reporter.error(&format!("assistant inference failed: {error}"));
-        }
-    }
-    assistant.release_resources().await;
-}
 
 pub async fn handle_assistant_show_me(
     subsystem: &Subsystem,
@@ -295,48 +200,3 @@ pub async fn handle_assistant_how_to(
     assistant.release_resources().await;
 }
 
-pub fn report_assistant_suggestion(suggestion: AssistantSuggestion, reporter: &dyn Reporter) {
-    for line in suggestion.body.lines() {
-        reporter.info(line);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_assistant_menu_invocation() {
-        let parsed = parse_assistant_invocation("gerisabet").unwrap();
-        assert_eq!(parsed, Some(AssistantInvocation::Menu));
-    }
-
-    #[test]
-    fn parses_how_to_invocation_with_quotes() {
-        let parsed = parse_assistant_invocation("gerisabet --how-to \"listar archivos\"").unwrap();
-        assert_eq!(
-            parsed,
-            Some(AssistantInvocation::HowTo {
-                query: "listar archivos".to_owned()
-            })
-        );
-    }
-
-    #[test]
-    fn parses_show_me_invocation() {
-        let parsed = parse_assistant_invocation("gerisabet --show-me").unwrap();
-        assert_eq!(parsed, Some(AssistantInvocation::ShowMe));
-    }
-
-    #[test]
-    fn rejects_how_to_without_query() {
-        let parsed = parse_assistant_invocation("gerisabet --how-to");
-        assert!(parsed.is_err());
-    }
-
-    #[test]
-    fn rejects_show_me_with_extra_arguments() {
-        let parsed = parse_assistant_invocation("gerisabet --show-me now");
-        assert!(parsed.is_err());
-    }
-}

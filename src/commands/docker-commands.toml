@@ -1,0 +1,157 @@
+[meta]
+version     = "0.1.0"
+description = "GeliShell canonical command translation map for Docker and Git"
+
+# ══════════════════════════════════════════════
+# docker / containers & images
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "docker-run"
+description = "Create and run a new container from an image"
+category    = "docker"
+translate   = { bash = { exact = "docker run", suggestions = ["docker run -it ubuntu bash", "docker run -d -p 8080:80 nginx"] }, zsh = { exact = "docker run", suggestions = ["docker run -it ubuntu bash", "docker run -d -p 8080:80 nginx"] }, fish = { exact = "docker run", suggestions = ["docker run -it ubuntu bash", "docker run -d -p 8080:80 nginx"] }, powershell = { exact = "docker run", suggestions = ["docker run -it ubuntu bash", "docker run -d -p 8080:80 nginx"] }, cmd = { exact = "docker run", suggestions = ["docker run -it ubuntu bash", "docker run -d -p 8080:80 nginx"] } }
+
+[[commands.flags]]
+canonical  = "--detach"
+bash       = "-d"
+zsh        = "-d"
+fish       = "-d"
+powershell = "-d"
+cmd        = "-d"
+
+[[commands.flags]]
+canonical  = "--interactive-tty"
+bash       = "-it"
+zsh        = "-it"
+fish       = "-it"
+powershell = "-it"
+cmd        = "-it"
+
+[[commands.flags]]
+canonical  = "--publish"
+bash       = "-p"
+zsh        = "-p"
+fish       = "-p"
+powershell = "-p"
+cmd        = "-p"
+
+[[commands.flags]]
+canonical  = "--volume"
+bash       = "-v"
+zsh        = "-v"
+fish       = "-v"
+powershell = "-v"
+cmd        = "-v"
+
+[[commands.flags]]
+canonical  = "--name"
+bash       = "--name"
+zsh        = "--name"
+fish       = "--name"
+powershell = "--name"
+cmd        = "--name"
+
+[[commands.flags]]
+canonical  = "--rm"
+bash       = "--rm"
+zsh        = "--rm"
+fish       = "--rm"
+powershell = "--rm"
+cmd        = "--rm"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "docker-ps"
+description = "List containers"
+category    = "docker"
+translate   = { bash = { exact = "docker ps", suggestions = ["docker ps -a"] }, zsh = { exact = "docker ps", suggestions = ["docker ps -a"] }, fish = { exact = "docker ps", suggestions = ["docker ps -a"] }, powershell = { exact = "docker ps", suggestions = ["docker ps -a"] }, cmd = { exact = "docker ps", suggestions = ["docker ps -a"] } }
+
+[[commands.flags]]
+canonical  = "--all"
+bash       = "-a"
+zsh        = "-a"
+fish       = "-a"
+powershell = "-a"
+cmd        = "-a"
+
+[[commands.flags]]
+canonical  = "--quiet"
+bash       = "-q"
+zsh        = "-q"
+fish       = "-q"
+powershell = "-q"
+cmd        = "-q"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "docker-build"
+description = "Build an image from a Dockerfile"
+category    = "docker"
+translate   = { bash = { exact = "docker build", suggestions = ["docker build -t my-app ."] }, zsh = { exact = "docker build", suggestions = ["docker build -t my-app ."] }, fish = { exact = "docker build", suggestions = ["docker build -t my-app ."] }, powershell = { exact = "docker build", suggestions = ["docker build -t my-app ."] }, cmd = { exact = "docker build", suggestions = ["docker build -t my-app ."] } }
+
+[[commands.flags]]
+canonical  = "--tag"
+bash       = "-t"
+zsh        = "-t"
+fish       = "-t"
+powershell = "-t"
+cmd        = "-t"
+
+[[commands.flags]]
+canonical  = "--file"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"
+
+[[commands.flags]]
+canonical  = "--no-cache"
+bash       = "--no-cache"
+zsh        = "--no-cache"
+fish       = "--no-cache"
+powershell = "--no-cache"
+cmd        = "--no-cache"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "docker-stop"
+description = "Stop one or more running containers"
+category    = "docker"
+translate   = { bash = { exact = "docker stop", suggestions = ["docker stop <container>"] }, zsh = { exact = "docker stop", suggestions = ["docker stop <container>"] }, fish = { exact = "docker stop", suggestions = ["docker stop <container>"] }, powershell = { exact = "docker stop", suggestions = ["docker stop <container>"] }, cmd = { exact = "docker stop", suggestions = ["docker stop <container>"] } }
+
+[[commands.flags]]
+canonical  = "--time"
+bash       = "-t"
+zsh        = "-t"
+fish       = "-t"
+powershell = "-t"
+cmd        = "-t"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "docker-rm"
+description = "Remove one or more containers"
+category    = "docker"
+translate   = { bash = { exact = "docker rm", suggestions = ["docker rm -f <container>"] }, zsh = { exact = "docker rm", suggestions = ["docker rm -f <container>"] }, fish = { exact = "docker rm", suggestions = ["docker rm -f <container>"] }, powershell = { exact = "docker rm", suggestions = ["docker rm -f <container>"] }, cmd = { exact = "docker rm", suggestions = ["docker rm -f <container>"] } }
+
+[[commands.flags]]
+canonical  = "--force"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"
+
+[[commands.flags]]
+canonical  = "--volumes"
+bash       = "-v"
+zsh        = "-v"
+fish       = "-v"
+powershell = "-v"
+cmd        = "-v"

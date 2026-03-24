@@ -172,7 +172,7 @@ foreach ($Dir in @($BinDir, $ConfigRoot, $ModelsDir, $DocsDir)) {
 Write-Host ""
 Write-Step "installing GeliShell binary..."
 
-$BinarySource = Join-Path $ProjectRoot "target\release\geli_shell.exe"
+$BinarySource = Join-Path $ProjectRoot "target\release\geli.exe"
 if (-not (Test-Path $BinarySource)) {
     Write-Host ""
     Write-Warn "Binary not found at: $BinarySource"

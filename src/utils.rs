@@ -187,20 +187,3 @@ pub fn apply_visual_settings(config: &ShellConfig, reporter: &dyn Reporter) {
     }
 }
 
-pub fn strip_wrapping_quotes(input: &str) -> &str {
-    if input.len() < 2 {
-        return input;
-    }
-
-    let bytes = input.as_bytes();
-    let starts_with_double = bytes.first() == Some(&b'"');
-    let ends_with_double = bytes.last() == Some(&b'"');
-    let starts_with_single = bytes.first() == Some(&b'\'');
-    let ends_with_single = bytes.last() == Some(&b'\'');
-
-    if (starts_with_double && ends_with_double) || (starts_with_single && ends_with_single) {
-        &input[1..input.len() - 1]
-    } else {
-        input
-    }
-}

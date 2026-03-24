@@ -3,6 +3,14 @@ name = "geli_shell"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "geli"
+path = "src/main.rs"
+
+[[bin]]
+name = "gerisabet"
+path = "src/gerisabet.rs"
+
 [dependencies]
 thiserror = "2.0.18"
 serde = { version = "1.0.188", features = ["derive"] }

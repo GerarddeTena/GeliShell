@@ -1,0 +1,241 @@
+[meta]
+version     = "0.1.0"
+description = "GeliShell canonical command translation map for Cargo (Rust)"
+
+# ══════════════════════════════════════════════
+# cargo / scaffolding
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "cargo-new"
+description = "Create a new cargo package at <path>"
+category    = "cargo"
+translate   = { bash = { exact = "cargo new", suggestions = ["cargo new my_project"] }, zsh = { exact = "cargo new", suggestions = ["cargo new my_project"] }, fish = { exact = "cargo new", suggestions = ["cargo new my_project"] }, powershell = { exact = "cargo new", suggestions = ["cargo new my_project"] }, cmd = { exact = "cargo new", suggestions = ["cargo new my_project"] } }
+
+[[commands.flags]]
+canonical  = "--lib"
+bash       = "--lib"
+zsh        = "--lib"
+fish       = "--lib"
+powershell = "--lib"
+cmd        = "--lib"
+
+[[commands.flags]]
+canonical  = "--bin"
+bash       = "--bin"
+zsh        = "--bin"
+fish       = "--bin"
+powershell = "--bin"
+cmd        = "--bin"
+
+[[commands.flags]]
+canonical  = "--vcs"
+bash       = "--vcs"
+zsh        = "--vcs"
+fish       = "--vcs"
+powershell = "--vcs"
+cmd        = "--vcs"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-init"
+description = "Create a new cargo package in an existing directory"
+category    = "cargo"
+translate   = { bash = { exact = "cargo init", suggestions = ["cargo init"] }, zsh = { exact = "cargo init", suggestions = ["cargo init"] }, fish = { exact = "cargo init", suggestions = ["cargo init"] }, powershell = { exact = "cargo init", suggestions = ["cargo init"] }, cmd = { exact = "cargo init", suggestions = ["cargo init"] } }
+
+[[commands.flags]]
+canonical  = "--lib"
+bash       = "--lib"
+zsh        = "--lib"
+fish       = "--lib"
+powershell = "--lib"
+cmd        = "--lib"
+
+[[commands.flags]]
+canonical  = "--bin"
+bash       = "--bin"
+zsh        = "--bin"
+fish       = "--bin"
+powershell = "--bin"
+cmd        = "--bin"
+
+# ══════════════════════════════════════════════
+# cargo / dependencies
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "cargo-add"
+description = "Add dependencies to a Cargo.toml manifest file"
+category    = "cargo"
+translate   = { bash = { exact = "cargo add", suggestions = ["cargo add serde", "cargo add tokio -F full"] }, zsh = { exact = "cargo add", suggestions = ["cargo add serde", "cargo add tokio -F full"] }, fish = { exact = "cargo add", suggestions = ["cargo add serde", "cargo add tokio -F full"] }, powershell = { exact = "cargo add", suggestions = ["cargo add serde", "cargo add tokio -F full"] }, cmd = { exact = "cargo add", suggestions = ["cargo add serde", "cargo add tokio -F full"] } }
+
+[[commands.flags]]
+canonical  = "--dev"
+bash       = "--dev"
+zsh        = "--dev"
+fish       = "--dev"
+powershell = "--dev"
+cmd        = "--dev"
+
+[[commands.flags]]
+canonical  = "--build"
+bash       = "--build"
+zsh        = "--build"
+fish       = "--build"
+powershell = "--build"
+cmd        = "--build"
+
+[[commands.flags]]
+canonical  = "--features"
+bash       = "-F"
+zsh        = "-F"
+fish       = "-F"
+powershell = "-F"
+cmd        = "-F"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-update"
+description = "Update dependencies as recorded in the local lock file"
+category    = "cargo"
+translate   = { bash = { exact = "cargo update", suggestions = ["cargo update"] }, zsh = { exact = "cargo update", suggestions = ["cargo update"] }, fish = { exact = "cargo update", suggestions = ["cargo update"] }, powershell = { exact = "cargo update", suggestions = ["cargo update"] }, cmd = { exact = "cargo update", suggestions = ["cargo update"] } }
+
+[[commands.flags]]
+canonical  = "--package"
+bash       = "-p"
+zsh        = "-p"
+fish       = "-p"
+powershell = "-p"
+cmd        = "-p"
+
+[[commands.flags]]
+canonical  = "--dry-run"
+bash       = "--dry-run"
+zsh        = "--dry-run"
+fish       = "--dry-run"
+powershell = "--dry-run"
+cmd        = "--dry-run"
+
+# ══════════════════════════════════════════════
+# cargo / build & execution
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "cargo-check"
+description = "Analyze the current package and report errors, but don't build object files"
+category    = "cargo"
+translate   = { bash = { exact = "cargo check", suggestions = ["cargo check"] }, zsh = { exact = "cargo check", suggestions = ["cargo check"] }, fish = { exact = "cargo check", suggestions = ["cargo check"] }, powershell = { exact = "cargo check", suggestions = ["cargo check"] }, cmd = { exact = "cargo check", suggestions = ["cargo check"] } }
+
+[[commands.flags]]
+canonical  = "--release"
+bash       = "--release"
+zsh        = "--release"
+fish       = "--release"
+powershell = "--release"
+cmd        = "--release"
+
+[[commands.flags]]
+canonical  = "--all-features"
+bash       = "--all-features"
+zsh        = "--all-features"
+fish       = "--all-features"
+powershell = "--all-features"
+cmd        = "--all-features"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-build"
+description = "Compile the current package"
+category    = "cargo"
+translate   = { bash = { exact = "cargo build", suggestions = ["cargo build --release"] }, zsh = { exact = "cargo build", suggestions = ["cargo build --release"] }, fish = { exact = "cargo build", suggestions = ["cargo build --release"] }, powershell = { exact = "cargo build", suggestions = ["cargo build --release"] }, cmd = { exact = "cargo build", suggestions = ["cargo build --release"] } }
+
+[[commands.flags]]
+canonical  = "--release"
+bash       = "--release"
+zsh        = "--release"
+fish       = "--release"
+powershell = "--release"
+cmd        = "--release"
+
+[[commands.flags]]
+canonical  = "--target"
+bash       = "--target"
+zsh        = "--target"
+fish       = "--target"
+powershell = "--target"
+cmd        = "--target"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-run"
+description = "Run a binary or example of the local package"
+category    = "cargo"
+translate   = { bash = { exact = "cargo run", suggestions = ["cargo run --release"] }, zsh = { exact = "cargo run", suggestions = ["cargo run --release"] }, fish = { exact = "cargo run", suggestions = ["cargo run --release"] }, powershell = { exact = "cargo run", suggestions = ["cargo run --release"] }, cmd = { exact = "cargo run", suggestions = ["cargo run --release"] } }
+
+[[commands.flags]]
+canonical  = "--release"
+bash       = "--release"
+zsh        = "--release"
+fish       = "--release"
+powershell = "--release"
+cmd        = "--release"
+
+[[commands.flags]]
+canonical  = "--example"
+bash       = "--example"
+zsh        = "--example"
+fish       = "--example"
+powershell = "--example"
+cmd        = "--example"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-test"
+description = "Execute all unit and integration tests and build examples of a local package"
+category    = "cargo"
+translate   = { bash = { exact = "cargo test", suggestions = ["cargo test"] }, zsh = { exact = "cargo test", suggestions = ["cargo test"] }, fish = { exact = "cargo test", suggestions = ["cargo test"] }, powershell = { exact = "cargo test", suggestions = ["cargo test"] }, cmd = { exact = "cargo test", suggestions = ["cargo test"] } }
+
+[[commands.flags]]
+canonical  = "--release"
+bash       = "--release"
+zsh        = "--release"
+fish       = "--release"
+powershell = "--release"
+cmd        = "--release"
+
+[[commands.flags]]
+canonical  = "--doc"
+bash       = "--doc"
+zsh        = "--doc"
+fish       = "--doc"
+powershell = "--doc"
+cmd        = "--doc"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "cargo-clean"
+description = "Remove the target directory"
+category    = "cargo"
+translate   = { bash = { exact = "cargo clean", suggestions = ["cargo clean"] }, zsh = { exact = "cargo clean", suggestions = ["cargo clean"] }, fish = { exact = "cargo clean", suggestions = ["cargo clean"] }, powershell = { exact = "cargo clean", suggestions = ["cargo clean"] }, cmd = { exact = "cargo clean", suggestions = ["cargo clean"] } }
+
+[[commands.flags]]
+canonical  = "--release"
+bash       = "--release"
+zsh        = "--release"
+fish       = "--release"
+powershell = "--release"
+cmd        = "--release"
+
+[[commands.flags]]
+canonical  = "--package"
+bash       = "-p"
+zsh        = "-p"
+fish       = "-p"
+powershell = "-p"
+cmd        = "-p"

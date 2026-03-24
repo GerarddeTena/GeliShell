@@ -1,12 +1,20 @@
 mod cli;
-mod handlers;
 mod repl;
 mod setup;
 mod utils;
 
+mod handlers {
+    #[path = "command.rs"]
+    pub mod command;
+    #[path = "geli_internal.rs"]
+    pub mod geli_internal;
+    #[path = "menu.rs"]
+    pub mod menu;
+}
+
+
 use cli::handle_cli_args;
 use geli_shell::shell::{
-    assistant::AssistantRuntime,
     builtins::BuiltinRegistry,
     executor::Executor,
     guard::default_guard,
@@ -52,8 +60,6 @@ async fn main() {
     let guard = Box::new(default_guard());
     let exec_config = config.to_executor_config();
     let builtins = BuiltinRegistry::new();
-    let assistant = AssistantRuntime::new(&config);
-
     apply_visual_settings(&config, &reporter);
 
     reporter.info("GeliShell ready");
@@ -71,7 +77,6 @@ async fn main() {
         exec_config,
         guard,
         builtins,
-        assistant,
         &reporter,
     )
     .await;

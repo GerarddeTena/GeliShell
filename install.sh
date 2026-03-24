@@ -73,8 +73,8 @@ echo ""
 
 OS="$(uname -s)"
 case "$OS" in
-    Linux*)  PLATFORM="linux"; VEC0_EXT="so";    BINARY_NAME="geli_shell" ;;
-    Darwin*) PLATFORM="macos"; VEC0_EXT="dylib"; BINARY_NAME="geli_shell" ;;
+    Linux*)  PLATFORM="linux"; VEC0_EXT="so";    BINARY_NAME="geli" ;;
+    Darwin*) PLATFORM="macos"; VEC0_EXT="dylib"; BINARY_NAME="geli" ;;
     *)       fail "Unsupported OS: $OS" ;;
 esac
 info "platform: $PLATFORM"

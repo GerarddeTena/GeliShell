@@ -1,0 +1,177 @@
+# ══════════════════════════════════════════════
+# git / version control
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "git-clone"
+description = "Clone a repository into a new directory"
+category    = "git"
+translate   = { bash = { exact = "git clone", suggestions = ["git clone <url>"] }, zsh = { exact = "git clone", suggestions = ["git clone <url>"] }, fish = { exact = "git clone", suggestions = ["git clone <url>"] }, powershell = { exact = "git clone", suggestions = ["git clone <url>"] }, cmd = { exact = "git clone", suggestions = ["git clone <url>"] } }
+
+[[commands.flags]]
+canonical  = "--depth"
+bash       = "--depth"
+zsh        = "--depth"
+fish       = "--depth"
+powershell = "--depth"
+cmd        = "--depth"
+
+[[commands.flags]]
+canonical  = "--branch"
+bash       = "-b"
+zsh        = "-b"
+fish       = "-b"
+powershell = "-b"
+cmd        = "-b"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-status"
+description = "Show the working tree status"
+category    = "git"
+translate   = { bash = { exact = "git status", suggestions = ["git status -s"] }, zsh = { exact = "git status", suggestions = ["git status -s"] }, fish = { exact = "git status", suggestions = ["git status -s"] }, powershell = { exact = "git status", suggestions = ["git status -s"] }, cmd = { exact = "git status", suggestions = ["git status -s"] } }
+
+[[commands.flags]]
+canonical  = "--short"
+bash       = "-s"
+zsh        = "-s"
+fish       = "-s"
+powershell = "-s"
+cmd        = "-s"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-add"
+description = "Add file contents to the index"
+category    = "git"
+translate   = { bash = { exact = "git add", suggestions = ["git add .", "git add -p"] }, zsh = { exact = "git add", suggestions = ["git add .", "git add -p"] }, fish = { exact = "git add", suggestions = ["git add .", "git add -p"] }, powershell = { exact = "git add", suggestions = ["git add .", "git add -p"] }, cmd = { exact = "git add", suggestions = ["git add .", "git add -p"] } }
+
+[[commands.flags]]
+canonical  = "--all"
+bash       = "-A"
+zsh        = "-A"
+fish       = "-A"
+powershell = "-A"
+cmd        = "-A"
+
+[[commands.flags]]
+canonical  = "--patch"
+bash       = "-p"
+zsh        = "-p"
+fish       = "-p"
+powershell = "-p"
+cmd        = "-p"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-commit"
+description = "Record changes to the repository"
+category    = "git"
+translate   = { bash = { exact = "git commit", suggestions = ["git commit -m 'message'", "git commit --amend"] }, zsh = { exact = "git commit", suggestions = ["git commit -m 'message'", "git commit --amend"] }, fish = { exact = "git commit", suggestions = ["git commit -m 'message'", "git commit --amend"] }, powershell = { exact = "git commit", suggestions = ["git commit -m 'message'", "git commit --amend"] }, cmd = { exact = "git commit", suggestions = ["git commit -m 'message'", "git commit --amend"] } }
+
+[[commands.flags]]
+canonical  = "--message"
+bash       = "-m"
+zsh        = "-m"
+fish       = "-m"
+powershell = "-m"
+cmd        = "-m"
+
+[[commands.flags]]
+canonical  = "--all"
+bash       = "-a"
+zsh        = "-a"
+fish       = "-a"
+powershell = "-a"
+cmd        = "-a"
+
+[[commands.flags]]
+canonical  = "--amend"
+bash       = "--amend"
+zsh        = "--amend"
+fish       = "--amend"
+powershell = "--amend"
+cmd        = "--amend"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-push"
+description = "Update remote refs along with associated objects"
+category    = "git"
+translate   = { bash = { exact = "git push", suggestions = ["git push origin main"] }, zsh = { exact = "git push", suggestions = ["git push origin main"] }, fish = { exact = "git push", suggestions = ["git push origin main"] }, powershell = { exact = "git push", suggestions = ["git push origin main"] }, cmd = { exact = "git push", suggestions = ["git push origin main"] } }
+
+[[commands.flags]]
+canonical  = "--force"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"
+
+[[commands.flags]]
+canonical  = "--set-upstream"
+bash       = "-u"
+zsh        = "-u"
+fish       = "-u"
+powershell = "-u"
+cmd        = "-u"
+
+[[commands.flags]]
+canonical  = "--tags"
+bash       = "--tags"
+zsh        = "--tags"
+fish       = "--tags"
+powershell = "--tags"
+cmd        = "--tags"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-pull"
+description = "Fetch from and integrate with another repository or a local branch"
+category    = "git"
+translate   = { bash = { exact = "git pull", suggestions = ["git pull origin main"] }, zsh = { exact = "git pull", suggestions = ["git pull origin main"] }, fish = { exact = "git pull", suggestions = ["git pull origin main"] }, powershell = { exact = "git pull", suggestions = ["git pull origin main"] }, cmd = { exact = "git pull", suggestions = ["git pull origin main"] } }
+
+[[commands.flags]]
+canonical  = "--rebase"
+bash       = "--rebase"
+zsh        = "--rebase"
+fish       = "--rebase"
+powershell = "--rebase"
+cmd        = "--rebase"
+
+[[commands.flags]]
+canonical  = "--ff-only"
+bash       = "--ff-only"
+zsh        = "--ff-only"
+fish       = "--ff-only"
+powershell = "--ff-only"
+cmd        = "--ff-only"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "git-checkout"
+description = "Switch branches or restore working tree files"
+category    = "git"
+translate   = { bash = { exact = "git checkout", suggestions = ["git checkout -b new-branch"] }, zsh = { exact = "git checkout", suggestions = ["git checkout -b new-branch"] }, fish = { exact = "git checkout", suggestions = ["git checkout -b new-branch"] }, powershell = { exact = "git checkout", suggestions = ["git checkout -b new-branch"] }, cmd = { exact = "git checkout", suggestions = ["git checkout -b new-branch"] } }
+
+[[commands.flags]]
+canonical  = "--branch"
+bash       = "-b"
+zsh        = "-b"
+fish       = "-b"
+powershell = "-b"
+cmd        = "-b"
+
+[[commands.flags]]
+canonical  = "--force"
+bash       = "-f"
+zsh        = "-f"
+fish       = "-f"
+powershell = "-f"
+cmd        = "-f"

@@ -24,6 +24,13 @@ use std::io::{self, Write, stdout};
 
 pub use self::error::ShowMeError;
 
+pub(crate) fn resolve_placeholders_for_tui(
+    command: &str,
+    stdout: &mut impl Write,
+) -> Result<String, ShowMeError> {
+    resolve_placeholders(command, stdout)
+}
+
 const MODAL_HEIGHT: u16 = 16;
 const MAX_MODAL_ROWS: usize = 8;
 
@@ -656,6 +663,10 @@ fn truncate(value: &str, max: usize) -> String {
 
 fn terminal_error(error: io::Error) -> ShowMeError {
     ShowMeError::Terminal(error.to_string())
+}
+
+pub(crate) fn subsystem_matches_for_tui(entry_subsystem: &str, active_subsystem: &str) -> bool {
+    subsystem_matches(entry_subsystem, active_subsystem)
 }
 
 fn subsystem_matches(entry_subsystem: &str, active_subsystem: &str) -> bool {

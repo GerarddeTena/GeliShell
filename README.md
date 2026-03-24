@@ -335,7 +335,7 @@ cargo run
 O binario ya compilado:
 
 ```powershell
-.\target\debug\geli_shell.exe
+.\target\debug\geli.exe
 ```
 
 ### Forzar subsistema

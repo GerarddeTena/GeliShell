@@ -1,0 +1,85 @@
+[meta]
+name = "git"
+description = "Git version control commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "clone repository"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git clone <RepoUrl>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "git clone <RepoUrl>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "git clone <RepoUrl>"
+
+[[ops]]
+operation = "stage changes"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git add <Path>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "git add <Path>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "git add <Path>"
+
+[[ops]]
+operation = "commit"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git commit -m \"<Message>\""
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "git commit -m \"<Message>\""
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "git commit -m \"<Message>\""
+
+[[ops]]
+operation = "rebase branch"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git rebase <BaseBranch>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "git rebase <BaseBranch>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "git rebase <BaseBranch>"
+
+[[ops]]
+operation = "recover file"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git restore --source <Ref> -- <Path>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "git restore --source <Ref> -- <Path>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "git restore --source <Ref> -- <Path>"
+

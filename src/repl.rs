@@ -1,10 +1,8 @@
-use crate::handlers::assistant::{handle_assistant, handle_assistant_how_to, handle_assistant_show_me, parse_assistant_invocation, AssistantInvocation};
 use crate::handlers::command::{drain_crossterm_events, process_regular_command};
 use crate::handlers::geli_internal::{handle_geli_internal_command, parse_geli_internal_command};
 use crate::handlers::menu::{handle_config_menu, handle_help_menu, handle_special_command, is_config_trigger, is_help_trigger, run_clear};
 use crate::utils::{append_history_or_warn, build_completion_pool, render_prompt};
 use geli_shell::shell::{
-    assistant::AssistantRuntime,
     builtins::BuiltinRegistry,
     config::{history_store::PersistentCommandHistory, ShellConfig},
     executor::{ExecutionConfig as ExecutorConfig, Executor},
@@ -25,13 +23,11 @@ pub async fn run_repl(
     exec_config: ExecutorConfig,
     guard: Box<dyn Guard>,
     mut builtins: BuiltinRegistry,
-    mut assistant: AssistantRuntime,
     reporter: &dyn Reporter,
 ) {
     let mut completion_pool = build_completion_pool(map.as_ref(), &config);
 
     loop {
-        assistant.sweep_idle_resources();
         let g_jump_paths = builtins.g_completion_paths(64);
         let prompt = render_prompt(&subsystem, &config.visual);
         let input = match read_repl_input(
@@ -55,12 +51,12 @@ pub async fn run_repl(
             Ok(ReplInputAction::OpenConfig) => {
                 if handle_config_menu(&mut config, reporter).await {
                     completion_pool = build_completion_pool(map.as_ref(), &config);
-                    assistant.refresh_config(&config);
                 }
                 continue;
             }
             Ok(ReplInputAction::OpenAssistant) => {
-                handle_assistant(&mut assistant, &config, reporter).await;
+                reporter.warn("assistant is now provided by the gerisabet binary");
+                reporter.info("run: gerisabet --help");
                 continue;
             }
             Ok(ReplInputAction::Clear) => {
@@ -103,51 +99,8 @@ pub async fn run_repl(
                 }
             } else if handle_config_menu(&mut config, reporter).await {
                 completion_pool = build_completion_pool(map.as_ref(), &config);
-                assistant.refresh_config(&config);
             }
             continue;
-        }
-        match parse_assistant_invocation(&input) {
-            Ok(Some(AssistantInvocation::Menu)) => {
-                append_history_or_warn(&mut command_history, &input, reporter).await;
-                handle_assistant(&mut assistant, &config, reporter).await;
-                continue;
-            }
-            Ok(Some(AssistantInvocation::HowTo { query })) => {
-                append_history_or_warn(&mut command_history, &input, reporter).await;
-                handle_assistant_how_to(
-                    &mut assistant,
-                    &config,
-                    &subsystem,
-                    guard.as_ref(),
-                    &executor,
-                    &exec_config,
-                    &builtins,
-                    reporter,
-                    &query,
-                )
-                .await;
-                continue;
-            }
-            Ok(Some(AssistantInvocation::ShowMe)) => {
-                append_history_or_warn(&mut command_history, &input, reporter).await;
-                handle_assistant_show_me(
-                    &subsystem,
-                    guard.as_ref(),
-                    &executor,
-                    &exec_config,
-                    &builtins,
-                    reporter,
-                    &config.visual,
-                )
-                .await;
-                continue;
-            }
-            Ok(None) => {}
-            Err(error) => {
-                reporter.error(&error);
-                continue;
-            }
         }
 
         if let Some(special) = parse_special_command(&input) {
@@ -160,12 +113,6 @@ pub async fn run_repl(
             handle_geli_internal_command(
                 action,
                 &mut config,
-                &mut assistant,
-                &subsystem,
-                guard.as_ref(),
-                &executor,
-                &exec_config,
-                &builtins,
                 reporter,
             )
             .await;

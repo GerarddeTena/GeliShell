@@ -1,0 +1,85 @@
+[meta]
+name = "docker"
+description = "Docker container commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "pull image"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker pull <Image>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker pull <Image>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker pull <Image>"
+
+[[ops]]
+operation = "run container"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
+
+[[ops]]
+operation = "list containers"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker ps -a"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker ps -a"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker ps -a"
+
+[[ops]]
+operation = "build image"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker build -t <Tag> ."
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker build -t <Tag> ."
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker build -t <Tag> ."
+
+[[ops]]
+operation = "remove dangling images"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker image prune -f"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker image prune -f"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker image prune -f"
+

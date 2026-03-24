@@ -1,0 +1,85 @@
+[meta]
+name = "dotnet"
+description = ".NET CLI commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "create project"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet new console -n <ProjectName>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet new console -n <ProjectName>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet new console -n <ProjectName>"
+
+[[ops]]
+operation = "restore"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet restore"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet restore"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet restore"
+
+[[ops]]
+operation = "build"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet build -c Release"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet build -c Release"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet build -c Release"
+
+[[ops]]
+operation = "run tests"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
+
+[[ops]]
+operation = "publish app"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
+
