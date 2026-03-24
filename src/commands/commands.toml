@@ -658,3 +658,10 @@ zsh        = "-czf"
 fish       = "-czf"
 powershell = "-Path"
 cmd        = "-czf"
+
+# ──────────────────────────────────────────────
+[[commands]]
+name = "list all"
+description = "List all files in the translation map with linux custom command"
+category = "dev"
+translate = { bash = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, zsh = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, fish = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, powershell = { exact = "Get-ChildItem", suggestions = ["Get-ChildItem -Force", "dir", "ls"] }, cmd = { exact = "dir", suggestions = ["dir /a", "dir /w"] } }
