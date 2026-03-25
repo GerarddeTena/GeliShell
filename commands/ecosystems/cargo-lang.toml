@@ -1,0 +1,85 @@
+[meta]
+name = "cargo"
+description = "Rust and Cargo commands"
+levels = ["beginner", "intermediate", "advanced"]
+
+[[ops]]
+operation = "create project"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo new <ProjectName>"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo new <ProjectName>"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo new <ProjectName>"
+
+[[ops]]
+operation = "check project"
+level = "beginner"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo check"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo check"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo check"
+
+[[ops]]
+operation = "run tests"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo test -- --nocapture"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo test -- --nocapture"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo test -- --nocapture"
+
+[[ops]]
+operation = "format code"
+level = "intermediate"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo fmt --all"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo fmt --all"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo fmt --all"
+
+[[ops]]
+operation = "audit dependencies"
+level = "advanced"
+
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo audit"
+
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo audit"
+
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo audit"
+
