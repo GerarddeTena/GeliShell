@@ -3,83 +3,205 @@ name = "npm"
 description = "Node.js and npm commands"
 levels = ["beginner", "intermediate", "advanced"]
 
+# --- BEGINNER ---
+
 [[ops]]
-operation = "initialize package"
+operation = "init project"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "npm init -y"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "npm init -y"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "npm init -y"
 
 [[ops]]
-operation = "install dependency"
+operation = "install package"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "npm install <PackageName>"
-
+command = "npm install <Package>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "npm install <PackageName>"
-
+command = "npm install <Package>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "npm install <PackageName>"
+command = "npm install <Package>"
 
 [[ops]]
-operation = "run script"
+operation = "install dev dependency"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm install -D <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm install -D <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm install -D <Package>"
+
+[[ops]]
+operation = "start script"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm start"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm start"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm start"
+
+[[ops]]
+operation = "test script"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm test"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm test"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm test"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "run custom script"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "npm run <ScriptName>"
-
+command = "npm run <Script>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "npm run <ScriptName>"
-
+command = "npm run <Script>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "npm run <ScriptName>"
+command = "npm run <Script>"
 
 [[ops]]
-operation = "update packages"
+operation = "update all packages"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "npm update"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "npm update"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "npm update"
 
 [[ops]]
-operation = "run audit fix"
+operation = "list installed"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm list --depth=0"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm list --depth=0"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm list --depth=0"
+
+[[ops]]
+operation = "check outdated"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm outdated"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm outdated"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm outdated"
+
+[[ops]]
+operation = "clean install (ci)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm ci"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm ci"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm ci"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "publish (public)"
 level = "advanced"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "npm audit fix --force"
-
+command = "npm publish --access public"
 [[ops.commands]]
 subsystem = "powershell"
-command = "npm audit fix --force"
-
+command = "npm publish --access public"
 [[ops.commands]]
 subsystem = "cmd"
-command = "npm audit fix --force"
+command = "npm publish --access public"
+
+[[ops]]
+operation = "audit fix"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm audit fix"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm audit fix"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm audit fix"
+
+[[ops]]
+operation = "version bump"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm version patch"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm version patch"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm version patch"
+
+[[ops]]
+operation = "link local package"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm link <PackageFolder>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm link <PackageFolder>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm link <PackageFolder>"
+
+[[ops]]
+operation = "clear cache"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "npm cache clean --force"
+[[ops.commands]]
+subsystem = "powershell"
+command = "npm cache clean --force"
+[[ops.commands]]
+subsystem = "cmd"
+command = "npm cache clean --force"
+
 

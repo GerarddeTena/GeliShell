@@ -3,83 +3,231 @@ name = "docker"
 description = "Docker container commands"
 levels = ["beginner", "intermediate", "advanced"]
 
+# --- BEGINNER ---
+
+[[ops]]
+operation = "run container interactive"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker run -it <ImageName> bash"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker run -it <ImageName> bash"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker run -it <ImageName> bash"
+
+[[ops]]
+operation = "run container detached"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker run -d --name <Name> <ImageName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker run -d --name <Name> <ImageName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker run -d --name <Name> <ImageName>"
+
+[[ops]]
+operation = "list running containers"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker ps"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker ps"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker ps"
+
+[[ops]]
+operation = "list all containers"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker ps -a"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker ps -a"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker ps -a"
+
 [[ops]]
 operation = "pull image"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "docker pull <Image>"
-
+command = "docker pull <ImageName>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "docker pull <Image>"
-
+command = "docker pull <ImageName>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "docker pull <Image>"
+command = "docker pull <ImageName>"
+
+# --- INTERMEDIATE ---
 
 [[ops]]
-operation = "run container"
-level = "beginner"
-
+operation = "stop container"
+level = "intermediate"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
-
+command = "docker stop <ContainerID>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
-
+command = "docker stop <ContainerID>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "docker run -d --name <ContainerName> -p <HostPort>:<ContainerPort> <Image>"
+command = "docker stop <ContainerID>"
 
 [[ops]]
-operation = "list containers"
-level = "beginner"
-
+operation = "remove container"
+level = "intermediate"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "docker ps -a"
-
+command = "docker rm <ContainerID>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "docker ps -a"
-
+command = "docker rm <ContainerID>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "docker ps -a"
+command = "docker rm <ContainerID>"
+
+[[ops]]
+operation = "remove image"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker rmi <ImageName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker rmi <ImageName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker rmi <ImageName>"
+
+[[ops]]
+operation = "view logs"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker logs -f <ContainerID>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker logs -f <ContainerID>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker logs -f <ContainerID>"
+
+[[ops]]
+operation = "execute command"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker exec -it <ContainerID> <Command>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker exec -it <ContainerID> <Command>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker exec -it <ContainerID> <Command>"
 
 [[ops]]
 operation = "build image"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "docker build -t <Tag> ."
-
+command = "docker build -t <TagName> ."
 [[ops.commands]]
 subsystem = "powershell"
-command = "docker build -t <Tag> ."
-
+command = "docker build -t <TagName> ."
 [[ops.commands]]
 subsystem = "cmd"
-command = "docker build -t <Tag> ."
+command = "docker build -t <TagName> ."
+
+# --- ADVANCED ---
 
 [[ops]]
-operation = "remove dangling images"
+operation = "prune system"
 level = "advanced"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "docker image prune -f"
-
+command = "docker system prune -a"
 [[ops.commands]]
 subsystem = "powershell"
-command = "docker image prune -f"
-
+command = "docker system prune -a"
 [[ops.commands]]
 subsystem = "cmd"
-command = "docker image prune -f"
+command = "docker system prune -a"
+
+[[ops]]
+operation = "inspect object"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker inspect <ID>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker inspect <ID>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker inspect <ID>"
+
+[[ops]]
+operation = "list networks"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker network ls"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker network ls"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker network ls"
+
+[[ops]]
+operation = "manage volumes"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker volume ls"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker volume ls"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker volume ls"
+
+[[ops]]
+operation = "compose up"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker compose up -d"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker compose up -d"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker compose up -d"
+
+[[ops]]
+operation = "compose down"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "docker compose down"
+[[ops.commands]]
+subsystem = "powershell"
+command = "docker compose down"
+[[ops.commands]]
+subsystem = "cmd"
+command = "docker compose down"
+
 

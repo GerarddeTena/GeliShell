@@ -3,83 +3,231 @@ name = "dotnet"
 description = ".NET CLI commands"
 levels = ["beginner", "intermediate", "advanced"]
 
+# --- BEGINNER ---
+
 [[ops]]
-operation = "create project"
+operation = "new console app"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "dotnet new console -n <ProjectName>"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "dotnet new console -n <ProjectName>"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "dotnet new console -n <ProjectName>"
 
 [[ops]]
-operation = "restore"
+operation = "new class library"
 level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet new classlib -n <ProjectName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet new classlib -n <ProjectName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet new classlib -n <ProjectName>"
 
+[[ops]]
+operation = "restore packages"
+level = "beginner"
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "dotnet restore"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "dotnet restore"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "dotnet restore"
 
 [[ops]]
-operation = "build"
+operation = "build project"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet build"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet build"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet build"
+
+[[ops]]
+operation = "run project"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet run"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet run"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet run"
+
+[[ops]]
+operation = "test project"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet test"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet test"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet test"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "add package"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "dotnet build -c Release"
-
+command = "dotnet add package <PackageName>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "dotnet build -c Release"
-
+command = "dotnet add package <PackageName>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "dotnet build -c Release"
+command = "dotnet add package <PackageName>"
 
 [[ops]]
-operation = "run tests"
+operation = "add reference"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
-
+command = "dotnet add reference <ProjectPath>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
-
+command = "dotnet add reference <ProjectPath>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "dotnet test --filter \"FullyQualifiedName~<TestName>\""
+command = "dotnet add reference <ProjectPath>"
 
 [[ops]]
-operation = "publish app"
+operation = "new solution"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet new sln -n <SolutionName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet new sln -n <SolutionName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet new sln -n <SolutionName>"
+
+[[ops]]
+operation = "add to solution"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet sln add <ProjectPath>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet sln add <ProjectPath>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet sln add <ProjectPath>"
+
+[[ops]]
+operation = "clean artifacts"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet clean"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet clean"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet clean"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "publish release"
 level = "advanced"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
-
+command = "dotnet publish -c Release"
 [[ops.commands]]
 subsystem = "powershell"
-command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
-
+command = "dotnet publish -c Release"
 [[ops.commands]]
 subsystem = "cmd"
-command = "dotnet publish -c Release -r <RuntimeId> --self-contained false"
+command = "dotnet publish -c Release"
+
+[[ops]]
+operation = "pack nuget"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet pack -c Release"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet pack -c Release"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet pack -c Release"
+
+[[ops]]
+operation = "install global tool"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet tool install -g <ToolName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet tool install -g <ToolName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet tool install -g <ToolName>"
+
+[[ops]]
+operation = "list global tools"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet tool list -g"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet tool list -g"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet tool list -g"
+
+[[ops]]
+operation = "ef migrations add"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet ef migrations add <Name>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet ef migrations add <Name>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet ef migrations add <Name>"
+
+[[ops]]
+operation = "ef database update"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "dotnet ef database update"
+[[ops.commands]]
+subsystem = "powershell"
+command = "dotnet ef database update"
+[[ops.commands]]
+subsystem = "cmd"
+command = "dotnet ef database update"
+
 

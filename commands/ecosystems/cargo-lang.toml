@@ -3,83 +3,283 @@ name = "cargo"
 description = "Rust and Cargo commands"
 levels = ["beginner", "intermediate", "advanced"]
 
-[[ops]]
-operation = "create project"
-level = "beginner"
+# --- BEGINNER ---
 
+[[ops]]
+operation = "new binary project"
+level = "beginner"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "cargo new <ProjectName>"
-
+command = "cargo new <ProjectName> --bin"
 [[ops.commands]]
 subsystem = "powershell"
-command = "cargo new <ProjectName>"
-
+command = "cargo new <ProjectName> --bin"
 [[ops.commands]]
 subsystem = "cmd"
-command = "cargo new <ProjectName>"
+command = "cargo new <ProjectName> --bin"
 
 [[ops]]
-operation = "check project"
+operation = "new library project"
 level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo new <ProjectName> --lib"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo new <ProjectName> --lib"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo new <ProjectName> --lib"
 
+[[ops]]
+operation = "check (fast compile)"
+level = "beginner"
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "cargo check"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "cargo check"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "cargo check"
 
 [[ops]]
-operation = "run tests"
+operation = "build (debug)"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo build"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo build"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo build"
+
+[[ops]]
+operation = "run (debug)"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo run"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo run"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo run"
+
+[[ops]]
+operation = "test all"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo test"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo test"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo test"
+
+[[ops]]
+operation = "add dependency"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo add <Dependency>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo add <Dependency>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo add <Dependency>"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "build release"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "cargo test -- --nocapture"
-
+command = "cargo build --release"
 [[ops.commands]]
 subsystem = "powershell"
-command = "cargo test -- --nocapture"
-
+command = "cargo build --release"
 [[ops.commands]]
 subsystem = "cmd"
-command = "cargo test -- --nocapture"
+command = "cargo build --release"
+
+[[ops]]
+operation = "run release"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo run --release"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo run --release"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo run --release"
 
 [[ops]]
 operation = "format code"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "cargo fmt --all"
-
+command = "cargo fmt"
 [[ops.commands]]
 subsystem = "powershell"
-command = "cargo fmt --all"
-
+command = "cargo fmt"
 [[ops.commands]]
 subsystem = "cmd"
-command = "cargo fmt --all"
+command = "cargo fmt"
 
 [[ops]]
-operation = "audit dependencies"
-level = "advanced"
+operation = "format check"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo fmt -- --check"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo fmt -- --check"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo fmt -- --check"
 
+[[ops]]
+operation = "lint (clippy)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo clippy"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo clippy"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo clippy"
+
+[[ops]]
+operation = "clean target"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo clean"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo clean"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo clean"
+
+[[ops]]
+operation = "update dependencies"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo update"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo update"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo update"
+
+[[ops]]
+operation = "documentation (open)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo doc --open"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo doc --open"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo doc --open"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "publish to crates.io"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo publish"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo publish"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo publish"
+
+[[ops]]
+operation = "install binary"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo install <CrateName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo install <CrateName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo install <CrateName>"
+
+[[ops]]
+operation = "audit security"
+level = "advanced"
 [[ops.commands]]
 subsystem = "bash/zsh"
 command = "cargo audit"
-
 [[ops.commands]]
 subsystem = "powershell"
 command = "cargo audit"
-
 [[ops.commands]]
 subsystem = "cmd"
 command = "cargo audit"
+
+[[ops]]
+operation = "expand macros"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo expand"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo expand"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo expand"
+
+[[ops]]
+operation = "dependency tree"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo tree"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo tree"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo tree"
+
+[[ops]]
+operation = "workspace build"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "cargo build --workspace"
+[[ops.commands]]
+subsystem = "powershell"
+command = "cargo build --workspace"
+[[ops.commands]]
+subsystem = "cmd"
+command = "cargo build --workspace"
+
 

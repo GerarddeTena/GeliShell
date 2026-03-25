@@ -1,85 +1,207 @@
 [meta]
 name = "python"
-description = "Python packaging and testing commands"
+description = "Python packaging and related commands"
 levels = ["beginner", "intermediate", "advanced"]
 
-[[ops]]
-operation = "create virtualenv"
-level = "beginner"
+# --- BEGINNER ---
 
+[[ops]]
+operation = "run script"
+level = "beginner"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "python -m venv <EnvDir>"
-
+command = "python <Script>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "python -m venv <EnvDir>"
-
+command = "python <Script>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "python -m venv <EnvDir>"
+command = "python <Script>"
+
+[[ops]]
+operation = "create venv"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "python -m venv venv"
+[[ops.commands]]
+subsystem = "powershell"
+command = "python -m venv venv"
+[[ops.commands]]
+subsystem = "cmd"
+command = "python -m venv venv"
+
+[[ops]]
+operation = "install package"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pip install <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pip install <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pip install <Package>"
 
 [[ops]]
 operation = "install requirements"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "pip install -r <RequirementsFile>"
-
+command = "pip install -r requirements.txt"
 [[ops.commands]]
 subsystem = "powershell"
-command = "pip install -r <RequirementsFile>"
-
+command = "pip install -r requirements.txt"
 [[ops.commands]]
 subsystem = "cmd"
-command = "pip install -r <RequirementsFile>"
+command = "pip install -r requirements.txt"
 
 [[ops]]
-operation = "run tests"
-level = "intermediate"
-
+operation = "list libraries"
+level = "beginner"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "pytest -k <Pattern>"
-
+command = "pip list"
 [[ops.commands]]
 subsystem = "powershell"
-command = "pytest -k <Pattern>"
-
+command = "pip list"
 [[ops.commands]]
 subsystem = "cmd"
-command = "pytest -k <Pattern>"
+command = "pip list"
+
+# --- INTERMEDIATE ---
 
 [[ops]]
-operation = "freeze dependencies"
+operation = "run tests (pytest)"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "pip freeze > <OutputFile>"
-
+command = "pytest"
 [[ops.commands]]
 subsystem = "powershell"
-command = "pip freeze > <OutputFile>"
-
+command = "pytest"
 [[ops.commands]]
 subsystem = "cmd"
-command = "pip freeze > <OutputFile>"
+command = "pytest"
+
+[[ops]]
+operation = "freeze reqs"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pip freeze > requirements.txt"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pip freeze > requirements.txt"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pip freeze > requirements.txt"
+
+[[ops]]
+operation = "format (black)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "black ."
+[[ops.commands]]
+subsystem = "powershell"
+command = "black ."
+[[ops.commands]]
+subsystem = "cmd"
+command = "black ."
+
+[[ops]]
+operation = "lint (flake8)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "flake8"
+[[ops.commands]]
+subsystem = "powershell"
+command = "flake8"
+[[ops.commands]]
+subsystem = "cmd"
+command = "flake8"
+
+[[ops]]
+operation = "type check (mypy)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "mypy ."
+[[ops.commands]]
+subsystem = "powershell"
+command = "mypy ."
+[[ops.commands]]
+subsystem = "cmd"
+command = "mypy ."
+
+# --- ADVANCED ---
 
 [[ops]]
 operation = "build wheel"
 level = "advanced"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "python -m build --wheel"
-
+command = "python -m build"
 [[ops.commands]]
 subsystem = "powershell"
-command = "python -m build --wheel"
-
+command = "python -m build"
 [[ops.commands]]
 subsystem = "cmd"
-command = "python -m build --wheel"
+command = "python -m build"
+
+[[ops]]
+operation = "upload twine"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "twine upload dist/*"
+[[ops.commands]]
+subsystem = "powershell"
+command = "twine upload dist/*"
+[[ops.commands]]
+subsystem = "cmd"
+command = "twine upload dist/*"
+
+[[ops]]
+operation = "create module"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "mkdir <Name> && touch <Name>/__init__.py"
+[[ops.commands]]
+subsystem = "powershell"
+command = "New-Item -ItemType Directory <Name>; New-Item <Name>/__init__.py"
+[[ops.commands]]
+subsystem = "cmd"
+command = "mkdir <Name> & type nul > <Name>/__init__.py"
+
+[[ops]]
+operation = "start http server"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "python -m http.server 8000"
+[[ops.commands]]
+subsystem = "powershell"
+command = "python -m http.server 8000"
+[[ops.commands]]
+subsystem = "cmd"
+command = "python -m http.server 8000"
+
+[[ops]]
+operation = "upgrade pip"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "python -m pip install --upgrade pip"
+[[ops.commands]]
+subsystem = "powershell"
+command = "python -m pip install --upgrade pip"
+[[ops.commands]]
+subsystem = "cmd"
+command = "python -m pip install --upgrade pip"
+
 

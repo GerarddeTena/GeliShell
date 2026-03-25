@@ -1,85 +1,298 @@
 [meta]
 name = "git"
-description = "Git version control commands"
+description = "Git version control"
 levels = ["beginner", "intermediate", "advanced"]
+
+# --- BEGINNER ---
 
 [[ops]]
 operation = "clone repository"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "git clone <RepoUrl>"
-
+command = "git clone <Url>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "git clone <RepoUrl>"
-
+command = "git clone <Url>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "git clone <RepoUrl>"
+command = "git clone <Url>"
 
 [[ops]]
-operation = "stage changes"
+operation = "initialize repo"
 level = "beginner"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "git add <Path>"
-
+command = "git init"
 [[ops.commands]]
 subsystem = "powershell"
-command = "git add <Path>"
-
+command = "git init"
 [[ops.commands]]
 subsystem = "cmd"
-command = "git add <Path>"
+command = "git init"
 
 [[ops]]
-operation = "commit"
+operation = "check status"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git status"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git status"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git status"
+
+[[ops]]
+operation = "diff changes"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git diff"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git diff"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git diff"
+
+[[ops]]
+operation = "stage all changes"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git add ."
+[[ops.commands]]
+subsystem = "powershell"
+command = "git add ."
+[[ops.commands]]
+subsystem = "cmd"
+command = "git add ."
+
+[[ops]]
+operation = "stage file"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git add <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git add <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git add <File>"
+
+[[ops]]
+operation = "commit changes"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git commit -m \"<Message>\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "git commit -m \"<Message>\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "git commit -m \"<Message>\""
+
+[[ops]]
+operation = "push origin main"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git push origin main"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git push origin main"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git push origin main"
+
+[[ops]]
+operation = "pull origin main"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git pull origin main"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git pull origin main"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git pull origin main"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "list branches"
 level = "intermediate"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "git commit -m \"<Message>\""
-
+command = "git branch"
 [[ops.commands]]
 subsystem = "powershell"
-command = "git commit -m \"<Message>\""
-
+command = "git branch"
 [[ops.commands]]
 subsystem = "cmd"
-command = "git commit -m \"<Message>\""
+command = "git branch"
 
 [[ops]]
-operation = "rebase branch"
+operation = "new branch"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git checkout -b <BranchName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git checkout -b <BranchName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git checkout -b <BranchName>"
+
+[[ops]]
+operation = "switch branch"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git checkout <BranchName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git checkout <BranchName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git checkout <BranchName>"
+
+[[ops]]
+operation = "merge branch"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git merge <BranchName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git merge <BranchName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git merge <BranchName>"
+
+[[ops]]
+operation = "show log graph"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git log --oneline --graph --all"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git log --oneline --graph --all"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git log --oneline --graph --all"
+
+[[ops]]
+operation = "stash save"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git stash"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git stash"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git stash"
+
+[[ops]]
+operation = "stash pop"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git stash pop"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git stash pop"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git stash pop"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "rebase interactive"
 level = "advanced"
-
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "git rebase <BaseBranch>"
-
+command = "git rebase -i <CommitHash>"
 [[ops.commands]]
 subsystem = "powershell"
-command = "git rebase <BaseBranch>"
-
+command = "git rebase -i <CommitHash>"
 [[ops.commands]]
 subsystem = "cmd"
-command = "git rebase <BaseBranch>"
+command = "git rebase -i <CommitHash>"
 
 [[ops]]
-operation = "recover file"
-level = "intermediate"
-
+operation = "reset hard"
+level = "advanced"
 [[ops.commands]]
 subsystem = "bash/zsh"
-command = "git restore --source <Ref> -- <Path>"
-
+command = "git reset --hard HEAD"
 [[ops.commands]]
 subsystem = "powershell"
-command = "git restore --source <Ref> -- <Path>"
-
+command = "git reset --hard HEAD"
 [[ops.commands]]
 subsystem = "cmd"
-command = "git restore --source <Ref> -- <Path>"
+command = "git reset --hard HEAD"
+
+[[ops]]
+operation = "reset soft (commit undo)"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git reset --soft HEAD~1"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git reset --soft HEAD~1"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git reset --soft HEAD~1"
+
+[[ops]]
+operation = "amend commit"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git commit --amend"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git commit --amend"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git commit --amend"
+
+[[ops]]
+operation = "cherry pick"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git cherry-pick <CommitHash>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git cherry-pick <CommitHash>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git cherry-pick <CommitHash>"
+
+[[ops]]
+operation = "remote set-url"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "git remote set-url origin <NewUrl>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "git remote set-url origin <NewUrl>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "git remote set-url origin <NewUrl>"
+
 

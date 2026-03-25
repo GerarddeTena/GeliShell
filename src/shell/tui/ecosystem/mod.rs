@@ -10,7 +10,9 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    style::{Attribute, Print, SetAttribute},
+    style::{
+        Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    },
     terminal::{self, ClearType},
 };
 use std::io::{self, Write, stdout};
@@ -41,10 +43,13 @@ pub struct EcosystemTui {
     filter: String,
     filter_mode: bool,
     subsys_filter: bool,
+    theme_color: Color,
+    icon: &'static str,
 }
 
 impl EcosystemTui {
     pub fn new(catalog: EcosystemCatalog, subsystem: Subsystem) -> Self {
+        let (theme_color, icon) = get_theme(&catalog.meta.name);
         Self {
             catalog,
             subsystem,
@@ -54,6 +59,8 @@ impl EcosystemTui {
             filter: String::new(),
             filter_mode: false,
             subsys_filter: true,
+            theme_color,
+            icon,
         }
     }
 
@@ -272,16 +279,39 @@ impl EcosystemTui {
             out,
             cursor::MoveTo(0, 0),
             terminal::Clear(ClearType::All),
+            SetForegroundColor(self.theme_color),
+            SetAttribute(Attribute::Bold),
             Print(format!(
-                "GeliShell - {} commands\\r\\n",
-                self.catalog.meta.name
+                " {} GeliShell Ecosystem — {} ",
+                self.icon,
+                self.catalog.meta.name.to_uppercase()
             )),
-            Print("\\r\\n")
+            SetAttribute(Attribute::Reset),
+            Print(format!(" :: {} commands loaded", self.catalog.ops.len())),
+            Print("\r\n"),
+            SetForegroundColor(Color::DarkGrey),
+            Print("─".repeat(width as usize)),
+            ResetColor,
+            Print("\r\n")
         )
         .map_err(terminal_error)?;
 
-        self.write_cell(out, 0, 2, left_w, "Operations", self.active_panel == Panel::Operations)?;
-        self.write_cell(out, left_w + 1, 2, mid_w, "Commands", self.active_panel == Panel::Commands)?;
+        self.write_cell(
+            out,
+            0,
+            2,
+            left_w,
+            "Operations",
+            self.active_panel == Panel::Operations,
+        )?;
+        self.write_cell(
+            out,
+            left_w + 1,
+            2,
+            mid_w,
+            "Commands",
+            self.active_panel == Panel::Commands,
+        )?;
         self.write_cell(out, left_w + mid_w + 2, 2, right_w, "Detail", false)?;
 
         let max_rows = height.saturating_sub(7 + HELP_ROW_PADDING) as usize;
@@ -298,36 +328,86 @@ impl EcosystemTui {
             } else {
                 format!("  {}", truncate(op_text, left_w as usize - 2))
             };
-            self.write_row(out, 0, y, left_w, &op_line, self.active_panel == Panel::Operations && row == self.op_selected)?;
+            self.write_row(
+                out,
+                0,
+                y,
+                left_w,
+                &op_line,
+                self.active_panel == Panel::Operations && row == self.op_selected,
+            )?;
 
-            let cmd_text = commands.get(row).map(|cmd| cmd.command.as_str()).unwrap_or("");
+            let cmd_text = commands
+                .get(row)
+                .map(|cmd| cmd.command.as_str())
+                .unwrap_or("");
             let cmd_line = if row == self.cmd_selected {
                 format!("> {}", truncate(cmd_text, mid_w as usize - 2))
             } else {
                 format!("  {}", truncate(cmd_text, mid_w as usize - 2))
             };
-            self.write_row(out, left_w + 1, y, mid_w, &cmd_line, self.active_panel == Panel::Commands && row == self.cmd_selected)?;
+            self.write_row(
+                out,
+                left_w + 1,
+                y,
+                mid_w,
+                &cmd_line,
+                self.active_panel == Panel::Commands && row == self.cmd_selected,
+            )?;
 
             let detail = self.detail_line(row, &operations, &commands);
             self.write_row(out, left_w + mid_w + 2, y, right_w, &detail, false)?;
         }
 
-        let filter_suffix = if self.filter_mode { " (typing)" } else { "" };
-        let subsys_label = if self.subsys_filter {
-            format!("{} only", self.subsystem.as_str())
+        // Draw verticals separators
+        for row in 2..(height - 3) {
+            execute!(out, SetForegroundColor(Color::DarkGrey)).map_err(terminal_error)?;
+            execute!(out, cursor::MoveTo(left_w, row), Print("│")).map_err(terminal_error)?;
+            execute!(out, cursor::MoveTo(left_w + mid_w + 1, row), Print("│"))
+                .map_err(terminal_error)?;
+        }
+
+        // Footer
+        let filter_text = if self.filter.is_empty() {
+            "".to_string()
         } else {
-            "all".to_owned()
+            format!(" Filter: [{}]", self.filter)
+        };
+        let subsys_label = if self.subsys_filter {
+            format!("Subsystem: {} (s)", self.subsystem.as_str())
+        } else {
+            "ALL (s)".to_owned()
         };
 
         execute!(
             out,
             cursor::MoveTo(0, height.saturating_sub(2)),
-            Print(format!(
-                "Tab: panel  Up/Down: navigate  Enter: execute  /: filter{}  s: subsystem={}  q: quit",
-                filter_suffix, subsys_label
-            )),
+            SetForegroundColor(Color::DarkGrey),
+            Print("─".repeat(width as usize)),
+            ResetColor,
             cursor::MoveTo(0, height.saturating_sub(1)),
-            Print(format!("Filter: {}", self.filter))
+            Print(" "),
+            SetForegroundColor(self.theme_color),
+            Print("TAB"),
+            ResetColor,
+            Print(" Panel  "),
+            SetForegroundColor(self.theme_color),
+            Print("RET"),
+            ResetColor,
+            Print(" Exec  "),
+            SetForegroundColor(self.theme_color),
+            Print("s"),
+            ResetColor,
+            Print(format!(" {} ", subsys_label)),
+            SetForegroundColor(self.theme_color),
+            Print("/"),
+            ResetColor,
+            Print(" Filter "),
+            SetForegroundColor(self.theme_color),
+            Print("Q"),
+            ResetColor,
+            Print(" Quit  "),
+            Print(filter_text)
         )
         .map_err(terminal_error)?;
 
@@ -367,10 +447,21 @@ impl EcosystemTui {
         let rendered = format!("{title:<width$}", width = width as usize);
         execute!(out, cursor::MoveTo(x, y)).map_err(terminal_error)?;
         if active {
-            execute!(out, SetAttribute(Attribute::Reverse), Print(rendered), SetAttribute(Attribute::Reset))
-                .map_err(terminal_error)?;
+            execute!(
+                out,
+                SetAttribute(Attribute::Reverse),
+                Print(rendered),
+                SetAttribute(Attribute::Reset)
+            )
+            .map_err(terminal_error)?;
         } else {
-            execute!(out, Print(rendered)).map_err(terminal_error)?;
+            execute!(
+                out,
+                SetForegroundColor(self.theme_color),
+                Print(rendered),
+                ResetColor
+            )
+            .map_err(terminal_error)?;
         }
         Ok(())
     }
@@ -384,11 +475,21 @@ impl EcosystemTui {
         text: &str,
         highlight: bool,
     ) -> Result<(), EcosystemTuiError> {
-        let rendered = format!("{:<width$}", truncate(text, width as usize), width = width as usize);
+        let rendered = format!(
+            "{:<width$}",
+            truncate(text, width as usize),
+            width = width as usize
+        );
         execute!(out, cursor::MoveTo(x, y)).map_err(terminal_error)?;
         if highlight {
-            execute!(out, SetAttribute(Attribute::Reverse), Print(rendered), SetAttribute(Attribute::Reset))
-                .map_err(terminal_error)?;
+            execute!(
+                out,
+                SetBackgroundColor(self.theme_color),
+                SetForegroundColor(Color::Black),
+                Print(rendered),
+                ResetColor
+            )
+            .map_err(terminal_error)?;
         } else {
             execute!(out, Print(rendered)).map_err(terminal_error)?;
         }
@@ -430,6 +531,18 @@ impl EcosystemTui {
     }
 }
 
+fn get_theme(name: &str) -> (Color, &'static str) {
+    match name.to_ascii_lowercase().as_str() {
+        "npm" => (Color::Red, "📦"),
+        "git" => (Color::Green, "🌲"),
+        "cargo" => (Color::DarkYellow, "🦀"),
+        "docker" => (Color::Blue, "🐳"),
+        "dotnet" => (Color::Magenta, "🟣"),
+        "python" => (Color::Yellow, "🐍"),
+        _ => (Color::Cyan, "⚡"),
+    }
+}
+
 fn terminal_error(error: io::Error) -> EcosystemTuiError {
     EcosystemTuiError::Terminal(error.to_string())
 }
@@ -449,4 +562,3 @@ fn truncate(value: &str, max: usize) -> String {
 
     format!("{}...", &value[..max - 3])
 }
-
