@@ -32,7 +32,6 @@ if not exist "%PS1%" (
 :: -ExecutionPolicy Bypass is scoped to this process only — no system change
 powershell.exe ^
     -NoProfile ^
-    -NonInteractive ^
     -ExecutionPolicy Bypass ^
     -File "%PS1%" ^
     %*

@@ -44,6 +44,107 @@ ask_yes_no() {
     [[ "${answer,,}" == "y" || "${answer,,}" == "yes" ]]
 }
 
+# ── download_vec0 ─────────────────────────────────────────────
+# Must be defined before the Step 3 logic that calls it.
+
+download_vec0() {
+    info "fetching latest release info from GitHub API..."
+
+    if ! command -v curl &>/dev/null; then
+        warn "curl not found — cannot download automatically"
+        return 1
+    fi
+
+    local api_url="https://api.github.com/repos/asg017/sqlite-vec/releases/latest"
+    local release_json
+    release_json="$(curl -fsSL \
+        -H "User-Agent: GeliShell-Installer/0.1" \
+        -H "Accept: application/vnd.github+json" \
+        --max-time 15 \
+        "$api_url")" || { warn "GitHub API request failed"; return 1; }
+
+    local tag
+    tag="$(echo "$release_json" | grep '"tag_name"' | head -1 | sed 's/.*: "\(.*\)".*/\1/')"
+    info "latest sqlite-vec release: $tag"
+
+    # Build asset name pattern based on platform/arch
+    local arch
+    arch="$(uname -m)"
+    local asset_pattern
+    case "$PLATFORM-$arch" in
+        macos-arm64|macos-aarch64) asset_pattern="loadable-macos-aarch64" ;;
+        macos-x86_64)              asset_pattern="loadable-macos-x86_64"  ;;
+        linux-x86_64)              asset_pattern="loadable-linux-x86_64"  ;;
+        linux-aarch64|linux-arm64) asset_pattern="loadable-linux-aarch64" ;;
+        *)                         asset_pattern="loadable-${PLATFORM}-${arch}" ;;
+    esac
+
+    info "looking for asset matching: *${asset_pattern}*"
+
+    local download_url
+    download_url="$(echo "$release_json" | \
+        grep '"browser_download_url"' | \
+        grep "$asset_pattern" | \
+        grep -E '\.tar\.gz"|\.zip"' | \
+        head -1 | \
+        sed 's/.*"browser_download_url": "\(.*\)".*/\1/')"
+
+    if [[ -z "$download_url" ]]; then
+        warn "No matching asset found for ${PLATFORM}/${arch} in release $tag"
+        info "Available assets:"
+        echo "$release_json" | grep '"name"' | grep -v "tag_name" | \
+            sed 's/.*"name": "\(.*\)".*/  \1/' | head -20
+        info ""
+        info "Manual install:"
+        info "  https://github.com/asg017/sqlite-vec/releases/tag/$tag"
+        info "  Copy vec0.${VEC0_EXT} to: $VEC0_DEST"
+        return 1
+    fi
+
+    local asset_file
+    asset_file="$(basename "$download_url")"
+    local tmp_archive="/tmp/sqlite-vec-${tag}-${asset_file}"
+    local tmp_dir="/tmp/sqlite-vec-extract-${tag}"
+
+    info "downloading: $asset_file ..."
+    curl -fL --max-time 120 --progress-bar \
+        -o "$tmp_archive" "$download_url" \
+        || { warn "Download failed"; return 1; }
+
+    rm -rf "$tmp_dir"
+    mkdir -p "$tmp_dir"
+
+    # Extract (handle both .tar.gz and .zip)
+    if [[ "$tmp_archive" == *.zip ]]; then
+        command -v unzip &>/dev/null \
+            || { warn "unzip not found — install it and retry"; return 1; }
+        unzip -q "$tmp_archive" -d "$tmp_dir"
+    else
+        tar -xzf "$tmp_archive" -C "$tmp_dir"
+    fi
+
+    # Find the extension file
+    local found_vec0
+    found_vec0="$(find "$tmp_dir" -name "vec0.${VEC0_EXT}" | head -1)"
+
+    if [[ -z "$found_vec0" ]]; then
+        # Fallback: any .so/.dylib in the archive
+        found_vec0="$(find "$tmp_dir" -name "*.${VEC0_EXT}" | head -1)"
+    fi
+
+    if [[ -z "$found_vec0" ]]; then
+        warn "vec0.${VEC0_EXT} not found in downloaded archive"
+        info "Archive contents:"
+        find "$tmp_dir" | head -20
+        return 1
+    fi
+
+    cp -f "$found_vec0" "$VEC0_DEST"
+    rm -rf "$tmp_archive" "$tmp_dir"
+    ok "vec0.${VEC0_EXT} installed at: $VEC0_DEST"
+    return 0
+}
+
 # ── Args ──────────────────────────────────────────────────────
 
 FORCE=false
@@ -101,25 +202,28 @@ for DIR in "$BIN_DIR" "$CONFIG_ROOT" "$MODELS_DIR" "$DOCS_DIR"; do
 done
 
 # ══════════════════════════════════════════════════════════════
-# STEP 1 — geli binary
+# STEP 1 — geli + gerisabet binaries
 # ══════════════════════════════════════════════════════════════
 
 echo ""
-step "installing GeliShell binary..."
+step "installing GeliShell binaries..."
 
-BINARY_SOURCE="$PROJECT_ROOT/target/release/$BINARY_NAME"
-if [[ ! -f "$BINARY_SOURCE" ]]; then
-    echo ""
-    warn "Binary not found: $BINARY_SOURCE"
-    echo -e "  ${YELLOW}Run first:  cargo build --release${RESET}"
-    echo ""
-    exit 1
-fi
+for BINARY_NAME in geli gerisabet; do
+    BINARY_SOURCE="$PROJECT_ROOT/target/release/$BINARY_NAME"
+    if [[ ! -f "$BINARY_SOURCE" ]]; then
+        echo ""
+        warn "Binary not found: $BINARY_SOURCE"
+        echo -e "  ${YELLOW}Run first:  cargo build --release${RESET}"
+        echo ""
+        exit 1
+    fi
+    BINARY_DEST="$BIN_DIR/$BINARY_NAME"
+    cp -f "$BINARY_SOURCE" "$BINARY_DEST"
+    chmod +x "$BINARY_DEST"
+    ok "$BINARY_NAME → $BINARY_DEST"
+done
 
-BINARY_DEST="$BIN_DIR/geli"
-cp -f "$BINARY_SOURCE" "$BINARY_DEST"
-chmod +x "$BINARY_DEST"
-ok "geli → $BINARY_DEST"
+GELI_DEST="$BIN_DIR/geli"
 
 # PATH
 add_to_rc() {
@@ -271,104 +375,6 @@ if ! $VEC0_AVAILABLE; then
     fi
 fi
 
-download_vec0() {
-    info "fetching latest release info from GitHub API..."
-
-    if ! command -v curl &>/dev/null; then
-        warn "curl not found — cannot download automatically"
-        return 1
-    fi
-
-    local api_url="https://api.github.com/repos/asg017/sqlite-vec/releases/latest"
-    local release_json
-    release_json="$(curl -fsSL \
-        -H "User-Agent: GeliShell-Installer/0.1" \
-        -H "Accept: application/vnd.github+json" \
-        --max-time 15 \
-        "$api_url")" || { warn "GitHub API request failed"; return 1; }
-
-    local tag
-    tag="$(echo "$release_json" | grep '"tag_name"' | head -1 | sed 's/.*: "\(.*\)".*/\1/')"
-    info "latest sqlite-vec release: $tag"
-
-    # Build asset name pattern based on platform/arch
-    local arch
-    arch="$(uname -m)"
-    local asset_pattern
-    case "$PLATFORM-$arch" in
-        macos-arm64|macos-aarch64) asset_pattern="loadable-macos-aarch64" ;;
-        macos-x86_64)              asset_pattern="loadable-macos-x86_64"  ;;
-        linux-x86_64)              asset_pattern="loadable-linux-x86_64"  ;;
-        linux-aarch64|linux-arm64) asset_pattern="loadable-linux-aarch64" ;;
-        *)                         asset_pattern="loadable-${PLATFORM}-${arch}" ;;
-    esac
-
-    info "looking for asset matching: *${asset_pattern}*"
-
-    local download_url
-    download_url="$(echo "$release_json" | \
-        grep '"browser_download_url"' | \
-        grep "$asset_pattern" | \
-        grep -E '\.tar\.gz"|\.zip"' | \
-        head -1 | \
-        sed 's/.*"browser_download_url": "\(.*\)".*/\1/')"
-
-    if [[ -z "$download_url" ]]; then
-        warn "No matching asset found for ${PLATFORM}/${arch} in release $tag"
-        info "Available assets:"
-        echo "$release_json" | grep '"name"' | grep -v "tag_name" | \
-            sed 's/.*"name": "\(.*\)".*/  \1/' | head -20
-        info ""
-        info "Manual install:"
-        info "  https://github.com/asg017/sqlite-vec/releases/tag/$tag"
-        info "  Copy vec0.${VEC0_EXT} to: $VEC0_DEST"
-        return 1
-    fi
-
-    local asset_file
-    asset_file="$(basename "$download_url")"
-    local tmp_archive="/tmp/sqlite-vec-${tag}-${asset_file}"
-    local tmp_dir="/tmp/sqlite-vec-extract-${tag}"
-
-    info "downloading: $asset_file ..."
-    curl -fL --max-time 120 --progress-bar \
-        -o "$tmp_archive" "$download_url" \
-        || { warn "Download failed"; return 1; }
-
-    rm -rf "$tmp_dir"
-    mkdir -p "$tmp_dir"
-
-    # Extract (handle both .tar.gz and .zip)
-    if [[ "$tmp_archive" == *.zip ]]; then
-        command -v unzip &>/dev/null \
-            || { warn "unzip not found — install it and retry"; return 1; }
-        unzip -q "$tmp_archive" -d "$tmp_dir"
-    else
-        tar -xzf "$tmp_archive" -C "$tmp_dir"
-    fi
-
-    # Find the extension file
-    local found_vec0
-    found_vec0="$(find "$tmp_dir" -name "vec0.${VEC0_EXT}" | head -1)"
-
-    if [[ -z "$found_vec0" ]]; then
-        # Fallback: any .so/.dylib in the archive
-        found_vec0="$(find "$tmp_dir" -name "*.${VEC0_EXT}" | head -1)"
-    fi
-
-    if [[ -z "$found_vec0" ]]; then
-        warn "vec0.${VEC0_EXT} not found in downloaded archive"
-        info "Archive contents:"
-        find "$tmp_dir" | head -20
-        return 1
-    fi
-
-    cp -f "$found_vec0" "$VEC0_DEST"
-    rm -rf "$tmp_archive" "$tmp_dir"
-    ok "vec0.${VEC0_EXT} installed at: $VEC0_DEST"
-    return 0
-}
-
 # ══════════════════════════════════════════════════════════════
 # STEP 4 — Ollama
 # ══════════════════════════════════════════════════════════════
@@ -425,7 +431,11 @@ else
         echo ""
 
         if cargo run --bin build_docs_db; then
-            export GELI_SQLITE_VEC_PATH="$OLD_VEC0_ENV"
+            if [[ -n "$OLD_VEC0_ENV" ]]; then
+                export GELI_SQLITE_VEC_PATH="$OLD_VEC0_ENV"
+            else
+                unset GELI_SQLITE_VEC_PATH
+            fi
             if [[ -f "$DOCS_DB_PATH" ]]; then
                 ok "docs.db generated at: $DOCS_DB_PATH"
                 DOCS_DB_OK=true
@@ -433,7 +443,11 @@ else
                 warn "build_docs_db finished but docs.db not found at expected path"
             fi
         else
-            export GELI_SQLITE_VEC_PATH="$OLD_VEC0_ENV"
+            if [[ -n "$OLD_VEC0_ENV" ]]; then
+                export GELI_SQLITE_VEC_PATH="$OLD_VEC0_ENV"
+            else
+                unset GELI_SQLITE_VEC_PATH
+            fi
             warn "build_docs_db failed. Fix the error and re-run:"
             info "  cargo run --bin build_docs_db"
         fi
@@ -463,11 +477,12 @@ echo -e "  ${GRAY}────────────────────�
 echo -e "  ${MAGENTA}GeliShell Installation Summary${RESET}"
 echo -e "  ${GRAY}──────────────────────────────────────────${RESET}"
 echo ""
-status_line "true"          "geli"        "$BINARY_DEST"
-status_line "$SQLITE_OK"    "SQLite"      "sqlite3 in PATH"
-status_line "$VEC0_AVAILABLE" "sqlite-vec" "vec0.${VEC0_EXT} — $VEC0_DEST"
-status_line "$OLLAMA_OK"    "Ollama"      "ollama in PATH"
-status_line "$DOCS_DB_OK"   "docs.db"     "$DOCS_DB_PATH"
+status_line "true"            "geli"        "$GELI_DEST"
+status_line "true"            "gerisabet"   "$BIN_DIR/gerisabet"
+status_line "$SQLITE_OK"      "SQLite"      "sqlite3 in PATH"
+status_line "$VEC0_AVAILABLE" "sqlite-vec"  "vec0.${VEC0_EXT} — $VEC0_DEST"
+status_line "$OLLAMA_OK"      "Ollama"      "ollama in PATH"
+status_line "$DOCS_DB_OK"     "docs.db"     "$DOCS_DB_PATH"
 echo ""
 
 if $VEC0_AVAILABLE && $OLLAMA_OK && $DOCS_DB_OK; then
