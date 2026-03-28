@@ -64,7 +64,8 @@ download_vec0() {
         "$api_url")" || { warn "GitHub API request failed"; return 1; }
 
     local tag
-    tag="$(echo "$release_json" | grep '"tag_name"' | head -1 | sed 's/.*: "\(.*\)".*/\1/')"
+    # GitHub API returns single-line JSON — use grep -o to extract only the match.
+    tag="$(echo "$release_json" | grep -o '"tag_name":"[^"]*"' | head -1 | cut -d'"' -f4)"
     info "latest sqlite-vec release: $tag"
 
     # Build asset name pattern based on platform/arch
@@ -82,18 +83,20 @@ download_vec0() {
     info "looking for asset matching: *${asset_pattern}*"
 
     local download_url
+    # grep -o extracts each "browser_download_url":"..." as its own line,
+    # then filter by asset pattern and extension, take first match.
     download_url="$(echo "$release_json" | \
-        grep '"browser_download_url"' | \
+        grep -o '"browser_download_url":"[^"]*"' | \
+        cut -d'"' -f4 | \
         grep "$asset_pattern" | \
-        grep -E '\.tar\.gz"|\.zip"' | \
-        head -1 | \
-        sed 's/.*"browser_download_url": "\(.*\)".*/\1/')"
+        grep -E '\.(tar\.gz|zip)$' | \
+        head -1)"
 
     if [[ -z "$download_url" ]]; then
         warn "No matching asset found for ${PLATFORM}/${arch} in release $tag"
         info "Available assets:"
-        echo "$release_json" | grep '"name"' | grep -v "tag_name" | \
-            sed 's/.*"name": "\(.*\)".*/  \1/' | head -20
+        echo "$release_json" | grep -o '"browser_download_url":"[^"]*"' | \
+            cut -d'"' -f4 | sed 's|.*/||' | head -20
         info ""
         info "Manual install:"
         info "  https://github.com/asg017/sqlite-vec/releases/tag/$tag"
