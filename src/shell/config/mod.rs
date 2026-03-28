@@ -277,13 +277,6 @@ impl ShellConfig {
         Ok(())
     }
 
-    /// Elimina el archivo de configuración del disco.
-    ///
-    /// El siguiente inicio detectará `ConfigError::NotFound`
-    /// y lanzará el first_run wizard automáticamente.
-    ///
-    /// Si el archivo ya no existe devuelve `Ok(())` silenciosamente —
-    /// el estado final deseado (no existe config) ya se cumple.
     pub async fn reset() -> Result<(), ConfigError> {
         let path = Self::config_path();
         match tokio::fs::remove_file(&path).await {
@@ -315,9 +308,6 @@ impl ShellConfig {
         cfg
     }
 
-    /// Detecta el subsistema activo respetando el override del usuario.
-    /// Disponible en la librería para que ambos binarios (geli, gerisabet)
-    /// compartan el mismo algoritmo sin duplicar código.
     pub fn resolve_subsystem(
         &self,
         reporter: &dyn crate::shell::reporter::Reporter,

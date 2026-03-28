@@ -110,7 +110,11 @@ impl IngestOptions {
             }
         }
 
-        if sqlite_vec_path.as_deref().map(|p| p.trim().is_empty()).unwrap_or(true) {
+        if sqlite_vec_path
+            .as_deref()
+            .map(|p| p.trim().is_empty())
+            .unwrap_or(true)
+        {
             sqlite_vec_path = resolve_default_sqlite_vec_path();
         }
 
@@ -712,11 +716,17 @@ fn sqlite_vec_candidates(configured_path: Option<&str>) -> Vec<String> {
 
 fn resolve_default_sqlite_vec_path() -> Option<String> {
     if let Some(home) = dirs::home_dir() {
+        let ext = if cfg!(target_os = "windows") {
+            "dll"
+        } else {
+            "so"
+        };
         let candidate = home
             .join(".config")
             .join("geliShell")
             .join("models")
-            .join("vec0.dll");
+            .join(format!("vec0.{ext}"));
+
         if candidate.exists() {
             return Some(normalize_path(&candidate));
         }
