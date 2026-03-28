@@ -6,7 +6,6 @@ use geli_shell::shell::{
     executor::Executor,
     guard::default_guard,
     reporter::Reporter,
-    translator::Subsystem,
 };
 
 pub async fn handle_gerisabet_args(args: &[String], reporter: &dyn Reporter) {
@@ -73,7 +72,7 @@ pub fn print_gerisabet_help() {
 async fn execute_how_to_cli(query: &str, reporter: &dyn Reporter) {
     let config = ShellConfig::load_async().await.unwrap_or_default();
 
-    let subsystem = resolve_subsystem(&config, reporter);
+    let subsystem = config.resolve_subsystem(reporter);
     let guard = Box::new(default_guard());
     let executor = Executor::new(subsystem.clone());
     let exec_config = config.to_executor_config();
@@ -97,7 +96,7 @@ async fn execute_how_to_cli(query: &str, reporter: &dyn Reporter) {
 async fn execute_show_me_cli(reporter: &dyn Reporter) {
     let config = ShellConfig::load_async().await.unwrap_or_default();
 
-    let subsystem = resolve_subsystem(&config, reporter);
+    let subsystem = config.resolve_subsystem(reporter);
     let guard = Box::new(default_guard());
     let executor = Executor::new(subsystem.clone());
     let exec_config = config.to_executor_config();
@@ -113,15 +112,6 @@ async fn execute_show_me_cli(reporter: &dyn Reporter) {
         &config.visual,
     )
     .await;
-}
-
-fn resolve_subsystem(config: &ShellConfig, reporter: &dyn Reporter) -> Subsystem {
-    if config.has_subsystem_override() {
-        Subsystem::from_str(&config.subsystem.override_subsystem)
-            .unwrap_or_else(|| Subsystem::detect(reporter))
-    } else {
-        Subsystem::detect(reporter)
-    }
 }
 
 fn strip_wrapping_quotes(input: &str) -> &str {

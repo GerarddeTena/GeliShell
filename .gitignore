@@ -83,3 +83,6 @@ Desktop.ini
 *.egg
 *.dist-info
 /src/bin/
+
+plan-actualizarReadmeInstalacion.prompt.md
+GetCode.ps1

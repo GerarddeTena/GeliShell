@@ -18,7 +18,12 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(mut tokens: Vec<Token>) -> Self {
+        // Guarantee there is always at least an Eof sentinel so peek()
+        // and advance() never index out-of-bounds on an empty token stream.
+        if tokens.is_empty() || !matches!(tokens.last(), Some(Token::Eof)) {
+            tokens.push(Token::Eof);
+        }
         Parser {
             tokens,
             position: 0,

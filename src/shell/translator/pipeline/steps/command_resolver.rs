@@ -37,14 +37,28 @@ impl TranslationStep for CommandResolver {
                     fragment.command_def = Some(def.clone());
                 }
                 None => {
-                    // Pass-through — comando nativo no canónico
-                    // No es un error — el usuario puede escribir
-                    // comandos nativos directamente
-                    reporter.info(&format!(
-                        "{}: '{}' → no canonical match, pass-through",
-                        self.name(),
-                        fragment.command
-                    ));
+                    // Reverse lookup: el usuario escribió un comando nativo
+                    // (p.ej. `ls` en PowerShell o `Get-ChildItem` en Bash).
+                    // Si hay una correspondencia canónica unívoca, normalizamos
+                    // el fragmento al nombre canónico para que el pipeline
+                    // lo traduzca al subsistema activo.
+                    if let Some(def) = ctx.map.find_by_exact(&fragment.command) {
+                        reporter.info(&format!(
+                            "{}: '{}' → reverse lookup → canonical '{}'",
+                            self.name(),
+                            fragment.command,
+                            def.name,
+                        ));
+                        fragment.command = def.name.clone();
+                        fragment.command_def = Some(def.clone());
+                    } else {
+                        // Pass-through — comando nativo sin equivalente canónico
+                        reporter.info(&format!(
+                            "{}: '{}' → no canonical match, pass-through",
+                            self.name(),
+                            fragment.command
+                        ));
+                    }
                 }
             }
         }

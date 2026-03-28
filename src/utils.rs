@@ -70,7 +70,7 @@ pub fn render_prompt(subsystem: &Subsystem, visual: &VisualConfig) -> String {
     format!("{segment_1} {segment_2} {segment_3} {prompt}")
 }
 
-pub fn build_completion_pool(map: &CommandMap, config: &ShellConfig) -> Vec<String> {
+pub fn build_completion_pool(map: &CommandMap, config: &ShellConfig, subsystem: &Subsystem) -> Vec<String> {
     let mut set = BTreeSet::new();
 
     for builtin in [
@@ -90,27 +90,7 @@ pub fn build_completion_pool(map: &CommandMap, config: &ShellConfig) -> Vec<Stri
     for cmd in map.iter() {
         set.insert(cmd.name.clone());
 
-        if let Some(entry) = &cmd.translate.bash {
-            if !entry.exact.trim().is_empty() {
-                set.insert(entry.exact.clone());
-            }
-            for suggestion in &entry.suggestions {
-                if !suggestion.trim().is_empty() {
-                    set.insert(suggestion.clone());
-                }
-            }
-        }
-        if let Some(entry) = &cmd.translate.powershell {
-            if !entry.exact.trim().is_empty() {
-                set.insert(entry.exact.clone());
-            }
-            for suggestion in &entry.suggestions {
-                if !suggestion.trim().is_empty() {
-                    set.insert(suggestion.clone());
-                }
-            }
-        }
-        if let Some(entry) = &cmd.translate.cmd {
+        if let Some(entry) = subsystem.entry(&cmd.translate) {
             if !entry.exact.trim().is_empty() {
                 set.insert(entry.exact.clone());
             }

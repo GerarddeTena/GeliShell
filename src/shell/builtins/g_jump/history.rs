@@ -60,6 +60,7 @@ struct GHistoryFile {
 pub struct GHistory {
     entries: Vec<GEntry>,
     path: PathBuf,
+    dirty: bool,
 }
 
 impl GHistory {
@@ -84,11 +85,14 @@ impl GHistory {
             Vec::new()
         };
 
-        Self { entries, path }
+        Self { entries, path, dirty: false }
     }
 
-    /// Persiste en disco
-    pub fn save(&self) -> Result<(), GHistoryError> {
+    /// Persiste en disco — no-op si no hay cambios pendientes
+    pub fn save(&mut self) -> Result<(), GHistoryError> {
+        if !self.dirty {
+            return Ok(());
+        }
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -97,18 +101,18 @@ impl GHistory {
         };
         let content = toml::to_string_pretty(&file)?;
         std::fs::write(&self.path, content)?;
+        self.dirty = false;
         Ok(())
     }
 
-    /// Registra una visita al directorio actual
+    /// Registra una visita al directorio actual — persiste en el Drop
     pub fn record_visit(&mut self, path: &str) {
         if let Some(entry) = self.entries.iter_mut().find(|e| e.path == path) {
             entry.record_visit();
         } else {
             self.entries.push(GEntry::new(path.to_owned()));
         }
-        // Persiste en background — ignora errores silenciosamente
-        self.save().ok();
+        self.dirty = true;
     }
 
     /// Busca el mejor candidato para un patrón
@@ -123,7 +127,14 @@ impl GHistory {
                 let score_b = b.score(*bonus_b);
                 score_a
                     .partial_cmp(&score_b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .unwrap_or_else(|| {
+                        // NaN-safe fallback: treat NaN scores as negative infinity
+                        match (score_a.is_nan(), score_b.is_nan()) {
+                            (true, false) => std::cmp::Ordering::Less,
+                            (false, true) => std::cmp::Ordering::Greater,
+                            _ => std::cmp::Ordering::Equal,
+                        }
+                    })
             })
             .map(|(entry, _)| entry)
     }
@@ -133,7 +144,15 @@ impl GHistory {
         let mut scored: Vec<(&GEntry, f64)> =
             self.entries.iter().map(|e| (e, e.score(0.0))).collect();
 
-        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1).unwrap_or_else(|| {
+                match (b.1.is_nan(), a.1.is_nan()) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => std::cmp::Ordering::Equal,
+                }
+            })
+        });
 
         scored.into_iter().take(n).collect()
     }
@@ -148,11 +167,19 @@ impl GHistory {
 
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.dirty = true;
         self.save().ok();
     }
 
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+}
+
+impl Drop for GHistory {
+    /// Persiste cambios pendientes al liberar la memoria (fin de sesión REPL).
+    fn drop(&mut self) {
+        self.save().ok();
     }
 }
 
@@ -173,6 +200,7 @@ mod tests {
         GHistory {
             entries,
             path: PathBuf::from("/tmp/test_g_history.toml"),
+            dirty: false,
         }
     }
 

@@ -1,13 +1,17 @@
 use crate::handlers::menu::handle_special_command;
 use crate::utils::expand_custom_command;
 use geli_shell::{
-    parser::{lexer::Lexer, parser::Parser},
+    parser::{ast::ASTNode, lexer::Lexer, parser::Parser},
     shell::{
         builtins::{BuiltinRegistry, BuiltinResult},
-        config::ShellConfig,
+        config::{ShellConfig, SelectorMode},
         executor::{ExecutionConfig as ExecutorConfig, Executor},
         guard::Guard,
-        reporter::{Reporter, SilentReporter},
+        reporter::Reporter,
+        selector::{
+            CommandSelector, SelectionResult,
+            modal::ModalSelector,
+        },
         translator::TranslationPipeline,
         tui::repl_input::{parse_special_command, SpecialCommand},
     },
@@ -15,6 +19,24 @@ use geli_shell::{
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal;
+
+/// Lex → Parse shared helper. Returns the AST or reports the error and returns None.
+pub fn parse_ast(command: &str, reporter: &dyn Reporter) -> Option<ASTNode> {
+    let tokens = match Lexer::new(command).tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            reporter.error(&e.to_string());
+            return None;
+        }
+    };
+    match Parser::new(tokens).parse() {
+        Ok(ast) => Some(ast),
+        Err(e) => {
+            reporter.error(&e.to_string());
+            None
+        }
+    }
+}
 
 pub async fn process_regular_command(
     input: &str,
@@ -30,19 +52,9 @@ pub async fn process_regular_command(
 
     let expanded_input = expand_custom_command(input, config);
 
-    let tokens = match Lexer::new(&expanded_input).tokenize() {
-        Ok(tokens) => tokens,
-        Err(error) => {
-            reporter.error(&error.to_string());
-            return false;
-        }
-    };
-    let ast = match Parser::new(tokens).parse() {
-        Ok(ast) => ast,
-        Err(error) => {
-            reporter.error(&error.to_string());
-            return false;
-        }
+    let ast = match parse_ast(&expanded_input, reporter) {
+        Some(ast) => ast,
+        None => return false,
     };
 
     match builtins.try_execute(&ast, reporter) {
@@ -62,24 +74,40 @@ pub async fn process_regular_command(
         return false;
     }
 
-    let command = match pipeline.run(&ast, &SilentReporter::new()) {
-        Ok(command) => command,
+    let (command, resolved) = match pipeline.run_resolving(&ast, reporter) {
+        Ok(pair) => pair,
         Err(error) => {
             reporter.error(&error.to_string());
             return false;
         }
     };
 
-    let command_str = command.clone();
-    let _final_command = match config.behavior.selector_mode {
-        geli_shell::shell::config::SelectorMode::Auto => command,
-        geli_shell::shell::config::SelectorMode::Always
-        | geli_shell::shell::config::SelectorMode::Once => command,
+    // Drive the ModalSelector based on SelectorMode.
+    // Only show if there are alternatives to choose from.
+    let final_command = match config.behavior.selector_mode {
+        SelectorMode::Always | SelectorMode::Once => {
+            if let Some(res) = resolved.as_ref() {
+                if res.has_alternatives() {
+                    match ModalSelector::new().select(res) {
+                        SelectionResult::Selected(chosen) => chosen,
+                        SelectionResult::Cancelled => {
+                            reporter.info("selection cancelled");
+                            return false;
+                        }
+                    }
+                } else {
+                    command
+                }
+            } else {
+                command
+            }
+        }
+        SelectorMode::Auto => command,
     };
 
     execute_command_with_interrupts(
-        &command_str,
-        Executor::requires_tty(&command_str),
+        &final_command,
+        Executor::requires_tty(&final_command, &exec_config.extra_tty_commands),
         executor,
         exec_config,
         builtins,

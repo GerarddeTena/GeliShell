@@ -39,6 +39,17 @@ impl Drop for RawModeGuard {
     }
 }
 
+/// Drena eventos stale del buffer de input de crossterm mientras raw mode está activo.
+/// Previene que un ENTER buffereado durante la ejecución de un comando sea
+/// procesado como entrada en el siguiente ciclo del REPL (bug del doble ENTER).
+fn flush_input_buffer() {
+    use crossterm::event::{poll, read};
+    use std::time::Duration;
+    while matches!(poll(Duration::from_millis(0)), Ok(true)) {
+        let _ = read();
+    }
+}
+
 pub fn read_repl_input(
     prompt: &str,
     history: &[String],
@@ -48,6 +59,10 @@ pub fn read_repl_input(
 ) -> io::Result<ReplInputAction> {
     let mut stdout = io::stdout();
     let _raw_mode = RawModeGuard::acquire()?;
+
+    // Drenar cualquier evento stale (ENTER de la ejecución anterior)
+    // mientras raw mode está activo, para evitar el bug del doble ENTER.
+    flush_input_buffer();
 
     let mut input = String::new();
     let mut cursor_pos = 0usize;

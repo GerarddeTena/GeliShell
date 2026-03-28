@@ -11,31 +11,36 @@ use geli_shell::shell::{
     translator::{CommandMap, Subsystem, TranslationPipeline},
     tui::repl_input::{parse_special_command, read_repl_input, ReplInputAction, SpecialCommand},
 };
+use std::sync::Arc;
 
-#[allow(clippy::too_many_arguments)]
-pub async fn run_repl(
-    mut config: ShellConfig,
-    mut command_history: PersistentCommandHistory,
-    map: std::sync::Arc<CommandMap>,
-    subsystem: Subsystem,
-    pipeline: TranslationPipeline,
-    executor: Executor,
-    exec_config: ExecutorConfig,
-    guard: Box<dyn Guard>,
-    mut builtins: BuiltinRegistry,
-    reporter: &dyn Reporter,
-) {
-    let mut completion_pool = build_completion_pool(map.as_ref(), &config);
+// ══════════════════════════════════════════════════════════════
+// ReplContext — agrupa los parámetros de larga vida del REPL
+// ══════════════════════════════════════════════════════════════
+
+pub struct ReplContext {
+    pub config: ShellConfig,
+    pub command_history: PersistentCommandHistory,
+    pub map: Arc<CommandMap>,
+    pub subsystem: Subsystem,
+    pub pipeline: TranslationPipeline,
+    pub executor: Executor,
+    pub exec_config: ExecutorConfig,
+    pub guard: Box<dyn Guard>,
+    pub builtins: BuiltinRegistry,
+}
+
+pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
+    let mut completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
 
     loop {
-        let g_jump_paths = builtins.g_completion_paths(64);
-        let prompt = render_prompt(&subsystem, &config.visual);
+        let g_jump_paths = ctx.builtins.g_completion_paths(64);
+        let prompt = render_prompt(&ctx.subsystem, &ctx.config.visual);
         let input = match read_repl_input(
             &prompt,
-            command_history.entries(),
+            ctx.command_history.entries(),
             &completion_pool,
             &g_jump_paths,
-            config.visual.prompt_dim_ansi256,
+            ctx.config.visual.prompt_dim_ansi256,
         ) {
             Ok(ReplInputAction::Command(line)) => line,
             Ok(ReplInputAction::Exit) => {
@@ -43,14 +48,14 @@ pub async fn run_repl(
                 break;
             }
             Ok(ReplInputAction::OpenHelp) => {
-                if handle_help_menu(&config, reporter) {
+                if handle_help_menu(&ctx.config, reporter) {
                     break;
                 }
                 continue;
             }
             Ok(ReplInputAction::OpenConfig) => {
-                if handle_config_menu(&mut config, reporter).await {
-                    completion_pool = build_completion_pool(map.as_ref(), &config);
+                if handle_config_menu(&mut ctx.config, reporter).await {
+                    completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
                 }
                 continue;
             }
@@ -60,7 +65,7 @@ pub async fn run_repl(
                 continue;
             }
             Ok(ReplInputAction::Clear) => {
-                run_clear(&config, reporter);
+                run_clear(&ctx.config, reporter);
                 continue;
             }
             Ok(ReplInputAction::Search) => {
@@ -78,15 +83,15 @@ pub async fn run_repl(
         }
 
         if is_help_trigger(&input) {
-            append_history_or_warn(&mut command_history, &input, reporter).await;
-            if handle_help_menu(&config, reporter) {
+            append_history_or_warn(&mut ctx.command_history, &input, reporter).await;
+            if handle_help_menu(&ctx.config, reporter) {
                 break;
             }
             continue;
         }
 
         if is_config_trigger(&input) {
-            append_history_or_warn(&mut command_history, &input, reporter).await;
+            append_history_or_warn(&mut ctx.command_history, &input, reporter).await;
 
             if input.eq_ignore_ascii_case("geli-reset-config") {
                 match ShellConfig::reset().await {
@@ -97,8 +102,8 @@ pub async fn run_repl(
                         reporter.error(&format!("reset failed: {error}"));
                     }
                 }
-            } else if handle_config_menu(&mut config, reporter).await {
-                completion_pool = build_completion_pool(map.as_ref(), &config);
+            } else if handle_config_menu(&mut ctx.config, reporter).await {
+                completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
             }
             continue;
         }
@@ -109,26 +114,21 @@ pub async fn run_repl(
         }
 
         if let Some(action) = parse_geli_internal_command(&input) {
-            append_history_or_warn(&mut command_history, &input, reporter).await;
-            handle_geli_internal_command(
-                action,
-                &mut config,
-                reporter,
-            )
-            .await;
+            append_history_or_warn(&mut ctx.command_history, &input, reporter).await;
+            handle_geli_internal_command(action, &mut ctx.config, reporter).await;
             continue;
         }
 
-        append_history_or_warn(&mut command_history, &input, reporter).await;
+        append_history_or_warn(&mut ctx.command_history, &input, reporter).await;
 
         if process_regular_command(
             &input,
-            &config,
-            guard.as_ref(),
-            &pipeline,
-            &executor,
-            &exec_config,
-            &mut builtins,
+            &ctx.config,
+            ctx.guard.as_ref(),
+            &ctx.pipeline,
+            &ctx.executor,
+            &ctx.exec_config,
+            &mut ctx.builtins,
             reporter,
         )
         .await

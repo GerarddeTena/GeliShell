@@ -3,21 +3,14 @@ mod repl;
 mod setup;
 mod utils;
 
-mod handlers {
-    #[path = "command.rs"]
-    pub mod command;
-    #[path = "geli_internal.rs"]
-    pub mod geli_internal;
-    #[path = "menu.rs"]
-    pub mod menu;
-}
+mod handlers;
 
 
 use cli::handle_cli_args;
 use geli_shell::shell::{
     builtins::BuiltinRegistry,
     executor::Executor,
-    guard::default_guard,
+    guard::default_guard_normalized,
     reporter::{Reporter, StderrReporter},
     translator::TranslationPipeline,
 };
@@ -35,6 +28,8 @@ async fn main() {
         eprintln!("Error: GeliShell ya está en ejecución.");
         std::process::exit(1);
     }
+    // SAFETY: called once before the tokio runtime spawns worker threads,
+    // so no concurrent reads of the environment can occur.
     unsafe {
         std::env::set_var("GELISHELL_ACTIVE", "1");
     }
@@ -52,22 +47,22 @@ async fn main() {
 
     let config = load_or_init_config(&reporter).await;
     let command_history = load_history_or_default(&reporter).await;
-    let map = init_command_map_or_exit(&reporter);
+    let map = init_command_map_or_exit(&reporter).await;
     let subsystem = resolve_subsystem(&config, &reporter);
 
     let pipeline = TranslationPipeline::new(Arc::clone(&map), subsystem.clone());
     let executor = Executor::new(subsystem.clone());
-    let guard = Box::new(default_guard());
+    let guard = Box::new(default_guard_normalized(Arc::clone(&map)));
     let exec_config = config.to_executor_config();
     let builtins = BuiltinRegistry::new();
     apply_visual_settings(&config, &reporter);
 
     reporter.info("GeliShell ready");
     use geli_shell::shell::banner::print_banner;
-    print_banner("0.1.0");
+    print_banner("0.1.0", &mut std::io::stdout());
     reporter.info(&format!("subsystem: {subsystem}"));
 
-    repl::run_repl(
+    let ctx = repl::ReplContext {
         config,
         command_history,
         map,
@@ -77,7 +72,6 @@ async fn main() {
         exec_config,
         guard,
         builtins,
-        &reporter,
-    )
-    .await;
+    };
+    repl::run_repl(ctx, &reporter).await;
 }

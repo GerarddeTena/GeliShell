@@ -57,9 +57,9 @@ impl<'a> Lexer<'a> {
             '"' | '\'' => self.read_quoted(),
             '$' => self.read_variable(),
             '>' | '<' | '|' | '&' | ';' => self.read_operator(),
-            c if c.is_alphanumeric() || matches!(c, '-' | '.' | '/' | '_' | '~') => {
-                self.read_word()
-            }
+            // Cualquier carácter imprimible (no de control) que no sea operador inicia una palabra.
+            // Esto cubre =, @, *, ?, {, }, :, !, #, %, +, (, ), [, ], \, ^ y similares.
+            c if !c.is_control() => self.read_word(),
             c => Err(LexError::UnexpectedChar(c, self.position)),
         }
     }
@@ -127,7 +127,15 @@ impl<'a> Lexer<'a> {
     fn read_operator(&mut self) -> Result<Token, LexError> {
         let c = self.advance();
         let token = match c {
-            '|' => Token::Redirect(RedirectKind::Pipe),
+            '|' => {
+                // distingue | de ||
+                if self.position < self.chars.len() && self.peek() == '|' {
+                    self.advance();
+                    Token::Operator(OperatorKind::Or)
+                } else {
+                    Token::Redirect(RedirectKind::Pipe)
+                }
+            }
             '<' => Token::Redirect(RedirectKind::In),
             '>' => {
                 // distingue > de >>

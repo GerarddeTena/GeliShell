@@ -29,7 +29,7 @@ impl Executor {
         Self { subsystem }
     }
 
-    pub fn requires_tty(command: &str) -> bool {
+    pub fn requires_tty(command: &str, extra: &[String]) -> bool {
         let mut parts = command.split_whitespace().map(normalize_token);
         let Some(first) = parts.next() else {
             return false;
@@ -40,6 +40,10 @@ impl Executor {
         } else {
             first
         };
+
+        if extra.iter().any(|e| e == entry.as_str()) {
+            return true;
+        }
 
         matches!(
             entry.as_str(),
@@ -56,6 +60,8 @@ impl Executor {
                 | "htop"
                 | "tmux"
                 | "screen"
+                | "gerisabet"
+                | "gerisabet.exe"
         )
     }
 
@@ -98,7 +104,7 @@ impl Executor {
         // ── Construye y spawna el proceso ─────────────────────
         let mut cmd = platform::build_command(command, &self.subsystem);
         cmd.kill_on_drop(true);
-        let interactive = Self::requires_tty(command);
+        let interactive = Self::requires_tty(command, &config.extra_tty_commands);
 
         if interactive {
             reporter.info("executor: interactive tty mode enabled");
@@ -462,14 +468,25 @@ mod tests {
 
     #[test]
     fn detects_nvim_as_tty_command() {
-        assert!(Executor::requires_tty("nvim Cargo.toml"));
-        assert!(Executor::requires_tty("\"nvim\" src/main.rs"));
-        assert!(Executor::requires_tty("sudo nvim Cargo.toml"));
+        assert!(Executor::requires_tty("nvim Cargo.toml", &[]));
+        assert!(Executor::requires_tty("\"nvim\" src/main.rs", &[]));
+        assert!(Executor::requires_tty("sudo nvim Cargo.toml", &[]));
     }
 
     #[test]
     fn ignores_non_tty_command() {
-        assert!(!Executor::requires_tty("echo hello"));
-        assert!(!Executor::requires_tty("ls -la"));
+        assert!(!Executor::requires_tty("echo hello", &[]));
+        assert!(!Executor::requires_tty("ls -la", &[]));
+    }
+
+    #[test]
+    fn extra_tty_commands_extend_built_in_list() {
+        let extra = vec!["lazygit".to_owned(), "helix".to_owned()];
+        assert!(Executor::requires_tty("lazygit", &extra));
+        assert!(Executor::requires_tty("helix .", &extra));
+        // Built-in list still works
+        assert!(Executor::requires_tty("nvim", &extra));
+        // Non-listed commands are unaffected
+        assert!(!Executor::requires_tty("cargo build", &extra));
     }
 }

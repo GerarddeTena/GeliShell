@@ -24,6 +24,13 @@ impl Subsystem {
             match Self::from_str(val.trim()) {
                 Some(s) => {
                     reporter.info(&format!("subsystem: using GELI_SUBSYSTEM='{}'", val.trim()));
+                    if !s.is_supported_on_platform() {
+                        reporter.warn(&format!(
+                            "subsystem '{}' has limited support on this platform — \
+                             commands may not execute correctly",
+                            s.as_str()
+                        ));
+                    }
                     return s;
                 }
                 None => {
@@ -36,6 +43,9 @@ impl Subsystem {
             }
         }
 
+        // $SHELL solo se lee en plataformas no-Windows.
+        // En Windows, $SHELL puede venir de WSL/Git Bash y es engañoso.
+        #[cfg(not(target_os = "windows"))]
         if let Ok(shell) = std::env::var("SHELL") {
             if let Some(s) = Self::from_shell_path(&shell) {
                 reporter.info(&format!("subsystem: detected from $SHELL='{shell}'"));
@@ -48,6 +58,16 @@ impl Subsystem {
             default.as_str()
         ));
         default
+    }
+
+    /// true si el subsistema es compatible con la plataforma actual.
+    /// Fish no tiene soporte oficial en Windows — se advierte al usuario.
+    pub fn is_supported_on_platform(&self) -> bool {
+        #[cfg(target_os = "windows")]
+        if matches!(self, Self::Fish) {
+            return false;
+        }
+        true
     }
 
     /// Parsea un string canónico → Subsystem
@@ -63,16 +83,20 @@ impl Subsystem {
         }
     }
 
-    /// Parsea un path de shell tipo `/usr/bin/zsh` o `/bin/bash`
+    /// Parsea un path de shell tipo `/usr/bin/zsh`, `/bin/bash`,
+    /// o `C:\Program Files\Git\bin\bash.exe` (Windows backslash)
     fn from_shell_path(path: &str) -> Option<Self> {
-        // Toma solo el nombre del ejecutable — no el path completo
-        let name = path.rsplit('/').next().unwrap_or(path).to_lowercase();
+        // Normaliza backslash → forward slash para cubrir rutas Windows
+        let normalized = path.replace('\\', "/");
+        let exe = normalized.rsplit('/').next().unwrap_or(path);
+        // Elimina extensión .exe si presente
+        let name = exe.strip_suffix(".exe").unwrap_or(exe).to_lowercase();
 
         match name.as_str() {
-            "bash" => Some(Self::Bash),
+            "bash" | "git-bash" => Some(Self::Bash),
             "zsh" => Some(Self::Zsh),
             "fish" => Some(Self::Fish),
-            "pwsh" => Some(Self::PowerShell),
+            "pwsh" | "powershell" => Some(Self::PowerShell),
             _ => None,
         }
     }

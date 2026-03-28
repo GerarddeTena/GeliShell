@@ -156,11 +156,21 @@ impl TranslationEntry {
 }
 pub struct CommandMap {
     index: HashMap<String, CommandDef>,
+    /// Índice inverso: exact_value (cualquier subsistema) → canonical_name.
+    /// Solo contiene entradas sin ambigüedad (un único canónico por exact).
+    reverse_index: HashMap<String, String>,
 }
 
 impl CommandMap {
     pub fn get(&self, name: &str) -> Option<&CommandDef> {
         self.index.get(name)
+    }
+
+    /// Busca por valor nativo exacto — `ls`, `Get-ChildItem`, `cd`, …
+    /// Devuelve el `CommandDef` canónico si la correspondencia es unívoca.
+    pub fn find_by_exact(&self, native: &str) -> Option<&CommandDef> {
+        let canonical = self.reverse_index.get(native)?;
+        self.index.get(canonical)
     }
 
     pub fn by_category(&self, category: &str) -> Vec<&CommandDef> {
@@ -237,8 +247,40 @@ pub fn load_from_str(raw_commands: &str) -> Result<LoadResult, CommandMapError> 
         index.insert(cmd.name.clone(), cmd);
     }
 
+    // ── Construye el índice inverso: exact → canonical_name ───────────────
+    // Solo incluye entradas sin ambigüedad (un único canónico por exact).
+    let mut reverse_index: HashMap<String, String> = HashMap::new();
+    let mut ambiguous: std::collections::HashSet<String> = Default::default();
+
+    for cmd in index.values() {
+        for (_, entry_opt) in cmd.translate.iter_named() {
+            let Some(entry) = entry_opt else { continue };
+            let exact = entry.exact.trim().to_owned();
+            if exact.is_empty() {
+                continue;
+            }
+            match reverse_index.entry(exact.clone()) {
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    if !ambiguous.contains(&exact) {
+                        e.insert(cmd.name.clone());
+                    }
+                }
+                std::collections::hash_map::Entry::Occupied(e) => {
+                    if e.get() != &cmd.name {
+                        // Dos canónicos distintos tienen el mismo exact → ambiguo
+                        ambiguous.insert(exact.clone());
+                        e.remove();
+                    }
+                }
+            }
+        }
+    }
+
     Ok(LoadResult {
-        map: CommandMap { index },
+        map: CommandMap {
+            index,
+            reverse_index,
+        },
         warnings,
     })
 }

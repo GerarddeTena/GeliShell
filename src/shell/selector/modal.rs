@@ -50,6 +50,10 @@ fn show_modal(stdout: &mut impl Write, options: &[&str]) -> SelectionResult {
     let mut selected = 0usize;
     let total = options.len();
 
+    // Guarda la posición del cursor antes del primer render.
+    // RestorePosition se usa en lugar de MoveUp para volver al inicio del modal.
+    execute!(stdout, cursor::SavePosition).ok();
+
     loop {
         render_modal(stdout, options, selected).ok();
 
@@ -153,13 +157,15 @@ fn render_modal(stdout: &mut impl Write, options: &[&str], selected: usize) -> s
 
     stdout.flush()?;
 
-    // Vuelve al inicio del modal para el siguiente render
-    let lines = options.len() + 5;
-    execute!(stdout, cursor::MoveUp(lines as u16))?;
+    // Vuelve al inicio del modal para el siguiente render usando posición guardada.
+    // Nunca usar cursor::MoveUp — causa artefactos en terminales sin soporte completo ANSI.
+    execute!(stdout, cursor::RestorePosition)?;
     Ok(())
 }
 
 fn clear_modal(stdout: &mut impl Write, lines: usize) -> std::io::Result<()> {
+    // Vuelve al inicio del modal antes de borrar
+    execute!(stdout, cursor::RestorePosition)?;
     for _ in 0..lines {
         execute!(
             stdout,
@@ -167,14 +173,17 @@ fn clear_modal(stdout: &mut impl Write, lines: usize) -> std::io::Result<()> {
             cursor::MoveDown(1),
         )?;
     }
-    execute!(stdout, cursor::MoveUp(lines as u16))?;
+    // Vuelve al inicio tras limpiar para dejar el cursor en la posición correcta
+    execute!(stdout, cursor::RestorePosition)?;
     Ok(())
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    // Comparar char count, no byte count, para evitar pánico en caracteres multibyte UTF-8
+    if s.chars().count() <= max {
         s.to_owned()
     } else {
-        format!("{}…", &s[..max - 1])
+        let truncated: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{}…", truncated)
     }
 }

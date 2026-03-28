@@ -3,6 +3,7 @@ pub mod clear;
 mod customization;
 pub mod exit;
 pub mod export;
+pub mod gerisabet;
 pub mod g_jump;
 pub mod history;
 pub mod source;
@@ -53,7 +54,7 @@ impl BuiltinRegistry {
                 Box::new(clear::ClearBuiltin),
                 Box::new(exit::ExitBuiltin),
                 Box::new(export::ExportBuiltin),
-                Box::new(history::HistoryBuiltin),
+                Box::new(gerisabet::GerisabetBuiltin),
                 Box::new(source::SourceBuiltin),
                 Box::new(unset::UnsetBuiltin),
                 Box::new(GJumpBuiltin::new(Arc::clone(&g_history))),
@@ -101,7 +102,7 @@ impl BuiltinRegistry {
                 reporter.info("history cleared");
             } else {
                 for (i, entry) in self.history.iter().enumerate() {
-                    println!("{:4}  {}", i + 1, entry);
+                    reporter.info(&format!("{:4}  {}", i + 1, entry));
                 }
             }
             return BuiltinResult::Handled;

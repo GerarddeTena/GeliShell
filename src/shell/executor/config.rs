@@ -20,6 +20,10 @@ pub struct ExecutionConfig {
     /// Timeout en segundos — None significa sin límite.
     /// Por defecto None.
     pub timeout_secs: Option<u64>,
+
+    /// Comandos extra que requieren TTY (modo interactivo).
+    /// Extendido desde `config.toml` → `customization.tty_commands`.
+    pub extra_tty_commands: Vec<String>,
 }
 
 impl Default for ExecutionConfig {
@@ -29,6 +33,7 @@ impl Default for ExecutionConfig {
             capture_duration: false,
             capture_command_trace: false,
             timeout_secs: None,
+            extra_tty_commands: Vec::new(),
         }
     }
 }
@@ -47,6 +52,7 @@ impl ExecutionConfig {
             capture_duration: true,
             capture_command_trace: true,
             timeout_secs: None,
+            extra_tty_commands: Vec::new(),
         }
     }
 

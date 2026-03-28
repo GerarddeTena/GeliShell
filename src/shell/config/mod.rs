@@ -62,7 +62,7 @@ impl std::fmt::Display for SelectorMode {
 pub struct ShellConfig {
     pub behavior: BehaviorConfig,
     pub subsystem: SubsystemConfig,
-    pub execution: ExecutionConfig,
+    pub execution: ShellExecutionConfig,
     pub visual: VisualConfig,
     pub customization: CustomizationConfig,
     pub assistant: AssistantConfig,
@@ -98,14 +98,14 @@ impl Default for SubsystemConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ExecutionConfig {
+pub struct ShellExecutionConfig {
     pub capture_output: bool,
     pub capture_duration: bool,
     pub capture_command_trace: bool,
     pub timeout_secs: u64,
 }
 
-impl Default for ExecutionConfig {
+impl Default for ShellExecutionConfig {
     fn default() -> Self {
         Self {
             capture_output: false,
@@ -146,6 +146,9 @@ impl Default for VisualConfig {
 #[serde(default)]
 pub struct CustomizationConfig {
     pub custom_commands: Vec<CustomCommand>,
+    /// Extra commands that require a TTY (interactive mode).
+    /// Add tools like "lazygit", "helix", "btop" that are not in the built-in list.
+    pub tty_commands: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -199,7 +202,7 @@ impl Default for ShellConfig {
         Self {
             behavior: BehaviorConfig::default(),
             subsystem: SubsystemConfig::default(),
-            execution: ExecutionConfig::default(),
+            execution: ShellExecutionConfig::default(),
             visual: VisualConfig::default(),
             customization: CustomizationConfig::default(),
             assistant: AssistantConfig::default(),
@@ -308,6 +311,23 @@ impl ShellConfig {
         if self.execution.timeout_secs > 0 {
             cfg = cfg.with_timeout(self.execution.timeout_secs);
         }
+        cfg.extra_tty_commands = self.customization.tty_commands.clone();
         cfg
+    }
+
+    /// Detecta el subsistema activo respetando el override del usuario.
+    /// Disponible en la librería para que ambos binarios (geli, gerisabet)
+    /// compartan el mismo algoritmo sin duplicar código.
+    pub fn resolve_subsystem(
+        &self,
+        reporter: &dyn crate::shell::reporter::Reporter,
+    ) -> crate::shell::translator::Subsystem {
+        use crate::shell::translator::Subsystem;
+        if self.has_subsystem_override() {
+            Subsystem::from_str(&self.subsystem.override_subsystem)
+                .unwrap_or_else(|| Subsystem::detect(reporter))
+        } else {
+            Subsystem::detect(reporter)
+        }
     }
 }

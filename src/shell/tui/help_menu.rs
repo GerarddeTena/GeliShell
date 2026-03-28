@@ -27,6 +27,10 @@ const COL_SHORTCUT: usize = 12;
 const COL_COMMAND: usize = 14;
 const COL_DESCRIPTION: usize = 66;
 
+/// Fila Y (0-based) donde empiezan las filas de datos en la pantalla.
+/// Estructura: borde(0) título(1) vacío(2) cabecera(3) separador(4) datos(5…)
+const HELP_DATA_START_ROW: u16 = 5;
+
 const HELP_ROWS: &[HelpRow] = &[
     HelpRow {
         shortcut: "^C",
@@ -85,6 +89,7 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
     let mut row = 0usize;
     let mut col = 0usize;
 
+    // Render inicial completo — con Clear(All) para establecer la pantalla
     render_help_menu(out, row, col)?;
 
     loop {
@@ -94,29 +99,28 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
                     continue;
                 }
 
+                let prev_row = row;
+                let prev_col = col;
+
                 match key.code {
                     KeyCode::Up => {
                         if row > 0 {
                             row -= 1;
-                            render_help_menu(out, row, col)?;
                         }
                     }
                     KeyCode::Down => {
                         if row + 1 < HELP_ROWS.len() {
                             row += 1;
-                            render_help_menu(out, row, col)?;
                         }
                     }
                     KeyCode::Left => {
                         if col > 0 {
                             col -= 1;
-                            render_help_menu(out, row, col)?;
                         }
                     }
                     KeyCode::Right => {
                         if col < 2 {
                             col += 1;
-                            render_help_menu(out, row, col)?;
                         }
                     }
                     KeyCode::Enter => {
@@ -127,10 +131,34 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
                     }
                     _ => {}
                 }
+
+                // Render diferencial: solo actualiza las filas que cambiaron
+                if row != prev_row {
+                    update_help_row(out, prev_row, &HELP_ROWS[prev_row], false, col)?;
+                    update_help_row(out, row, &HELP_ROWS[row], true, col)?;
+                } else if col != prev_col {
+                    update_help_row(out, row, &HELP_ROWS[row], true, col)?;
+                }
             }
             _ => {}
         }
     }
+}
+
+/// Actualiza una única fila de datos en su posición Y exacta.
+/// Evita el Clear(All) completo — elimina el flicker en navegación.
+fn update_help_row(
+    out: &mut impl Write,
+    row_idx: usize,
+    item: &HelpRow,
+    selected: bool,
+    col: usize,
+) -> io::Result<()> {
+    let y = HELP_DATA_START_ROW + row_idx as u16;
+    execute!(out, cursor::MoveTo(0, y), terminal::Clear(ClearType::CurrentLine))?;
+    render_data_row(out, item, selected, col)?;
+    out.flush()?;
+    Ok(())
 }
 
 fn render_help_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<()> {

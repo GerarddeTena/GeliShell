@@ -32,6 +32,8 @@ impl GJumpBuiltin {
 
     fn jump_to(&self, target: &str, reporter: &dyn Reporter) {
         if let Ok(current) = std::env::current_dir() {
+            // SAFETY: the REPL loop is single-threaded at this point;
+            // no concurrent thread reads OLDPWD while we write it.
             unsafe {
                 std::env::set_var("OLDPWD", current.to_string_lossy().as_ref());
             }
@@ -39,6 +41,7 @@ impl GJumpBuiltin {
 
         match std::env::set_current_dir(target) {
             Ok(_) => {
+                // SAFETY: same single-threaded REPL guarantee as OLDPWD above.
                 unsafe {
                     std::env::set_var("PWD", target);
                 }

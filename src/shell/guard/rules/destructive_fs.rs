@@ -37,7 +37,12 @@ impl RmGuard {
     fn targets_root(args: &[String]) -> Option<&'static str> {
         ROOT_TARGETS
             .iter()
-            .find(|&&root| args.iter().any(|a| a == root))
+            .find(|&&root| {
+                args.iter().any(|a| {
+                    // Strip trailing slashes before comparing so "/etc/" == "/etc"
+                    a.trim_end_matches('/') == root.trim_end_matches('/')
+                })
+            })
             .copied()
     }
 }

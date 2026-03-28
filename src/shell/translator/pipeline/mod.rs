@@ -61,6 +61,17 @@ impl TranslationPipeline {
     /// - `PipelineError::Fatal`    — el pipeline no puede continuar
     /// - `PipelineError::Degraded` — resultado parcial disponible
     pub fn run(&self, node: &ASTNode, reporter: &dyn Reporter) -> Result<String, PipelineError> {
+        self.run_resolving(node, reporter).map(|(s, _)| s)
+    }
+
+    /// Same as `run()` but also returns the `ResolvedCommand` of the first fragment.
+    /// Used by the REPL handler to drive `ModalSelector` when `SelectorMode` requires it.
+    pub fn run_resolving(
+        &self,
+        node: &ASTNode,
+        reporter: &dyn Reporter,
+    ) -> Result<(String, Option<crate::shell::translator::resolver::ResolvedCommand>), PipelineError>
+    {
         let mut ctx = TranslationContext::new(node, &self.subsystem, &self.map);
 
         for step in &self.steps {
@@ -69,12 +80,14 @@ impl TranslationPipeline {
                 StepResult::Done(output) => {
                     ctx.output = Some(output.clone());
                     ctx.snapshot(step.name());
-                    return Ok(output);
+                    let resolved = ctx.fragments.into_iter().next().and_then(|f| f.resolved);
+                    return Ok((output, resolved));
                 }
             }
         }
 
-        // Todos los steps completados — ensambla el output final
+        let resolved = ctx.fragments.first().and_then(|f| f.resolved.clone());
+
         let output = if let Some(out) = ctx.output.take() {
             out
         } else {
@@ -83,7 +96,7 @@ impl TranslationPipeline {
 
         reporter.info(&format!("pipeline: complete → '{output}'"));
 
-        Ok(output)
+        Ok((output, resolved))
     }
 
     /// Devuelve los snapshots del último run — solo en debug builds
@@ -282,5 +295,62 @@ translate = { bash = { exact = "echo", suggestions = [] }, zsh = { exact = "echo
             "expected canonical match trace in infos, got: {:?}",
             reporter.infos()
         );
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Tests de reverse lookup bidireccional (Problema 1)
+    // ──────────────────────────────────────────────────────────
+
+    /// Usuario en subsistema PowerShell escribe `ls` (nativo de Bash).
+    /// El pipeline debe detectarlo vía reverse lookup y traducirlo a `Get-ChildItem`.
+    #[test]
+    fn reverse_lookup_translates_ls_to_powershell() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::PowerShell);
+        let reporter = SilentReporter::new();
+        let node = make_command_node("ls", vec![]);
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "Get-ChildItem");
+    }
+
+    /// Usuario en subsistema Bash escribe `Set-Location` (nativo de PowerShell).
+    /// `cd` es el exact de bash para change-dir, `Set-Location` es único → reverse lookup válido.
+    #[test]
+    fn reverse_lookup_translates_set_location_to_bash() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let node = make_command_node("Set-Location", vec!["/tmp"]);
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "cd /tmp");
+    }
+
+    /// El reverse lookup traza el paso de normalización en el reporter.
+    #[test]
+    fn reverse_lookup_logs_reverse_lookup_trace() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::PowerShell);
+        let reporter = BufferedReporter::new();
+        let node = make_command_node("ls", vec![]);
+        pipeline.run(&node, &reporter).unwrap();
+        assert!(
+            reporter
+                .infos()
+                .iter()
+                .any(|msg| msg.contains("reverse lookup")),
+            "expected 'reverse lookup' trace, got: {:?}",
+            reporter.infos()
+        );
+    }
+
+    /// Comando nativo sin equivalente canónico → pass-through intacto.
+    #[test]
+    fn reverse_lookup_passthrough_for_truly_unknown_native() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let node = make_command_node("docker", vec!["ps"]);
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "docker ps");
     }
 }

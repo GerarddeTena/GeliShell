@@ -1,5 +1,7 @@
 // src/shell/banner.rs
 
+use std::io::Write;
+
 const GELI_ART: &str = r#"
                                          ███████ █████████
                                 ██████████     ██        ███████████
@@ -43,31 +45,33 @@ const DARKPINK: &str = "\x1b[38;5;198m";
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 
-pub fn print_banner(version: &str) {
+/// Imprime el banner de inicio en el writer dado.
+/// Acepta cualquier `dyn Write` (stdout, buffer de test, etc.)
+/// para no acoplar la función a stdout directamente.
+pub fn print_banner(version: &str, out: &mut dyn Write) {
     // Colorea el art alternando purple y darkpink por línea
     // para dar efecto degradado vertical
     let lines: Vec<&str> = GELI_ART.lines().collect();
     let total = lines.len();
 
     for (i, line) in lines.iter().enumerate() {
-        // Primera mitad purple, segunda mitad darkpink
         let color = if i < total / 2 { PURPLE } else { DARKPINK };
-        println!("{color}{line}{RESET}");
+        let _ = writeln!(out, "{color}{line}{RESET}");
     }
 
-    // Tagline centrada debajo del logo
-    println!();
-    println!("{BOLD}{PURPLE}   ██████╗ ███████╗██╗     ██╗{RESET}");
-    println!("{BOLD}{DARKPINK}  ██╔════╝ ██╔════╝██║     ██║{RESET}");
-    println!("{BOLD}{PURPLE}  ██║  ███╗█████╗  ██║     ██║{RESET}");
-    println!("{BOLD}{DARKPINK}  ██║   ██║██╔══╝  ██║     ██║{RESET}");
-    println!("{BOLD}{PURPLE}  ╚██████╔╝███████╗███████╗██║{RESET}");
-    println!("{BOLD}{DARKPINK}   ╚═════╝ ╚══════╝╚══════╝╚═╝  v{version}{RESET}");
-    println!();
-    println!(
+    let _ = writeln!(out);
+    let _ = writeln!(out, "{BOLD}{PURPLE}   ██████╗ ███████╗██╗     ██╗{RESET}");
+    let _ = writeln!(out, "{BOLD}{DARKPINK}  ██╔════╝ ██╔════╝██║     ██║{RESET}");
+    let _ = writeln!(out, "{BOLD}{PURPLE}  ██║  ███╗█████╗  ██║     ██║{RESET}");
+    let _ = writeln!(out, "{BOLD}{DARKPINK}  ██║   ██║██╔══╝  ██║     ██║{RESET}");
+    let _ = writeln!(out, "{BOLD}{PURPLE}  ╚██████╔╝███████╗███████╗██║{RESET}");
+    let _ = writeln!(out, "{BOLD}{DARKPINK}   ╚═════╝ ╚══════╝╚══════╝╚═╝  v{version}{RESET}");
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
         "{PURPLE}  cross-platform shell · \
          {DARKPINK}subsystem translator · \
          {PURPLE}AI assistant{RESET}"
     );
-    println!();
+    let _ = writeln!(out);
 }

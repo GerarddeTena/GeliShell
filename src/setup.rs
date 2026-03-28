@@ -76,8 +76,8 @@ pub async fn load_history_or_default(reporter: &dyn Reporter) -> PersistentComma
     }
 }
 
-pub fn init_command_map_or_exit(reporter: &dyn Reporter) -> Arc<CommandMap> {
-    let (result, command_map_source) = match load_command_map_for_startup() {
+pub async fn init_command_map_or_exit(reporter: &dyn Reporter) -> Arc<CommandMap> {
+    let (result, command_map_source) = match load_command_map_for_startup().await {
         Ok(loaded) => loaded,
         Err(error) => {
             reporter.error(&error);
@@ -104,16 +104,17 @@ pub fn resolve_subsystem(config: &ShellConfig, reporter: &dyn Reporter) -> Subsy
     }
 }
 
-fn load_command_map_for_startup() -> Result<(translator::LoadResult, String), String> {
+async fn load_command_map_for_startup() -> Result<(translator::LoadResult, String), String> {
     for path in command_map_runtime_candidates() {
-        let Ok(metadata) = std::fs::metadata(&path) else {
+        let Ok(metadata) = tokio::fs::metadata(&path).await else {
             continue;
         };
         if !metadata.is_file() {
             continue;
         }
 
-        let raw = std::fs::read_to_string(&path)
+        let raw = tokio::fs::read_to_string(&path)
+            .await
             .map_err(|error| format!("command map read failed ({}): {error}", path.display()))?;
         let parsed = translator::load_from_str(&raw)
             .map_err(|error| format!("command map parse failed ({}): {error}", path.display()))?;

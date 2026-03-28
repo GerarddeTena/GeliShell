@@ -309,7 +309,10 @@ fn load_sqlite_vec_extension(
 
 fn sqlite_vec_candidates(models_dir: &Path, configured_path: Option<&str>) -> Vec<String> {
     if let Some(path) = configured_path {
-        return vec![normalize_path_str(path)];
+        // Return the user-configured path as-is — do not normalize.
+        // The user (or installer) chose this path deliberately; altering it
+        // would silently break explicit GELI_SQLITE_VEC_PATH overrides.
+        return vec![path.to_owned()];
     }
 
     #[cfg(target_os = "windows")]
@@ -344,18 +347,26 @@ fn resolve_sqlite_vec_path(models_dir: &Path) -> Option<String> {
         }
     }
 
+    // Platform-correct extension name
+    #[cfg(target_os = "windows")]
+    let ext_name = "vec0.dll";
+    #[cfg(target_os = "linux")]
+    let ext_name = "vec0.so";
+    #[cfg(target_os = "macos")]
+    let ext_name = "vec0.dylib";
+
     if let Some(home) = dirs::home_dir() {
         let candidate = home
             .join(".config")
             .join("geliShell")
             .join("models")
-            .join("vec0.dll");
+            .join(ext_name);
         if candidate.exists() {
             return Some(normalize_path(&candidate));
         }
     }
 
-    let models_candidate = models_dir.join("vec0.dll");
+    let models_candidate = models_dir.join(ext_name);
     if models_candidate.exists() {
         return Some(normalize_path(&models_candidate));
     }
@@ -398,6 +409,8 @@ mod tests {
     #[test]
     fn candidates_prefer_configured_path() {
         let models_dir = std::env::temp_dir().join("geli_shell_rag_candidates");
+        // configured_path is returned as-is (no normalization) so the caller's
+        // explicit path override is preserved exactly as provided.
         let configured = "C:\\custom\\vec0.dll";
         let candidates = sqlite_vec_candidates(&models_dir, Some(configured));
         assert_eq!(candidates, vec!["C:\\custom\\vec0.dll".to_owned()]);
