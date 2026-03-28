@@ -1,4 +1,5 @@
 use geli_shell::{
+    t,
     parser::{lexer::Lexer, parser::Parser},
     shell::{
         assistant::AssistantRuntime,
@@ -32,7 +33,7 @@ pub async fn handle_assistant_show_me(
         Ok(Some(cmd)) => cmd,
         Ok(None) => return,
         Err(e) => {
-            reporter.error(&format!("show-me failed: {e}"));
+            reporter.error(&t!("assistant.show_me_failed", error = e));
             return;
         }
     };
@@ -40,9 +41,7 @@ pub async fn handle_assistant_show_me(
     let tokens = match Lexer::new(&selected_command).tokenize() {
         Ok(tokens) => tokens,
         Err(error) => {
-            reporter.error(&format!(
-                "assistant --show-me generated invalid command: {error}"
-            ));
+            reporter.error(&t!("assistant.show_me_invalid", error = error));
             return;
         }
     };
@@ -50,25 +49,17 @@ pub async fn handle_assistant_show_me(
     let ast = match Parser::new(tokens).parse() {
         Ok(ast) => ast,
         Err(error) => {
-            reporter.error(&format!(
-                "assistant --show-me generated unparseable command: {error}"
-            ));
+            reporter.error(&t!("assistant.show_me_unparseable", error = error));
             return;
         }
     };
 
     if let Err(error) = guard.check(&ast) {
-        reporter.error(&format!(
-            "assistant --show-me command blocked by guard: {error}"
-        ));
+        reporter.error(&t!("assistant.show_me_blocked", error = error));
         return;
     }
 
-    reporter.info(&format!(
-        "assistant --show-me executing in {}: {}",
-        subsystem.as_str(),
-        selected_command
-    ));
+    reporter.info(&t!("assistant.show_me_executing", subsystem = subsystem.as_str(), command = selected_command));
 
     tokio::select! {
         result = executor.run(&selected_command, exec_config, reporter) => {
@@ -76,15 +67,15 @@ pub async fn handle_assistant_show_me(
                 Ok(exec_result) => {
                     builtins.record_g_visit();
                     if !exec_result.success() {
-                        reporter.warn(&format!("assistant --show-me exit code: {}", exec_result.exit_code));
+                        reporter.warn(&t!("assistant.show_me_exit_code", code = exec_result.exit_code));
                     }
                 }
-                Err(error) => reporter.error(&format!("assistant --show-me execution failed: {error}")),
+                Err(error) => reporter.error(&t!("assistant.show_me_exec_failed", error = error)),
             }
         }
         _ = signal::ctrl_c() => {
             println!();
-            reporter.warn("^C - assistant --show-me command cancelled");
+            reporter.warn(&t!("assistant.show_me_ctrl_c"));
         }
     }
 }
@@ -108,11 +99,11 @@ pub async fn handle_assistant_how_to(
     let (bootstrap_result, progress_result) = tokio::join!(bootstrap_future, progress_future);
 
     if let Err(error) = progress_result {
-        reporter.error(&format!("assistant bootstrap ui failed: {error}"));
+        reporter.error(&t!("assistant.bootstrap_ui_failed", error = error));
     }
 
     if let Err(error) = bootstrap_result {
-        reporter.error(&format!("assistant bootstrap failed: {error}"));
+        reporter.error(&t!("assistant.bootstrap_failed", error = error));
         assistant.release_resources().await;
         return;
     }
@@ -121,9 +112,9 @@ pub async fn handle_assistant_how_to(
         Ok(suggestion) => suggestion,
         Err(error) => {
             if let Err(ui_error) = show_assistant_error_panel(&error.to_string()) {
-                reporter.error(&format!("assistant error panel failed: {ui_error}"));
+                reporter.error(&t!("assistant.error_panel_failed", ui_error = ui_error));
             }
-            reporter.error(&format!("assistant how-to failed: {error}"));
+            reporter.error(&t!("assistant.how_to_failed", error = error));
             assistant.release_resources().await;
             return;
         }
@@ -133,14 +124,14 @@ pub async fn handle_assistant_how_to(
         match show_how_to_confirmation_panel(&suggestion.explanation, &suggestion.command) {
             Ok(should_execute) => should_execute,
             Err(error) => {
-                reporter.error(&format!("assistant how-to prompt failed: {error}"));
+                reporter.error(&t!("assistant.how_to_prompt_failed", error = error));
                 assistant.release_resources().await;
                 return;
             }
         };
 
     if !should_execute {
-        reporter.info("assistant --how-to cancelled by user");
+        reporter.info(&t!("assistant.how_to_cancelled"));
         assistant.release_resources().await;
         return;
     }
@@ -148,7 +139,7 @@ pub async fn handle_assistant_how_to(
     let tokens = match Lexer::new(&suggestion.command).tokenize() {
         Ok(tokens) => tokens,
         Err(error) => {
-            reporter.error(&format!("assistant generated invalid command: {error}"));
+            reporter.error(&t!("assistant.generated_invalid", error = error));
             assistant.release_resources().await;
             return;
         }
@@ -157,27 +148,20 @@ pub async fn handle_assistant_how_to(
     let ast = match Parser::new(tokens).parse() {
         Ok(ast) => ast,
         Err(error) => {
-            reporter.error(&format!("assistant generated unparseable command: {error}"));
+            reporter.error(&t!("assistant.generated_unparseable", error = error));
             assistant.release_resources().await;
             return;
         }
     };
 
     if let Err(error) = guard.check(&ast) {
-        reporter.error(&format!("assistant command blocked by guard: {error}"));
+        reporter.error(&t!("assistant.command_blocked", error = error));
         assistant.release_resources().await;
         return;
     }
 
-    reporter.info(&format!(
-        "assistant explanation: {}",
-        suggestion.explanation
-    ));
-    reporter.info(&format!(
-        "assistant executing in {}: {}",
-        subsystem.as_str(),
-        suggestion.command
-    ));
+    reporter.info(&t!("assistant.explanation", explanation = suggestion.explanation));
+    reporter.info(&t!("assistant.executing", subsystem = subsystem.as_str(), command = suggestion.command));
 
     tokio::select! {
         result = executor.run(&suggestion.command, exec_config, reporter) => {
@@ -185,15 +169,15 @@ pub async fn handle_assistant_how_to(
                 Ok(exec_result) => {
                     builtins.record_g_visit();
                     if !exec_result.success() {
-                        reporter.warn(&format!("assistant command exit code: {}", exec_result.exit_code));
+                        reporter.warn(&t!("assistant.command_exit_code", code = exec_result.exit_code));
                     }
                 }
-                Err(error) => reporter.error(&format!("assistant command execution failed: {error}")),
+                Err(error) => reporter.error(&t!("assistant.command_exec_failed", error = error)),
             }
         }
         _ = signal::ctrl_c() => {
             println!();
-            reporter.warn("^C — assistant command cancelled");
+            reporter.warn(&t!("assistant.ctrl_c"));
         }
     }
 

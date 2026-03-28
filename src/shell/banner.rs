@@ -69,9 +69,8 @@ pub fn print_banner(version: &str, out: &mut dyn Write) {
     let _ = writeln!(out);
     let _ = writeln!(
         out,
-        "{PURPLE}  cross-platform shell · \
-         {DARKPINK}subsystem translator · \
-         {PURPLE}AI assistant{RESET}"
+        "{PURPLE}  {}{RESET}",
+        crate::shell::i18n::t("banner.tagline")
     );
     let _ = writeln!(out);
 }

@@ -11,6 +11,7 @@ pub mod unset;
 
 use crate::parser::ast::ASTNode;
 use crate::shell::reporter::Reporter;
+use crate::t;
 use g_jump::{GJumpBuiltin, history::GHistory};
 use std::sync::{Arc, Mutex};
 
@@ -99,10 +100,10 @@ impl BuiltinRegistry {
                 .collect();
             if args.contains(&"--clear".to_owned()) {
                 self.history.clear();
-                reporter.info("history cleared");
+                reporter.info(&t!("builtin.history.cleared"));
             } else {
                 for (i, entry) in self.history.iter().enumerate() {
-                    reporter.info(&format!("{:4}  {}", i + 1, entry));
+                    reporter.info(&t!("builtin.history.entry", num = format!("{:4}", i + 1), entry = entry));
                 }
             }
             return BuiltinResult::Handled;

@@ -2,33 +2,39 @@
 ![Rust](https://img.shields.io/badge/rust-edition%202024-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Shell interactiva cross-platform escrita en Rust.
+Shell interactiva cross-platform escrita en Rust. Dos binarios, un solo instalador.
 
-GeliShell ofrece una capa de comandos canónicos (por ejemplo `list`, `copy`, `find`) y los traduce al subsistema activo (`bash`, `zsh`, `fish`, `powershell`, `cmd`) antes de ejecutar.
+| Binario | Función |
+|---------|---------|
+| `geli` | Shell REPL interactiva con traducción canónica, guardrails y historial |
+| `gerisabet` | Asistente IA local con RAG sobre `docs.db` y catálogo TUI interactivo |
+
+GeliShell traduce comandos canónicos (`list`, `copy`, `find`…) al subsistema activo (`bash`, `zsh`, `fish`, `powershell`, `cmd`) antes de ejecutar. Nunca necesitas recordar si es `ls` o `Get-ChildItem`.
 
 ## Qué hace hoy
 
-- Traduce comandos canónicos con mapa TOML (runtime con fallback embebido).
-- Aplica guardrails semánticos antes de ejecutar.
+- Traduce comandos canónicos con mapa TOML (runtime con fallback embebido en binario).
+- Aplica guardrails semánticos sobre el AST antes de ejecutar.
 - Ejecuta comandos nativos de forma asíncrona con streaming en tiempo real y timeout opcional.
-- Incluye builtins de sesión: `cd`, `clear`, `exit`, `export`, `unset`, `history`, `source`, `g`.
-- Incluye historial persistente del REPL y navegación por frecencia (`g jump`).
-- Incluye asistente local con recuperación RAG sobre `docs.db` y catálogo interactivo `gerisabet --show-me`.
+- Builtins de sesión: `cd`, `clear`, `exit`, `export`, `unset`, `history`, `source`, `g`, `gerisabet`.
+- Historial persistente del REPL y navegación frecency-based (`g jump`).
+- Selector modal de alternativas de traducción según `SelectorMode`.
+- Asistente local con recuperación RAG sobre `docs.db`, catálogo interactivo `--show-me` y consultas `--how-to`.
 
 ## ¿Por qué GeliShell? (Filosofía)
 A diferencia de las shells tradicionales que te obligan a aprender una sintaxis nueva o limitan tu entorno, GeliShell actúa como un **metacompilador interactivo de comandos**.
 - **Escribe una vez, ejecuta en cualquier parte:** Aprende los comandos canónicos de GeliShell y úsalos indistintamente en Windows, Linux o macOS. La shell se encarga de traducirlos al subsistema subyacente.
-- **Seguridad por diseño:** El Guardrail semántico evita desastres (como un borrado recursivo accidental) interceptando el AST antes de que el sistema operativo lo vea.
-- **IA Integrada y Determinista:** No es un simple wrapper de ChatGPT. Es un sistema RAG local, ultrarrápido y confinado a la documentación técnica, diseñado para ser útil sin ser peligroso.
+- **Seguridad por diseño:** El guardrail semántico evita desastres (borrado recursivo accidental, fork bombs, pipe-executions de red) interceptando el AST antes de que el OS lo vea.
+- **IA integrada y determinista:** No es un wrapper de ChatGPT. Es un sistema RAG local, confinado a tu documentación técnica, diseñado para ser útil sin ser impredecible.
 
 ## Instalación (scripts oficiales)
 
-Esta guía usa como fuente de verdad `install.ps1`, `install.sh` e `install.bat`.
+Esta guía usa como fuente de verdad `install.ps1`, `install.sh` e `install.bat`. Los tres instaladores instalan **ambos binarios** (`geli` + `gerisabet`) en un solo paso.
 
 ### Requisitos mínimos
 
-- Tener Rust instalado (el instalador **no** instala Rust).
-- Compilar primero el binario release desde la raíz del proyecto:
+- Rust instalado (el instalador **no** instala Rust).
+- Compilar los binarios release desde la raíz del proyecto:
 
 ```powershell
 cargo build --release
@@ -37,13 +43,13 @@ cargo build --release
 ### Qué instala el setup
 
 - **Core obligatorio:**
-  - Binario `geli` (`geli.exe` en Windows) en tu carpeta de binarios de usuario.
-  - Ajuste de `PATH` de usuario para poder ejecutar `geli` globalmente.
+  - `geli` + `gerisabet` (o `.exe` en Windows) en la carpeta de binarios de usuario.
+  - Ajuste de `PATH` de usuario para ejecutar ambos globalmente.
 - **Assistant/RAG opcional:**
   - Verificación de `sqlite3` (intenta instalarlo si aceptas).
-  - Descarga de `sqlite-vec` (`vec0.dll`/`vec0.so`/`vec0.dylib`).
+  - Descarga de `sqlite-vec` (`vec0.dll` / `vec0.so` / `vec0.dylib`) desde GitHub Releases.
   - Verificación de `ollama`.
-  - Generación de `docs.db` con `cargo run --bin build_docs_db` (si no usas `--skip-docs`/`-SkipDocs`).
+  - Generación de `docs.db` con `cargo run --bin build_docs_db` (si no usas `--skip-docs` / `-SkipDocs`).
 
 ### Windows (PowerShell)
 
@@ -51,9 +57,7 @@ cargo build --release
 
 - `-Force`: sobrescribe archivos existentes.
 - `-SkipDocs`: omite la generación de `docs.db`.
-- `-BinDir "C:\\ruta\\bin"`: carpeta personalizada para `geli.exe`.
-
-Ejemplos:
+- `-BinDir "C:\\ruta\\bin"`: carpeta personalizada para los binarios.
 
 ```powershell
 .\install.ps1
@@ -69,8 +73,6 @@ Ejemplos:
 - Llama a `powershell.exe -ExecutionPolicy Bypass` **solo para ese proceso**.
 - Reenvía todos los argumentos con `%*`.
 
-Ejemplos:
-
 ```bat
 install.bat
 install.bat -Force -SkipDocs
@@ -83,9 +85,7 @@ install.bat -BinDir "C:\bin"
 
 - `--force` o `-f`: sobrescribe archivos existentes.
 - `--skip-docs`: omite la generación de `docs.db`.
-- `--bin-dir <ruta>` o `--bin-dir=<ruta>`: carpeta personalizada para `geli`.
-
-Ejemplos:
+- `--bin-dir <ruta>` o `--bin-dir=<ruta>`: carpeta personalizada para los binarios.
 
 ```bash
 ./install.sh
@@ -96,29 +96,20 @@ Ejemplos:
 
 ### Rutas por defecto
 
-- **Windows**
-  - Binario: `%USERPROFILE%\.local\bin\geli.exe`
-  - Config: `%USERPROFILE%\.config\geliShell\`
-  - sqlite-vec: `%USERPROFILE%\.config\geliShell\models\vec0.dll`
-  - RAG DB: `%USERPROFILE%\.config\geliShell\docs\docs.db`
-- **Linux/macOS**
-  - Binario: `~/.local/bin/geli`
-  - Config: `~/.config/geliShell/`
-  - sqlite-vec: `~/.config/geliShell/models/vec0.so` (Linux) / `vec0.dylib` (macOS)
-  - RAG DB: `~/.config/geliShell/docs/docs.db`
+| Artefacto | Windows | Linux/macOS |
+|-----------|---------|-------------|
+| `geli` | `%USERPROFILE%\.local\bin\geli.exe` | `~/.local/bin/geli` |
+| `gerisabet` | `%USERPROFILE%\.local\bin\gerisabet.exe` | `~/.local/bin/gerisabet` |
+| Config | `%USERPROFILE%\.config\geliShell\` | `~/.config/geliShell/` |
+| sqlite-vec | `…\models\vec0.dll` | `…/models/vec0.so` (Linux) / `vec0.dylib` (macOS) |
+| RAG DB | `…\docs\docs.db` | `…/docs/docs.db` |
 
 ### Verificación final
 
-Al terminar la instalación:
-
 1. Abre una terminal nueva (si el script modificó `PATH`).
-2. Ejecuta:
+2. Ejecuta `geli` para la shell o `gerisabet --help` para el asistente.
 
-```powershell
-geli
-```
-
-Si faltan componentes opcionales, el core de GeliShell sigue funcionando y puedes completar Assistant/RAG después.
+Si faltan componentes opcionales, el core sigue funcionando; puedes completar Assistant/RAG después.
 ---
 
 ## Flujo de ejecución real
@@ -132,18 +123,29 @@ Detalle por etapa:
 1. **Entrada REPL** (`read_repl_input`) con historial y sugerencias tipo ghost.
 2. **Lexer** (`src/parser/lexer.rs`) tokeniza con límite de 64KB.
 3. **Parser** (`src/parser/parser.rs`) construye el AST.
-4. **Builtins** (`BuiltinRegistry::try_execute`) se evalúan antes de traducir.
-5. **Guard** (`default_guard()`) bloquea o exige confirmación semántica.
-6. **TranslationPipeline** (`src/shell/translator/pipeline`) produce un comando nativo string.
+4. **Builtins** (`BuiltinRegistry::try_execute`) se evalúan antes de traducir. Si devuelve `Handled`, el pipeline no continúa.
+5. **Guard** (`default_guard()`) bloquea o exige confirmación semántica sobre el AST.
+6. **TranslationPipeline** (`src/shell/translator/pipeline`) llama a `run_resolving()` que devuelve `(String, Option<ResolvedCommand>)`. Si `SelectorMode` lo requiere, muestra `ModalSelector` antes de ejecutar.
 7. **Executor** (`src/shell/executor`) ejecuta async con `tokio::process::Command`.
 
 ### Steps del traductor
 
-1. `NodeDecomposer` (`ASTNode -> Vec<CommandFragment>`)
-2. `CommandResolver`
-3. `FlagResolver`
-4. `VariableExpander`
-5. `SubsystemMapper`
+1. `NodeDecomposer` — único punto con `match` sobre `ASTNode`; produce `Vec<CommandFragment>`
+2. `CommandResolver` — resuelve canonical→native o nativo directo (pass-through)
+3. `FlagResolver` — traduce flags canónicos a nativos
+4. `VariableExpander` — expande `$VAR` y `${VAR}`
+5. `SubsystemMapper` — genera la string final para el subsistema activo
+
+### Detección del ejecutable PowerShell
+
+En Windows, el executor detecta automáticamente el ejecutable disponible en este orden: `pwsh` (PowerShell 7+) → `powershell` (Windows PowerShell 5) → ruta absoluta conocida. Esto evita el error `NotFound` en máquinas donde solo `pwsh.exe` está en `PATH`.
+
+Todos los comandos PowerShell incluyen el preámbulo UTF-8:
+```
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;
+$OutputEncoding = [System.Text.Encoding]::UTF8;
+```
+necesario para usuarios con caracteres no-ASCII en rutas o variables de entorno.
 
 ---
 
@@ -159,7 +161,7 @@ Detalle por etapa:
 | Config | `src/shell/config/*` | Bootstrap runtime, config, historial persistente |
 | TUI | `src/shell/tui/*` | Menús interactivos y captura avanzada de input |
 | Assistant | `src/shell/assistant/*` | Bootstrap de modelo, RAG, sugerencias |
-| Selector | `src/shell/selector/*` | Selector modal de alternativas (actualmente desacoplado del flujo final) |
+| Selector | `src/shell/selector/*` | Selector modal de alternativas de traducción |
 
 ---
 
@@ -175,6 +177,7 @@ Detalle por etapa:
 | `history` / `history --clear` | Muestra o limpia historial de sesión en memoria |
 | `g` / `g <pattern>` / `g -` / `g --clear` | Navegación inteligente por frecencia |
 | `source <file>` | Stub: reporta que el motor de scripting aún no está disponible |
+| `gerisabet [flags]` | Detecta el binario en PATH; muestra instrucciones de instalación si no se encuentra |
 
 ---
 
@@ -291,7 +294,7 @@ Variables de entorno utilizadas:
 > **IMPORTANTE**
 > - El retrieval RAG está integrado.
 > - La respuesta del asistente se sintetiza localmente a partir del contexto recuperado.
-> - La base RAG no se incluye en el repo: usa `rebuild-rag.ps1` para generarla localmente.
+> - La base RAG no se incluye en el repo; se genera con `cargo run --bin build_docs_db`.
 ---
 
 ## Configuración y rutas de runtime
@@ -372,19 +375,13 @@ g --clear
 
 ### Rebuild de base RAG
 
-Script helper:
-
-```powershell
-.\rebuild-rag.ps1
-```
-
-Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db` (o en la ruta indicada por `-DocsDbPath`).
-
-CLI low-level:
+CLI:
 
 ```powershell
 cargo run --bin build_docs_db -- --help
 ```
+
+Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db`.
 
 ---
 
@@ -410,7 +407,9 @@ src/
   commands/commands.toml
   bin/build_docs_db.rs
 docs/kb/
-rebuild-rag.ps1
+install.ps1
+install.sh
+install.bat
 ```
 
 ---
@@ -431,7 +430,7 @@ El proyecto usa Rust 2024 (`edition = "2024"`) y crates como `tokio`, `crossterm
 
 ## Limitaciones y estado actual
 
-- `source` builtin sigue en modo stub.
-- El selector modal existe (`src/shell/selector`), pero `SelectorMode` todavía no altera la ejecución final en `src/main.rs`.
+- `source` builtin sigue en modo stub (pendiente de TriggerEngine).
 - La acción `:search` está interceptada, pero la UI de búsqueda avanzada sigue en estado skeleton.
 - El asistente depende de contexto RAG y síntesis local; no está en modo LLM completo de generación libre.
+- `g_history.toml` se escribe en cada visita (pendiente dirty-flag + save on exit).

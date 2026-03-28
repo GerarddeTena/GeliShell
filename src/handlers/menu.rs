@@ -1,5 +1,7 @@
 use crate::utils::apply_visual_settings;
-use geli_shell::shell::{
+use geli_shell::{
+    t,
+    shell::{
     builtins::clear::clear_console_buffer,
     config::ShellConfig,
     reporter::Reporter,
@@ -7,6 +9,7 @@ use geli_shell::shell::{
         config_menu::{show_config_menu, ConfigMenuSelection},
         help_menu::{show_help_menu, HelpMenuAction},
         repl_input::SpecialCommand,
+    },
     },
 };
 
@@ -18,24 +21,24 @@ pub async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporte
             apply_visual_settings(config, reporter);
 
             if let Err(error) = config.save_async().await {
-                reporter.error(&format!("config save failed: {error}"));
+                reporter.error(&t!("config.menu_save_failed", error = error));
             } else {
-                reporter.info("config updated and persisted");
+                reporter.info(&t!("config.menu_updated"));
             }
             true
         }
         Ok(ConfigMenuSelection::TomlEditor) => {
-            reporter.warn("WARNING: editing command toml can break the shell if invalid");
+            reporter.warn(&t!("config.toml_warning"));
             let commands_path = std::env::current_dir()
                 .unwrap_or_default()
                 .join("src")
                 .join("commands")
                 .join("commands.toml");
-            reporter.info(&format!("customization file: {}", commands_path.display()));
+            reporter.info(&t!("config.customization_path", path = commands_path.display()));
             false
         }
         Err(error) => {
-            reporter.error(&format!("config menu failed: {error}"));
+            reporter.error(&t!("config.menu_failed", error = error));
             false
         }
     }
@@ -49,7 +52,7 @@ pub fn handle_help_menu(config: &ShellConfig, reporter: &dyn Reporter) -> bool {
             false
         }
         Ok(HelpMenuAction::Exit) => {
-            reporter.info("goodbye");
+            reporter.info(&t!("repl.goodbye"));
             true
         }
         Ok(HelpMenuAction::Stop) => {
@@ -61,7 +64,7 @@ pub fn handle_help_menu(config: &ShellConfig, reporter: &dyn Reporter) -> bool {
             false
         }
         Err(error) => {
-            reporter.error(&format!("help menu failed: {error}"));
+            reporter.error(&t!("help.menu_failed", error = error));
             false
         }
     }
@@ -70,17 +73,17 @@ pub fn handle_help_menu(config: &ShellConfig, reporter: &dyn Reporter) -> bool {
 pub fn handle_special_command(command: SpecialCommand, reporter: &dyn Reporter) {
     match command {
         SpecialCommand::Stop => {
-            reporter.warn(":stop* intercepted — use Ctrl+C to interrupt running command");
+            reporter.warn(&t!("special.stop_intercepted"));
         }
         SpecialCommand::Search => {
-            reporter.info(":search* intercepted — interactive search UI is active as skeleton");
+            reporter.info(&t!("special.search_skeleton"));
         }
     }
 }
 
 pub fn run_clear(config: &ShellConfig, reporter: &dyn Reporter) {
     if let Err(error) = clear_console_buffer() {
-        reporter.error(&format!("clear failed: {error}"));
+        reporter.error(&t!("exec.clear_failed", error = error));
         return;
     }
     apply_visual_settings(config, reporter);

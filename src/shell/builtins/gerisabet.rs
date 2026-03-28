@@ -1,4 +1,5 @@
 use crate::shell::reporter::Reporter;
+use crate::t;
 use super::{Builtin, BuiltinResult};
 
 // ══════════════════════════════════════════════════════════════
@@ -26,36 +27,30 @@ impl Builtin for GerisabetBuiltin {
             return BuiltinResult::NotABuiltin;
         }
 
-        reporter.error("gerisabet not found in PATH");
-        reporter.info("gerisabet is the GeliShell AI assistant companion binary.");
+        reporter.error(&t!("builtin.gerisabet.not_found"));
+        reporter.info(&t!("builtin.gerisabet.description"));
         reporter.info("");
 
         #[cfg(target_os = "windows")]
         {
-            reporter.info("Install it by running:");
-            reporter.info("  cargo build --release");
-            reporter.info("  .\\install.ps1");
+            reporter.info(&t!("builtin.gerisabet.install_hint"));
+            reporter.info(&t!("builtin.gerisabet.install_step1"));
+            reporter.info(&t!("builtin.gerisabet.install_step2_windows"));
             reporter.info("");
-            reporter.info("Or manually copy the binary:");
+            reporter.info(&t!("builtin.gerisabet.manual_copy"));
             let default_dir = default_install_dir();
-            reporter.info(&format!(
-                "  Copy target\\release\\gerisabet.exe → {}\\gerisabet.exe",
-                default_dir
-            ));
+            reporter.info(&t!("builtin.gerisabet.copy_hint_windows", dir = default_dir));
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            reporter.info("Install it by running:");
-            reporter.info("  cargo build --release");
-            reporter.info("  ./install.sh");
+            reporter.info(&t!("builtin.gerisabet.install_hint"));
+            reporter.info(&t!("builtin.gerisabet.install_step1"));
+            reporter.info(&t!("builtin.gerisabet.install_step2_unix"));
             reporter.info("");
-            reporter.info("Or manually copy the binary:");
+            reporter.info(&t!("builtin.gerisabet.manual_copy"));
             let default_dir = default_install_dir();
-            reporter.info(&format!(
-                "  cp target/release/gerisabet {}",
-                default_dir
-            ));
+            reporter.info(&t!("builtin.gerisabet.copy_hint_unix", dir = default_dir));
         }
 
         BuiltinResult::Handled

@@ -12,6 +12,7 @@ use crate::shell::translator::pipeline::steps::{
 };
 use crate::shell::translator::resolver::{Resolve, SuggestionResolver};
 use crate::shell::translator::subsystem::Subsystem;
+use crate::t;
 use std::sync::Arc;
 
 pub use context::{CommandFragment, FragmentOperator, StepSnapshot};
@@ -94,7 +95,7 @@ impl TranslationPipeline {
             ctx.assemble()
         };
 
-        reporter.info(&format!("pipeline: complete → '{output}'"));
+        reporter.info(&t!("pipeline.complete", output = output));
 
         Ok((output, resolved))
     }

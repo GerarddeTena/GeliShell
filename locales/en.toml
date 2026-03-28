@@ -1,0 +1,170 @@
+[startup]
+already_running = "Error: GeliShell is already running."
+ready = "GeliShell ready"
+subsystem = "subsystem: {subsystem}"
+
+[repl]
+goodbye = "goodbye"
+assistant_moved = "assistant is now provided by the gerisabet binary"
+assistant_hint = "run: gerisabet --help"
+input_error = "input error: {error}"
+config_reset_ok = "config reset — restart GeliShell to run the setup wizard"
+config_reset_failed = "reset failed: {error}"
+selection_cancelled = "selection cancelled"
+
+[bootstrap]
+migrated = "migrated legacy config files to {dir}: {files}"
+seeded = "initialized assistant model assets in {dir}: {files}"
+failed = "bootstrap layout failed: {error}"
+
+[config]
+wizard_failed = "wizard failed: {error} — using defaults"
+save_failed = "could not save config: {error}"
+parse_error = "config parse error: {error} — using fallback defaults"
+load_error = "config error: {error} — using defaults"
+menu_save_failed = "config save failed: {error}"
+menu_updated = "config updated and persisted"
+toml_warning = "WARNING: editing command toml can break the shell if invalid"
+customization_path = "customization file: {path}"
+menu_failed = "config menu failed: {error}"
+updated = "config updated"
+reset_ok = "config reset — restart GeliShell to run the setup wizard"
+reset_failed = "reset failed: {error}"
+
+[history]
+load_failed = "history load failed: {error} — continuing with empty history"
+
+[commands]
+loaded = "command map: loaded {count} commands from {source}"
+read_failed = "command map read failed ({path}): {error}"
+parse_failed = "command map parse failed ({path}): {error}"
+
+[cli]
+unknown_flag = "unknown flag '{flag}'"
+show_requires_commands = "--show requires --commands <ecosystem>"
+show_usage = "Usage: geli --show --commands <ecosystem>"
+missing_ecosystem = "missing ecosystem name"
+available_ecosystems = "Available: {list}"
+unknown_ecosystem = "unknown ecosystem '{name}'. Available: {list}"
+tui_failed = "ecosystem tui failed: {error}"
+command_invalid = "ecosystem command is invalid: {error}"
+command_unparseable = "ecosystem command is unparseable: {error}"
+command_blocked = "ecosystem command blocked by guard: {error}"
+command_executing = "ecosystem command executing in {subsystem}: {command}"
+command_exit_code = "ecosystem command exit code: {code}"
+command_exec_failed = "ecosystem command execution failed: {error}"
+ctrl_c = "^C - ecosystem command cancelled"
+config_updated = "config updated"
+
+[cli.help]
+title = "GeliShell 0.1.0"
+usage_header = "USAGE:"
+usage = "    geli [FLAGS]"
+flags_header = "FLAGS:"
+flag_help = "    --help, -h                    Show this help message"
+flag_config = "    --config-me                   Open configuration menu"
+flag_show = "    --show --commands <ecosystem> Browse ecosystem commands (TUI)"
+flag_show_available = "                                  Available: cargo, docker, dotnet, git, npm, python"
+ai_header = "AI ASSISTANT:"
+ai_how_to = "    gerisabet --how-to <query>    Ask the assistant how to do something"
+ai_show_me = "    gerisabet --show-me           Interactive command search"
+footer = "If no flags are provided, GeliShell starts in interactive mode."
+
+[exec]
+ctrl_c_interactive = "^C — command cancelled"
+ctrl_c_stop = "^C/:stop* — command cancelled"
+stop_cancelled = ":stop* — command cancelled"
+search_cancelled = ":search* — command cancelled"
+exit_code = "exit code: {code}"
+clear_failed = "clear failed: {error}"
+
+[help]
+menu_failed = "help menu failed: {error}"
+
+[special]
+stop_intercepted = ":stop* intercepted — use Ctrl+C to interrupt running command"
+search_skeleton = ":search* intercepted — interactive search UI is active as skeleton"
+
+[selector]
+cancelled = "selection cancelled"
+
+[builtin.cd]
+error = "cd: {path}: {error}"
+
+[builtin.source]
+missing_arg = "source: missing file argument"
+not_available = "source: '{path}' — scripting engine not yet available"
+
+[builtin.export]
+set = "export: {key}={value}"
+not_found = "export: '{arg}' not found"
+
+[builtin.unset]
+removed = "unset: removed '{arg}'"
+
+[builtin.history]
+cleared = "history cleared"
+entry = "{num}  {entry}"
+
+[builtin.gerisabet]
+not_found = "gerisabet not found in PATH"
+description = "gerisabet is the GeliShell AI assistant companion binary."
+install_hint = "Install it by running:"
+install_step1 = "  cargo build --release"
+install_step2_windows = "  .\\install.ps1"
+install_step2_unix = "  ./install.sh"
+manual_copy = "Or manually copy the binary:"
+copy_hint_windows = "  Copy target\\release\\gerisabet.exe -> {dir}\\gerisabet.exe"
+copy_hint_unix = "  cp target/release/gerisabet {dir}"
+
+[executor]
+spawning = "executor: spawning '{command}' via {subsystem}"
+tty_mode = "executor: interactive tty mode enabled"
+finished = "executor: finished with exit code {code}"
+kill_failed = "executor: failed to kill timed out process: {error}"
+wait_failed = "executor: failed waiting timed out process: {error}"
+
+[assistant]
+show_me_failed = "show-me failed: {error}"
+show_me_invalid = "assistant --show-me generated invalid command: {error}"
+show_me_unparseable = "assistant --show-me generated unparseable command: {error}"
+show_me_blocked = "assistant --show-me command blocked by guard: {error}"
+show_me_executing = "assistant --show-me executing in {subsystem}: {command}"
+show_me_exit_code = "assistant --show-me exit code: {code}"
+show_me_exec_failed = "assistant --show-me execution failed: {error}"
+show_me_ctrl_c = "^C - assistant --show-me command cancelled"
+bootstrap_ui_failed = "assistant bootstrap ui failed: {error}"
+bootstrap_failed = "assistant bootstrap failed: {error}"
+how_to_failed = "assistant how-to failed: {error}"
+how_to_cancelled = "assistant --how-to cancelled by user"
+how_to_prompt_failed = "assistant how-to prompt failed: {error}"
+error_panel_failed = "assistant error panel failed: {ui_error}"
+generated_invalid = "assistant generated invalid command: {error}"
+generated_unparseable = "assistant generated unparseable command: {error}"
+command_blocked = "assistant command blocked by guard: {error}"
+explanation = "assistant explanation: {explanation}"
+executing = "assistant executing in {subsystem}: {command}"
+command_exit_code = "assistant command exit code: {code}"
+command_exec_failed = "assistant command execution failed: {error}"
+ctrl_c = "^C — assistant command cancelled"
+
+[geli]
+no_args = "You are already inside GeliShell. Use 'exit' to quit or 'geli --help' to see available commands."
+lang_set = "language changed to: {lang}"
+lang_not_supported = "language not supported: '{lang}' — available: en, es"
+
+[pipeline]
+decomposed = "{step}: decomposed into {count} fragment(s)"
+canonical_match = "{step}: '{command}' → canonical match found"
+reverse_lookup = "{step}: '{command}' → reverse lookup → canonical '{canonical}'"
+passthrough = "{step}: '{command}' → no canonical match, pass-through"
+flag_resolved = "{step}: '{flag}' → '{translated}'"
+flag_not_supported = "{step}: flag '{flag}' not supported in '{subsystem}' — skipping"
+mapped_passthrough = "{step}: '{command}' → pass-through (no canonical def)"
+mapped = "{step}: '{command}' → '{resolved}' [{count} alternatives]"
+resolver_error = "{step}: resolver error for '{command}': {error} — using original"
+variable_expanded = "{step}: '{var}' → '{expanded}'"
+complete = "pipeline: complete → '{output}'"
+
+[banner]
+tagline = "cross-platform shell · subsystem translator · AI assistant"

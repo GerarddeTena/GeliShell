@@ -1,6 +1,7 @@
 use crate::handlers::menu::handle_special_command;
 use crate::utils::expand_custom_command;
 use geli_shell::{
+    t,
     parser::{ast::ASTNode, lexer::Lexer, parser::Parser},
     shell::{
         builtins::{BuiltinRegistry, BuiltinResult},
@@ -91,7 +92,7 @@ pub async fn process_regular_command(
                     match ModalSelector::new().select(res) {
                         SelectionResult::Selected(chosen) => chosen,
                         SelectionResult::Cancelled => {
-                            reporter.info("selection cancelled");
+                            reporter.info(&t!("selector.cancelled"));
                             return false;
                         }
                     }
@@ -133,7 +134,7 @@ pub async fn execute_command_with_interrupts(
             }
             _ = signal::ctrl_c() => {
                 println!();
-                reporter.warn("^C — command cancelled");
+                reporter.warn(&t!("exec.ctrl_c_interactive"));
             }
         }
         return;
@@ -145,13 +146,13 @@ pub async fn execute_command_with_interrupts(
         }
         _ = signal::ctrl_c() => {
             println!();
-            reporter.warn("^C/:stop* — command cancelled");
+            reporter.warn(&t!("exec.ctrl_c_stop"));
         }
         special = wait_for_runtime_special_command() => {
             println!();
             match special {
-                SpecialCommand::Stop => reporter.warn(":stop* — command cancelled"),
-                SpecialCommand::Search => reporter.warn(":search* — command cancelled"),
+                SpecialCommand::Stop => reporter.warn(&t!("exec.stop_cancelled")),
+                SpecialCommand::Search => reporter.warn(&t!("exec.search_cancelled")),
             }
             handle_special_command(special, reporter);
         }
@@ -168,7 +169,7 @@ pub fn report_executor_outcome(
             builtins.record_g_visit();
 
             if !execution.success() {
-                reporter.warn(&format!("exit code: {}", execution.exit_code));
+                reporter.warn(&t!("exec.exit_code", code = execution.exit_code));
             }
         }
         Err(error) => {

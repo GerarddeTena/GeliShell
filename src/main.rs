@@ -25,7 +25,7 @@ use utils::apply_visual_settings;
 async fn main() {
     // ── Anti-Inception: prevenir ejecución anidada ────────────
     if std::env::var("GELISHELL_ACTIVE").is_ok() {
-        eprintln!("Error: GeliShell ya está en ejecución.");
+        eprintln!("{}", geli_shell::shell::i18n::t("startup.already_running"));
         std::process::exit(1);
     }
     // SAFETY: called once before the tokio runtime spawns worker threads,
@@ -46,6 +46,8 @@ async fn main() {
     bootstrap_runtime_layout(&reporter).await;
 
     let config = load_or_init_config(&reporter).await;
+    let lang = geli_shell::shell::i18n::detect_language(&config.behavior.language);
+    geli_shell::shell::i18n::init_i18n(&lang);
     let command_history = load_history_or_default(&reporter).await;
     let map = init_command_map_or_exit(&reporter).await;
     let subsystem = resolve_subsystem(&config, &reporter);
@@ -57,10 +59,10 @@ async fn main() {
     let builtins = BuiltinRegistry::new();
     apply_visual_settings(&config, &reporter);
 
-    reporter.info("GeliShell ready");
+    reporter.info(&geli_shell::t!("startup.ready"));
     use geli_shell::shell::banner::print_banner;
     print_banner("0.1.0", &mut std::io::stdout());
-    reporter.info(&format!("subsystem: {subsystem}"));
+    reporter.info(&geli_shell::t!("startup.subsystem", subsystem = subsystem));
 
     let ctx = repl::ReplContext {
         config,

@@ -2,6 +2,7 @@ use crate::handlers::command::{drain_crossterm_events, process_regular_command};
 use crate::handlers::geli_internal::{handle_geli_internal_command, parse_geli_internal_command};
 use crate::handlers::menu::{handle_config_menu, handle_help_menu, handle_special_command, is_config_trigger, is_help_trigger, run_clear};
 use crate::utils::{append_history_or_warn, build_completion_pool, render_prompt};
+use geli_shell::t;
 use geli_shell::shell::{
     builtins::BuiltinRegistry,
     config::{history_store::PersistentCommandHistory, ShellConfig},
@@ -44,7 +45,7 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
         ) {
             Ok(ReplInputAction::Command(line)) => line,
             Ok(ReplInputAction::Exit) => {
-                reporter.info("goodbye");
+                reporter.info(&t!("repl.goodbye"));
                 break;
             }
             Ok(ReplInputAction::OpenHelp) => {
@@ -60,8 +61,8 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
                 continue;
             }
             Ok(ReplInputAction::OpenAssistant) => {
-                reporter.warn("assistant is now provided by the gerisabet binary");
-                reporter.info("run: gerisabet --help");
+                reporter.warn(&t!("repl.assistant_moved"));
+                reporter.info(&t!("repl.assistant_hint"));
                 continue;
             }
             Ok(ReplInputAction::Clear) => {
@@ -73,7 +74,7 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
                 continue;
             }
             Err(error) => {
-                reporter.error(&format!("input error: {error}"));
+                reporter.error(&t!("repl.input_error", error = error));
                 break;
             }
         };
@@ -96,10 +97,10 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
             if input.eq_ignore_ascii_case("geli-reset-config") {
                 match ShellConfig::reset().await {
                     Ok(()) => {
-                        reporter.info("config reset — restart GeliShell to run the setup wizard");
+                        reporter.info(&t!("config.reset_ok"));
                     }
                     Err(error) => {
-                        reporter.error(&format!("reset failed: {error}"));
+                        reporter.error(&t!("config.reset_failed", error = error));
                     }
                 }
             } else if handle_config_menu(&mut ctx.config, reporter).await {

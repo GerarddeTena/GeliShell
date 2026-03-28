@@ -1,5 +1,6 @@
 use super::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
+use crate::t;
 
 pub struct CdBuiltin;
 
@@ -36,7 +37,7 @@ impl Builtin for CdBuiltin {
                 BuiltinResult::Handled
             },
             Err(e) => {
-                reporter.error(&format!("cd: {path}: {e}"));
+                reporter.error(&t!("builtin.cd.error", path = path, error = e));
                 BuiltinResult::Handled
             }
         }

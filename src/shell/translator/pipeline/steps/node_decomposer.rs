@@ -5,6 +5,7 @@ use crate::shell::translator::pipeline::context::{
     CommandFragment, FragmentOperator, TranslationContext,
 };
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
+use crate::t;
 
 pub struct NodeDecomposer;
 
@@ -114,11 +115,7 @@ impl TranslationStep for NodeDecomposer {
             ));
         }
 
-        reporter.info(&format!(
-            "{}: decomposed into {} fragment(s)",
-            self.name(),
-            ctx.fragments.len()
-        ));
+        reporter.info(&t!("pipeline.decomposed", step = self.name(), count = ctx.fragments.len()));
 
         ctx.snapshot(self.name());
         Ok(StepResult::Continue)

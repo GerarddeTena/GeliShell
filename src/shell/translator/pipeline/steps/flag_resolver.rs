@@ -1,8 +1,7 @@
-// src/shell/translator/pipeline/steps/flag_resolver.rs
-
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
+use crate::t;
 
 pub struct FlagResolver;
 
@@ -46,22 +45,20 @@ impl TranslationStep for FlagResolver {
                         Some(flag_def) => {
                             match flag_def.get_by_name(subsystem.as_str()) {
                                 Some(translated) => {
-                                    reporter.info(&format!(
-                                        "{}: '{}' → '{}'",
-                                        self.name(),
-                                        arg,
-                                        translated
+                                    reporter.info(&t!("pipeline.flag_resolved",
+                                        step = self.name(),
+                                        flag = arg,
+                                        translated = translated
                                     ));
                                     resolved_args.push(translated.to_owned());
                                 }
                                 None => {
                                     // Flag no soportado en este subsistema
                                     // Degraded — continúa sin este flag
-                                    reporter.warn(&format!(
-                                        "{}: flag '{}' not supported in '{}' — skipping",
-                                        self.name(),
-                                        arg,
-                                        subsystem.as_str()
+                                    reporter.warn(&t!("pipeline.flag_not_supported",
+                                        step = self.name(),
+                                        flag = arg,
+                                        subsystem = subsystem.as_str()
                                     ));
                                 }
                             }

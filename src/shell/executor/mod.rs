@@ -9,6 +9,7 @@ pub use result::{ExecTrace, ExecutionResult};
 
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::subsystem::Subsystem;
+use crate::t;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -87,10 +88,7 @@ impl Executor {
             return Err(ExecutorError::EmptyCommand);
         }
 
-        reporter.info(&format!(
-            "executor: spawning '{}' via {}",
-            command, self.subsystem
-        ));
+        reporter.info(&t!("executor.spawning", command = command, subsystem = self.subsystem));
 
         // ── Traza del comando ─────────────────────────────────
         let trace = config.capture_command_trace.then(|| ExecTrace {
@@ -107,7 +105,7 @@ impl Executor {
         let interactive = Self::requires_tty(command, &config.extra_tty_commands);
 
         if interactive {
-            reporter.info("executor: interactive tty mode enabled");
+            reporter.info(&t!("executor.tty_mode"));
             cmd.stdin(std::process::Stdio::inherit());
             cmd.stdout(std::process::Stdio::inherit());
             cmd.stderr(std::process::Stdio::inherit());
@@ -120,7 +118,7 @@ impl Executor {
             };
             let duration = start.map(|s| s.elapsed());
 
-            reporter.info(&format!("executor: finished with exit code {exit_code}"));
+            reporter.info(&t!("executor.finished", code = exit_code));
 
             return Ok(ExecutionResult {
                 exit_code,
@@ -141,7 +139,7 @@ impl Executor {
         // ── Duración ──────────────────────────────────────────
         let duration = start.map(|s| s.elapsed());
 
-        reporter.info(&format!("executor: finished with exit code {exit_code}"));
+        reporter.info(&t!("executor.finished", code = exit_code));
 
         Ok(ExecutionResult {
             exit_code,
@@ -174,14 +172,10 @@ impl Executor {
                 Ok(result) => result.map_err(ExecutorError::SpawnFailed)?,
                 Err(_) => {
                     if let Err(error) = child.kill().await {
-                        reporter.warn(&format!(
-                            "executor: failed to kill timed out process: {error}"
-                        ));
+                        reporter.warn(&t!("executor.kill_failed", error = error));
                     }
                     if let Err(error) = child.wait().await {
-                        reporter.warn(&format!(
-                            "executor: failed waiting timed out process: {error}"
-                        ));
+                        reporter.warn(&t!("executor.wait_failed", error = error));
                     }
 
                     Self::finish_stream_task(&mut stdout_task).await?;

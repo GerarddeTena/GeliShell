@@ -1,6 +1,7 @@
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
+use crate::t;
 
 pub struct CommandResolver;
 
@@ -29,11 +30,7 @@ impl TranslationStep for CommandResolver {
         for fragment in ctx.fragments.iter_mut() {
             match ctx.map.get(&fragment.command) {
                 Some(def) => {
-                    reporter.info(&format!(
-                        "{}: '{}' → canonical match found",
-                        self.name(),
-                        fragment.command
-                    ));
+                    reporter.info(&t!("pipeline.canonical_match", step = self.name(), command = fragment.command));
                     fragment.command_def = Some(def.clone());
                 }
                 None => {
@@ -43,21 +40,16 @@ impl TranslationStep for CommandResolver {
                     // el fragmento al nombre canónico para que el pipeline
                     // lo traduzca al subsistema activo.
                     if let Some(def) = ctx.map.find_by_exact(&fragment.command) {
-                        reporter.info(&format!(
-                            "{}: '{}' → reverse lookup → canonical '{}'",
-                            self.name(),
-                            fragment.command,
-                            def.name,
+                        reporter.info(&t!("pipeline.reverse_lookup",
+                            step = self.name(),
+                            command = fragment.command,
+                            canonical = def.name
                         ));
                         fragment.command = def.name.clone();
                         fragment.command_def = Some(def.clone());
                     } else {
                         // Pass-through — comando nativo sin equivalente canónico
-                        reporter.info(&format!(
-                            "{}: '{}' → no canonical match, pass-through",
-                            self.name(),
-                            fragment.command
-                        ));
+                        reporter.info(&t!("pipeline.passthrough", step = self.name(), command = fragment.command));
                     }
                 }
             }

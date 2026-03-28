@@ -1,5 +1,6 @@
 use super::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
+use crate::t;
 
 pub struct UnsetBuiltin;
 
@@ -13,7 +14,7 @@ impl Builtin for UnsetBuiltin {
             unsafe {
                 std::env::remove_var(arg);
             }
-            reporter.info(&format!("unset: removed '{arg}'"));
+            reporter.info(&t!("builtin.unset.removed", arg = arg));
         }
         BuiltinResult::Handled
     }

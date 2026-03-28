@@ -13,3 +13,18 @@ pub use shell::translator::resolver::{
 };
 pub use shell::translator::subsystem::Subsystem;
 pub use shell::translator::{TranslationError, TranslationPipeline};
+pub use shell::i18n::{detect_language, init_i18n, supported_languages, t as translate, t_with};
+
+#[macro_export]
+macro_rules! t {
+    ($key:expr) => {
+        $crate::shell::i18n::t($key)
+    };
+    ($key:expr, $($param:ident = $val:expr),+ $(,)?) => {
+        $crate::shell::i18n::t_with($key, &[
+            $(
+                (stringify!($param), &format!("{}", $val)),
+            )+
+        ])
+    };
+}

@@ -72,12 +72,14 @@ pub struct ShellConfig {
 #[serde(default)]
 pub struct BehaviorConfig {
     pub selector_mode: SelectorMode,
+    pub language: String,
 }
 
 impl Default for BehaviorConfig {
     fn default() -> Self {
         Self {
             selector_mode: SelectorMode::Always,
+            language: String::new(),
         }
     }
 }

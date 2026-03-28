@@ -5,6 +5,7 @@ pub mod commands;
 pub mod config;
 pub mod executor;
 pub mod guard;
+pub mod i18n;
 pub mod reporter;
 pub mod selector;
 pub mod translator;

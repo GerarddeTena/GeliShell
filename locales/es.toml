@@ -1,0 +1,170 @@
+[startup]
+already_running = "Error: GeliShell ya está en ejecución."
+ready = "GeliShell listo"
+subsystem = "subsistema: {subsystem}"
+
+[repl]
+goodbye = "hasta luego"
+assistant_moved = "el asistente ahora lo proporciona el binario gerisabet"
+assistant_hint = "ejecuta: gerisabet --help"
+input_error = "error de entrada: {error}"
+config_reset_ok = "configuración restablecida — reinicia GeliShell para ejecutar el asistente de configuración"
+config_reset_failed = "error al restablecer: {error}"
+selection_cancelled = "selección cancelada"
+
+[bootstrap]
+migrated = "archivos de configuración migrados a {dir}: {files}"
+seeded = "activos del modelo de asistente inicializados en {dir}: {files}"
+failed = "error al inicializar el layout: {error}"
+
+[config]
+wizard_failed = "error en el asistente: {error} — usando valores por defecto"
+save_failed = "no se pudo guardar la configuración: {error}"
+parse_error = "error al parsear la configuración: {error} — usando valores por defecto"
+load_error = "error de configuración: {error} — usando valores por defecto"
+menu_save_failed = "error al guardar la configuración: {error}"
+menu_updated = "configuración guardada y persistida"
+toml_warning = "ADVERTENCIA: editar el TOML de comandos puede romper la shell si es inválido"
+customization_path = "archivo de personalización: {path}"
+menu_failed = "error en el menú de configuración: {error}"
+updated = "configuración actualizada"
+reset_ok = "configuración restablecida — reinicia GeliShell para ejecutar el asistente de configuración"
+reset_failed = "error al restablecer: {error}"
+
+[history]
+load_failed = "error al cargar el historial: {error} — continuando con historial vacío"
+
+[commands]
+loaded = "mapa de comandos: {count} comandos cargados desde {source}"
+read_failed = "error al leer el mapa de comandos ({path}): {error}"
+parse_failed = "error al parsear el mapa de comandos ({path}): {error}"
+
+[cli]
+unknown_flag = "bandera desconocida '{flag}'"
+show_requires_commands = "--show requiere --commands <ecosistema>"
+show_usage = "Uso: geli --show --commands <ecosistema>"
+missing_ecosystem = "falta el nombre del ecosistema"
+available_ecosystems = "Disponibles: {list}"
+unknown_ecosystem = "ecosistema desconocido '{name}'. Disponibles: {list}"
+tui_failed = "error en el TUI del ecosistema: {error}"
+command_invalid = "el comando del ecosistema es inválido: {error}"
+command_unparseable = "el comando del ecosistema no se puede parsear: {error}"
+command_blocked = "el comando del ecosistema fue bloqueado por el guardia: {error}"
+command_executing = "ejecutando en {subsystem}: {command}"
+command_exit_code = "código de salida del ecosistema: {code}"
+command_exec_failed = "error al ejecutar el comando del ecosistema: {error}"
+ctrl_c = "^C - comando del ecosistema cancelado"
+config_updated = "configuración actualizada"
+
+[cli.help]
+title = "GeliShell 0.1.0"
+usage_header = "USO:"
+usage = "    geli [BANDERAS]"
+flags_header = "BANDERAS:"
+flag_help = "    --help, -h                    Mostrar este mensaje de ayuda"
+flag_config = "    --config-me                   Abrir menú de configuración"
+flag_show = "    --show --commands <ecosistema> Explorar comandos del ecosistema (TUI)"
+flag_show_available = "                                  Disponibles: cargo, docker, dotnet, git, npm, python"
+ai_header = "ASISTENTE IA:"
+ai_how_to = "    gerisabet --how-to <consulta>  Preguntarle al asistente cómo hacer algo"
+ai_show_me = "    gerisabet --show-me            Búsqueda interactiva de comandos"
+footer = "Si no se proporcionan banderas, GeliShell arranca en modo interactivo."
+
+[exec]
+ctrl_c_interactive = "^C — comando cancelado"
+ctrl_c_stop = "^C/:stop* — comando cancelado"
+stop_cancelled = ":stop* — comando cancelado"
+search_cancelled = ":search* — comando cancelado"
+exit_code = "código de salida: {code}"
+clear_failed = "error al limpiar: {error}"
+
+[help]
+menu_failed = "error en el menú de ayuda: {error}"
+
+[special]
+stop_intercepted = ":stop* interceptado — usa Ctrl+C para interrumpir el comando en ejecución"
+search_skeleton = ":search* interceptado — la UI de búsqueda interactiva está en estado esqueleto"
+
+[selector]
+cancelled = "selección cancelada"
+
+[builtin.cd]
+error = "cd: {path}: {error}"
+
+[builtin.source]
+missing_arg = "source: falta argumento de archivo"
+not_available = "source: '{path}' — motor de scripting aún no disponible"
+
+[builtin.export]
+set = "export: {key}={value}"
+not_found = "export: '{arg}' no encontrado"
+
+[builtin.unset]
+removed = "unset: eliminado '{arg}'"
+
+[builtin.history]
+cleared = "historial borrado"
+entry = "{num}  {entry}"
+
+[builtin.gerisabet]
+not_found = "gerisabet no encontrado en PATH"
+description = "gerisabet es el binario del asistente IA de GeliShell."
+install_hint = "Instálalo ejecutando:"
+install_step1 = "  cargo build --release"
+install_step2_windows = "  .\\install.ps1"
+install_step2_unix = "  ./install.sh"
+manual_copy = "O copia el binario manualmente:"
+copy_hint_windows = "  Copia target\\release\\gerisabet.exe → {dir}\\gerisabet.exe"
+copy_hint_unix = "  cp target/release/gerisabet {dir}"
+
+[executor]
+spawning = "executor: lanzando '{command}' via {subsystem}"
+tty_mode = "executor: modo TTY interactivo activado"
+finished = "executor: finalizado con código de salida {code}"
+kill_failed = "executor: error al matar el proceso con timeout: {error}"
+wait_failed = "executor: error esperando al proceso con timeout: {error}"
+
+[assistant]
+show_me_failed = "error en show-me: {error}"
+show_me_invalid = "asistente --show-me generó un comando inválido: {error}"
+show_me_unparseable = "asistente --show-me generó un comando no parseable: {error}"
+show_me_blocked = "asistente --show-me: comando bloqueado por el guardia: {error}"
+show_me_executing = "asistente --show-me ejecutando en {subsystem}: {command}"
+show_me_exit_code = "asistente --show-me código de salida: {code}"
+show_me_exec_failed = "asistente --show-me error de ejecución: {error}"
+show_me_ctrl_c = "^C - asistente --show-me cancelado"
+bootstrap_ui_failed = "error en la UI de arranque del asistente: {error}"
+bootstrap_failed = "error al arrancar el asistente: {error}"
+how_to_failed = "asistente --how-to falló: {error}"
+how_to_cancelled = "asistente --how-to cancelado por el usuario"
+how_to_prompt_failed = "error en el panel de confirmación de --how-to: {error}"
+error_panel_failed = "error en el panel de error del asistente: {ui_error}"
+generated_invalid = "el asistente generó un comando inválido: {error}"
+generated_unparseable = "el asistente generó un comando no parseable: {error}"
+command_blocked = "comando del asistente bloqueado por el guardia: {error}"
+explanation = "explicación del asistente: {explanation}"
+executing = "asistente ejecutando en {subsystem}: {command}"
+command_exit_code = "código de salida del asistente: {code}"
+command_exec_failed = "error al ejecutar el comando del asistente: {error}"
+ctrl_c = "^C — comando del asistente cancelado"
+
+[geli]
+no_args = "Ya estás dentro de GeliShell. Usa 'exit' para salir o 'geli --help' para ver comandos disponibles."
+lang_set = "idioma cambiado a: {lang}"
+lang_not_supported = "idioma no soportado: '{lang}' — disponibles: en, es"
+
+[pipeline]
+decomposed = "{step}: descompuesto en {count} fragmento(s)"
+canonical_match = "{step}: '{command}' → coincidencia canónica encontrada"
+reverse_lookup = "{step}: '{command}' → búsqueda inversa → canónico '{canonical}'"
+passthrough = "{step}: '{command}' → sin coincidencia canónica, pass-through"
+flag_resolved = "{step}: '{flag}' → '{translated}'"
+flag_not_supported = "{step}: bandera '{flag}' no soportada en '{subsystem}' — omitiendo"
+mapped_passthrough = "{step}: '{command}' → pass-through (sin definición canónica)"
+mapped = "{step}: '{command}' → '{resolved}' [{count} alternativas]"
+resolver_error = "{step}: error del resolver para '{command}': {error} — usando original"
+variable_expanded = "{step}: '{var}' → '{expanded}'"
+complete = "pipeline: completo → '{output}'"
+
+[banner]
+tagline = "shell multiplataforma · traductor de subsistemas · asistente IA"

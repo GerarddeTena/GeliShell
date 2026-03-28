@@ -6,6 +6,7 @@ use geli_shell::shell::{
     reporter::Reporter,
     translator::{self, CommandMap, Subsystem},
 };
+use geli_shell::t;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -14,22 +15,20 @@ pub async fn bootstrap_runtime_layout(reporter: &dyn Reporter) {
     match ensure_runtime_layout().await {
         Ok(report) => {
             if !report.migrated_legacy_files.is_empty() {
-                reporter.info(&format!(
-                    "migrated legacy config files to {}: {}",
-                    ShellConfig::geli_config_dir().display(),
-                    report.migrated_legacy_files.join(", ")
+                reporter.info(&t!("bootstrap.migrated",
+                    dir = ShellConfig::geli_config_dir().display(),
+                    files = report.migrated_legacy_files.join(", ")
                 ));
             }
             if !report.seeded_model_files.is_empty() {
-                reporter.info(&format!(
-                    "initialized assistant model assets in {}: {}",
-                    ShellConfig::assistant_models_dir().display(),
-                    report.seeded_model_files.join(", ")
+                reporter.info(&t!("bootstrap.seeded",
+                    dir = ShellConfig::assistant_models_dir().display(),
+                    files = report.seeded_model_files.join(", ")
                 ));
             }
         }
         Err(error) => {
-            reporter.warn(&format!("bootstrap layout failed: {error}"));
+            reporter.warn(&t!("bootstrap.failed", error = error));
         }
     }
 }
@@ -41,24 +40,22 @@ pub async fn load_or_init_config(reporter: &dyn Reporter) -> ShellConfig {
             let cfg = match run_first_run_wizard() {
                 Ok(cfg) => cfg,
                 Err(error) => {
-                    reporter.warn(&format!("wizard failed: {error} — using defaults"));
+                    reporter.warn(&t!("config.wizard_failed", error = error));
                     ShellConfig::default()
                 }
             };
 
             if let Err(error) = cfg.save_async().await {
-                reporter.warn(&format!("could not save config: {error}"));
+                reporter.warn(&t!("config.save_failed", error = error));
             }
             cfg
         }
         Err(ConfigError::Parse(error)) => {
-            reporter.error(&format!(
-                "\x1b[31mconfig parse error: {error} — using fallback defaults\x1b[0m"
-            ));
+            reporter.error(&format!("\x1b[31m{}\x1b[0m", t!("config.parse_error", error = error)));
             ShellConfig::default()
         }
         Err(error) => {
-            reporter.warn(&format!("config error: {error} — using defaults"));
+            reporter.warn(&t!("config.load_error", error = error));
             ShellConfig::default()
         }
     }
@@ -68,9 +65,7 @@ pub async fn load_history_or_default(reporter: &dyn Reporter) -> PersistentComma
     match PersistentCommandHistory::load_async().await {
         Ok(history) => history,
         Err(error) => {
-            reporter.warn(&format!(
-                "history load failed: {error} — continuing with empty history"
-            ));
+            reporter.warn(&t!("history.load_failed", error = error));
             PersistentCommandHistory::default()
         }
     }
@@ -85,11 +80,7 @@ pub async fn init_command_map_or_exit(reporter: &dyn Reporter) -> Arc<CommandMap
         }
     };
 
-    reporter.info(&format!(
-        "command map: loaded {} commands from {}",
-        result.map.len(),
-        command_map_source
-    ));
+    reporter.info(&t!("commands.loaded", count = result.map.len(), source = command_map_source));
     result.report(reporter);
 
     Arc::new(result.map)
@@ -115,9 +106,9 @@ async fn load_command_map_for_startup() -> Result<(translator::LoadResult, Strin
 
         let raw = tokio::fs::read_to_string(&path)
             .await
-            .map_err(|error| format!("command map read failed ({}): {error}", path.display()))?;
+            .map_err(|error| t!("commands.read_failed", path = path.display(), error = error))?;
         let parsed = translator::load_from_str(&raw)
-            .map_err(|error| format!("command map parse failed ({}): {error}", path.display()))?;
+            .map_err(|error| t!("commands.parse_failed", path = path.display(), error = error))?;
 
         return Ok((parsed, format!("runtime ({})", path.display())));
     }

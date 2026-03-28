@@ -1,5 +1,6 @@
 use super::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
+use crate::t;
 
 pub struct ExportBuiltin;
 
@@ -14,13 +15,13 @@ impl Builtin for ExportBuiltin {
                 unsafe {
                     std::env::set_var(key.trim(), value.trim());
                 }
-                reporter.info(&format!("export: {key}={value}"));
+                reporter.info(&t!("builtin.export.set", key = key, value = value));
             } else {
                 // Sin valor — exporta la variable si ya existe
                 if let Ok(val) = std::env::var(arg) {
-                    reporter.info(&format!("export: {arg}={val}"));
+                    reporter.info(&t!("builtin.export.set", key = arg, value = val));
                 } else {
-                    reporter.warn(&format!("export: '{arg}' not found"));
+                    reporter.warn(&t!("builtin.export.not_found", arg = arg));
                 }
             }
         }
