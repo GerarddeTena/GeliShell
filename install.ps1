@@ -6,12 +6,12 @@
 .DESCRIPTION
     Installs GeliShell and all required runtime dependencies:
 
-      1. geli.exe binary  → %USERPROFILE%\.local\bin\geli.exe
-      2. sqlite-vec        → %USERPROFILE%\.config\geliShell\models\vec0.dll
-      3. docs.db           → generated via: cargo run --bin build_docs_db
+      1. geli.exe + gerisabet.exe → %USERPROFILE%\.local\bin\
+      2. sqlite-vec               → %USERPROFILE%\.config\geliShell\models\vec0.dll
+      3. docs.db                  → generated via: cargo run --bin build_docs_db
 
     IMPORTANT — sqlite-vec is NOT the same as SQLite:
-      SQLite   → standard relational database, likely already on your system
+      SQLite     → standard relational database, likely already on your system
       sqlite-vec → a SEPARATE vector-search C extension by Alex Garcia
                    https://github.com/asg017/sqlite-vec
                    GeliShell downloads vec0.dll from its GitHub releases.
@@ -166,24 +166,31 @@ foreach ($Dir in @($BinDir, $ConfigRoot, $ModelsDir, $DocsDir)) {
 }
 
 # ══════════════════════════════════════════════════════════════
-# STEP 1 — geli.exe binary
+# STEP 1 — geli.exe + gerisabet.exe binaries
 # ══════════════════════════════════════════════════════════════
 
 Write-Host ""
-Write-Step "installing GeliShell binary..."
+Write-Step "installing GeliShell binaries..."
 
-$BinarySource = Join-Path $ProjectRoot "target\release\geli.exe"
-if (-not (Test-Path $BinarySource)) {
-    Write-Host ""
-    Write-Warn "Binary not found at: $BinarySource"
-    Write-Host "  Run first:  cargo build --release" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
+$BinariesToInstall = @(
+    @{ Name = "geli.exe";       Source = Join-Path $ProjectRoot "target\release\geli.exe" },
+    @{ Name = "gerisabet.exe";  Source = Join-Path $ProjectRoot "target\release\gerisabet.exe" }
+)
+
+foreach ($Binary in $BinariesToInstall) {
+    if (-not (Test-Path $Binary.Source)) {
+        Write-Host ""
+        Write-Warn "$($Binary.Name) not found at: $($Binary.Source)"
+        Write-Host "  Run first:  cargo build --release" -ForegroundColor Yellow
+        Write-Host ""
+        exit 1
+    }
+    $Dest = Join-Path $BinDir $Binary.Name
+    Copy-Item -Path $Binary.Source -Destination $Dest -Force
+    Write-Ok "$($Binary.Name) → $Dest"
 }
 
 $BinaryDest = Join-Path $BinDir "geli.exe"
-Copy-Item -Path $BinarySource -Destination $BinaryDest -Force
-Write-Ok "geli.exe → $BinaryDest"
 
 # PATH
 $CurrentPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
@@ -408,11 +415,12 @@ Write-Host "  GeliShell Installation Summary" -ForegroundColor Magenta
 Write-Host "  ──────────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host ""
 
-Write-StatusLine -Ok $true          -Label "geli.exe"    -Detail $BinaryDest
-Write-StatusLine -Ok $SqliteOk      -Label "SQLite"      -Detail "sqlite3 in PATH"
-Write-StatusLine -Ok $Vec0Available -Label "sqlite-vec"  -Detail "vec0.dll — $Vec0Dest"
-Write-StatusLine -Ok $OllamaOk      -Label "Ollama"      -Detail "ollama in PATH"
-Write-StatusLine -Ok $DocsDbOk      -Label "docs.db"     -Detail $DocsDbPath
+Write-StatusLine -Ok $true          -Label "geli.exe"       -Detail $BinaryDest
+Write-StatusLine -Ok $true          -Label "gerisabet.exe"  -Detail (Join-Path $BinDir "gerisabet.exe")
+Write-StatusLine -Ok $SqliteOk      -Label "SQLite"         -Detail "sqlite3 in PATH"
+Write-StatusLine -Ok $Vec0Available -Label "sqlite-vec"     -Detail "vec0.dll — $Vec0Dest"
+Write-StatusLine -Ok $OllamaOk      -Label "Ollama"         -Detail "ollama in PATH"
+Write-StatusLine -Ok $DocsDbOk      -Label "docs.db"        -Detail $DocsDbPath
 
 Write-Host ""
 if ($Vec0Available -and $OllamaOk -and $DocsDbOk) {

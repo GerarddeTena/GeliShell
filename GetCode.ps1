@@ -1,4 +1,4 @@
-# How to use : .\Extract-Code.ps1 -SourcePath "C:\TuProyecto\App"
+# How to use : .\GetCode.ps1 -SourcePath "C:\TuProyecto\App"
 param (
     [Parameter(Mandatory=$true)]
     [string]$SourcePath
