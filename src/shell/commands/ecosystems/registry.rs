@@ -7,8 +7,9 @@ static DOTNET: &str = include_str!("../../../../commands/ecosystems/dotnet.toml"
 static GIT: &str = include_str!("../../../../commands/ecosystems/git.toml");
 static NPM: &str = include_str!("../../../../commands/ecosystems/npm.toml");
 static PYTHON: &str = include_str!("../../../../commands/ecosystems/python.toml");
+static TYPESCRIPT: &str = include_str!("../../../../commands/ecosystems/typescript.toml");
 
-const AVAILABLE: &[&str] = &["cargo", "docker", "dotnet", "git", "npm", "python"];
+const AVAILABLE: &[&str] = &["cargo", "docker", "dotnet", "git", "npm", "python", "typescript"];
 
 #[derive(Debug, thiserror::Error)]
 pub enum EcosystemError {
@@ -36,6 +37,7 @@ impl EcosystemRegistry {
         ecosystems.insert("git", parse_catalog("git", GIT)?);
         ecosystems.insert("npm", parse_catalog("npm", NPM)?);
         ecosystems.insert("python", parse_catalog("python", PYTHON)?);
+        ecosystems.insert("typescript", parse_catalog("typescript", TYPESCRIPT)?);
 
         Ok(Self { ecosystems })
     }

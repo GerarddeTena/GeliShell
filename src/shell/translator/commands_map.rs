@@ -19,7 +19,6 @@ pub enum ValidationWarning {
     EmptyExact { command: String, subsystem: String },
     EmptySuggestions { command: String, subsystem: String },
     MissingSubsystem { command: String, subsystem: String },
-    // For TOML doubleEntries:
     DuplicateCommand { name: String },
 }
 
