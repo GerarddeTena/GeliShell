@@ -1,0 +1,217 @@
+# ══════════════════════════════════════════════
+# typescript / tsc compiler
+# ══════════════════════════════════════════════
+
+[[commands]]
+name        = "tsc-init"
+description = "Create a tsconfig.json with default compiler options"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc --init", suggestions = [] },
+    zsh        = { exact = "tsc --init", suggestions = [] },
+    fish       = { exact = "tsc --init", suggestions = [] },
+    powershell = { exact = "tsc --init", suggestions = [] },
+    cmd        = { exact = "tsc --init", suggestions = [] }
+}
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-compile"
+description = "Compile the project based on tsconfig.json"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc", suggestions = ["tsc --pretty false"] },
+    zsh        = { exact = "tsc", suggestions = ["tsc --pretty false"] },
+    fish       = { exact = "tsc", suggestions = ["tsc --pretty false"] },
+    powershell = { exact = "tsc", suggestions = ["tsc --pretty false"] },
+    cmd        = { exact = "tsc", suggestions = ["tsc --pretty false"] }
+}
+
+[[commands.flags]]
+canonical  = "--project"
+bash       = "--project"
+zsh        = "--project"
+fish       = "--project"
+powershell = "--project"
+cmd        = "--project"
+
+[[commands.flags]]
+canonical  = "--pretty"
+bash       = "--pretty"
+zsh        = "--pretty"
+fish       = "--pretty"
+powershell = "--pretty"
+cmd        = "--pretty"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-file"
+description = "Compile a single TypeScript file"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc <file.ts>", suggestions = ["tsc --target es2020 <file.ts>"] },
+    zsh        = { exact = "tsc <file.ts>", suggestions = ["tsc --target es2020 <file.ts>"] },
+    fish       = { exact = "tsc <file.ts>", suggestions = ["tsc --target es2020 <file.ts>"] },
+    powershell = { exact = "tsc <file.ts>", suggestions = ["tsc --target es2020 <file.ts>"] },
+    cmd        = { exact = "tsc <file.ts>", suggestions = ["tsc --target es2020 <file.ts>"] }
+}
+
+[[commands.flags]]
+canonical  = "--target"
+bash       = "--target"
+zsh        = "--target"
+fish       = "--target"
+powershell = "--target"
+cmd        = "--target"
+
+[[commands.flags]]
+canonical  = "--module"
+bash       = "--module"
+zsh        = "--module"
+fish       = "--module"
+powershell = "--module"
+cmd        = "--module"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-watch"
+description = "Run TypeScript compiler in watch mode"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc -w", suggestions = [] },
+    zsh        = { exact = "tsc -w", suggestions = [] },
+    fish       = { exact = "tsc -w", suggestions = [] },
+    powershell = { exact = "tsc -w", suggestions = [] },
+    cmd        = { exact = "tsc -w", suggestions = [] }
+}
+
+[[commands.flags]]
+canonical  = "--watch"
+bash       = "-w"
+zsh        = "-w"
+fish       = "-w"
+powershell = "-w"
+cmd        = "-w"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-no-emit"
+description = "Check types without emitting compiled JavaScript"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc --noEmit", suggestions = [] },
+    zsh        = { exact = "tsc --noEmit", suggestions = [] },
+    fish       = { exact = "tsc --noEmit", suggestions = [] },
+    powershell = { exact = "tsc --noEmit", suggestions = [] },
+    cmd        = { exact = "tsc --noEmit", suggestions = [] }
+}
+
+[[commands.flags]]
+canonical  = "--noEmit"
+bash       = "--noEmit"
+zsh        = "--noEmit"
+fish       = "--noEmit"
+powershell = "--noEmit"
+cmd        = "--noEmit"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-build"
+description = "Build a composite TypeScript project using project references"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc --build", suggestions = ["tsc --build --verbose"] },
+    zsh        = { exact = "tsc --build", suggestions = ["tsc --build --verbose"] },
+    fish       = { exact = "tsc --build", suggestions = ["tsc --build --verbose"] },
+    powershell = { exact = "tsc --build", suggestions = ["tsc --build --verbose"] },
+    cmd        = { exact = "tsc --build", suggestions = ["tsc --build --verbose"] }
+}
+
+[[commands.flags]]
+canonical  = "--build"
+bash       = "--build"
+zsh        = "--build"
+fish       = "--build"
+powershell = "--build"
+cmd        = "--build"
+
+[[commands.flags]]
+canonical  = "--clean"
+bash       = "--clean"
+zsh        = "--clean"
+fish       = "--clean"
+powershell = "--clean"
+cmd        = "--clean"
+
+[[commands.flags]]
+canonical  = "--verbose"
+bash       = "--verbose"
+zsh        = "--verbose"
+fish       = "--verbose"
+powershell = "--verbose"
+cmd        = "--verbose"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-declarations"
+description = "Generate TypeScript declaration (.d.ts) files"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc --declaration", suggestions = ["tsc --emitDeclarationOnly"] },
+    zsh        = { exact = "tsc --declaration", suggestions = ["tsc --emitDeclarationOnly"] },
+    fish       = { exact = "tsc --declaration", suggestions = ["tsc --emitDeclarationOnly"] },
+    powershell = { exact = "tsc --declaration", suggestions = ["tsc --emitDeclarationOnly"] },
+    cmd        = { exact = "tsc --declaration", suggestions = ["tsc --emitDeclarationOnly"] }
+}
+
+[[commands.flags]]
+canonical  = "--declaration"
+bash       = "--declaration"
+zsh        = "--declaration"
+fish       = "--declaration"
+powershell = "--declaration"
+cmd        = "--declaration"
+
+[[commands.flags]]
+canonical  = "--emitDeclarationOnly"
+bash       = "--emitDeclarationOnly"
+zsh        = "--emitDeclarationOnly"
+fish       = "--emitDeclarationOnly"
+powershell = "--emitDeclarationOnly"
+cmd        = "--emitDeclarationOnly"
+
+# ──────────────────────────────────────────────
+
+[[commands]]
+name        = "tsc-diagnostics"
+description = "Print extended compiler performance and diagnostic information"
+category    = "typescript"
+translate   = {
+    bash       = { exact = "tsc --extendedDiagnostics", suggestions = ["tsc --listFiles"] },
+    zsh        = { exact = "tsc --extendedDiagnostics", suggestions = ["tsc --listFiles"] },
+    fish       = { exact = "tsc --extendedDiagnostics", suggestions = ["tsc --listFiles"] },
+    powershell = { exact = "tsc --extendedDiagnostics", suggestions = ["tsc --listFiles"] },
+    cmd        = { exact = "tsc --extendedDiagnostics", suggestions = ["tsc --listFiles"] }
+}
+
+[[commands.flags]]
+canonical  = "--extendedDiagnostics"
+bash       = "--extendedDiagnostics"
+zsh        = "--extendedDiagnostics"
+fish       = "--extendedDiagnostics"
+powershell = "--extendedDiagnostics"
+cmd        = "--extendedDiagnostics"
+
+[[commands.flags]]
+canonical  = "--listFiles"
+bash       = "--listFiles"
+zsh        = "--listFiles"
+fish       = "--listFiles"
+powershell = "--listFiles"
+cmd        = "--listFiles"

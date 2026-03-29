@@ -282,6 +282,7 @@ Write-Info "sqlite-vec is NOT part of SQLite — it is a separate vector-search"
 Write-Info "extension: https://github.com/asg017/sqlite-vec"
 
 $Vec0Available = $false
+$VecDestPath = "GELI_SQLITE_VEC_SOURCE"
 
 if ((Test-Path $Vec0Dest) -and -not $Force) {
     Write-Ok "vec0.dll already present: $Vec0Dest"

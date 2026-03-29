@@ -1,0 +1,257 @@
+[meta]
+name = "typescript"
+description = "Pure TypeScript compiler (tsc) commands only"
+levels = ["beginner", "intermediate", "advanced"]
+
+# --- BEGINNER ---
+
+[[ops]]
+operation = "init tsconfig"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --init"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --init"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --init"
+
+[[ops]]
+operation = "compile project"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc"
+
+[[ops]]
+operation = "compile single file"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc <File.ts>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc <File.ts>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc <File.ts>"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "watch mode"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc -w"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc -w"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc -w"
+
+[[ops]]
+operation = "type check only"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --noEmit"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --noEmit"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --noEmit"
+
+[[ops]]
+operation = "set target version"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --target <Version>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --target <Version>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --target <Version>"
+
+[[ops]]
+operation = "set module system"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --module <Type>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --module <Type>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --module <Type>"
+
+[[ops]]
+operation = "set output directory"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --outDir <Folder>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --outDir <Folder>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --outDir <Folder>"
+
+[[ops]]
+operation = "strict mode"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --strict"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --strict"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --strict"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "build composite project"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --build"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --build"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --build"
+
+[[ops]]
+operation = "clean build cache"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --build --clean"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --build --clean"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --build --clean"
+
+[[ops]]
+operation = "incremental build"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --incremental"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --incremental"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --incremental"
+
+[[ops]]
+operation = "generate declarations"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --declaration"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --declaration"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --declaration"
+
+[[ops]]
+operation = "emit declarations only"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --emitDeclarationOnly"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --emitDeclarationOnly"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --emitDeclarationOnly"
+
+[[ops]]
+operation = "compile with specific tsconfig"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --project <tsconfig.json>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --project <tsconfig.json>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --project <tsconfig.json>"
+
+[[ops]]
+operation = "disable pretty output"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --pretty false"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --pretty false"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --pretty false"
+
+[[ops]]
+operation = "generate source maps"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --sourceMap"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --sourceMap"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --sourceMap"
+
+[[ops]]
+operation = "list included files"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --listFiles"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --listFiles"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --listFiles"
+
+[[ops]]
+operation = "extended diagnostics"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "tsc --extendedDiagnostics"
+[[ops.commands]]
+subsystem = "powershell"
+command = "tsc --extendedDiagnostics"
+[[ops.commands]]
+subsystem = "cmd"
+command = "tsc --extendedDiagnostics"

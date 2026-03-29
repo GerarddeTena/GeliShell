@@ -534,11 +534,12 @@ impl EcosystemTui {
 fn get_theme(name: &str) -> (Color, &'static str) {
     match name.to_ascii_lowercase().as_str() {
         "npm" => (Color::Red, "📦"),
-        "git" => (Color::Green, "🌲"),
+        "git" => (Color::Green, "🐈‍"),
         "cargo" => (Color::DarkYellow, "🦀"),
         "docker" => (Color::Blue, "🐳"),
         "dotnet" => (Color::Magenta, "🟣"),
         "python" => (Color::Yellow, "🐍"),
+        "typescript" => (Color::DarkCyan, "#️⃣"),
         _ => (Color::Cyan, "⚡"),
     }
 }

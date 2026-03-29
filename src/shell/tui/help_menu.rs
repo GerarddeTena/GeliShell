@@ -1,3 +1,4 @@
+use crate::t;
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEventKind},
@@ -19,7 +20,7 @@ pub enum HelpMenuAction {
 struct HelpRow {
     shortcut: &'static str,
     command: &'static str,
-    description: &'static str,
+    description: String,
     action: HelpMenuAction,
 }
 
@@ -31,32 +32,34 @@ const COL_DESCRIPTION: usize = 66;
 /// Estructura: borde(0) título(1) vacío(2) cabecera(3) separador(4) datos(5…)
 const HELP_DATA_START_ROW: u16 = 5;
 
-const HELP_ROWS: &[HelpRow] = &[
-    HelpRow {
-        shortcut: "^C",
-        command: ":stop*",
-        description: "interrumpe el proceso actual (alias estilo vim/cmd-mode)",
-        action: HelpMenuAction::Stop,
-    },
-    HelpRow {
-        shortcut: "^D",
-        command: "exit",
-        description: "cierra GeliShell y termina el proceso de la terminal",
-        action: HelpMenuAction::Exit,
-    },
-    HelpRow {
-        shortcut: "^L",
-        command: "clear",
-        description: "limpia pantalla + scrollback (buffer real, tipo cls)",
-        action: HelpMenuAction::Clear,
-    },
-    HelpRow {
-        shortcut: "^S",
-        command: ":search*",
-        description: "intercepta búsqueda rápida de comandos y acciones",
-        action: HelpMenuAction::Search,
-    },
-];
+fn help_rows() -> Vec<HelpRow> {
+    vec![
+        HelpRow {
+            shortcut: "^C",
+            command: ":stop*",
+            description: t!("tui.help.stop_desc"),
+            action: HelpMenuAction::Stop,
+        },
+        HelpRow {
+            shortcut: "^D",
+            command: "exit",
+            description: t!("tui.help.exit_desc"),
+            action: HelpMenuAction::Exit,
+        },
+        HelpRow {
+            shortcut: "^L",
+            command: "clear",
+            description: t!("tui.help.clear_desc"),
+            action: HelpMenuAction::Clear,
+        },
+        HelpRow {
+            shortcut: "^S",
+            command: ":search*",
+            description: t!("tui.help.search_desc"),
+            action: HelpMenuAction::Search,
+        },
+    ]
+}
 
 pub fn show_help_menu() -> io::Result<HelpMenuAction> {
     let mut out = stdout();
@@ -88,9 +91,10 @@ pub fn show_help_menu() -> io::Result<HelpMenuAction> {
 fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
     let mut row = 0usize;
     let mut col = 0usize;
+    let rows = help_rows();
 
     // Render inicial completo — con Clear(All) para establecer la pantalla
-    render_help_menu(out, row, col)?;
+    render_help_menu(out, row, col, &rows)?;
 
     loop {
         match event::read()? {
@@ -109,7 +113,7 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
                         }
                     }
                     KeyCode::Down => {
-                        if row + 1 < HELP_ROWS.len() {
+                        if row + 1 < rows.len() {
                             row += 1;
                         }
                     }
@@ -124,7 +128,7 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
                         }
                     }
                     KeyCode::Enter => {
-                        return Ok(HELP_ROWS[row].action);
+                        return Ok(rows[row].action);
                     }
                     KeyCode::Esc | KeyCode::Char('q') => {
                         return Ok(HelpMenuAction::None);
@@ -134,10 +138,10 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
 
                 // Render diferencial: solo actualiza las filas que cambiaron
                 if row != prev_row {
-                    update_help_row(out, prev_row, &HELP_ROWS[prev_row], false, col)?;
-                    update_help_row(out, row, &HELP_ROWS[row], true, col)?;
+                    update_help_row(out, prev_row, &rows[prev_row], false, col)?;
+                    update_help_row(out, row, &rows[row], true, col)?;
                 } else if col != prev_col {
-                    update_help_row(out, row, &HELP_ROWS[row], true, col)?;
+                    update_help_row(out, row, &rows[row], true, col)?;
                 }
             }
             _ => {}
@@ -161,7 +165,7 @@ fn update_help_row(
     Ok(())
 }
 
-fn render_help_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<()> {
+fn render_help_menu(out: &mut impl Write, row: usize, col: usize, rows: &[HelpRow]) -> io::Result<()> {
     execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
 
     let border = "─".repeat(COL_SHORTCUT + COL_COMMAND + COL_DESCRIPTION + 10);
@@ -172,7 +176,7 @@ fn render_help_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "Geli HelpMe — atajos y comandos interactivos",
+            t!("tui.help.title"),
             width = COL_SHORTCUT + COL_COMMAND + COL_DESCRIPTION + 6
         )),
         Print(format!(
@@ -192,7 +196,7 @@ fn render_help_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<
         ResetColor,
     )?;
 
-    for (idx, item) in HELP_ROWS.iter().enumerate() {
+    for (idx, item) in rows.iter().enumerate() {
         render_data_row(out, item, idx == row, col)?;
     }
 
@@ -206,7 +210,7 @@ fn render_help_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<
         )),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "↑↓ filas · ←→ columnas · Enter ejecutar · Esc cerrar",
+            t!("tui.help.navigation"),
             width = COL_SHORTCUT + COL_COMMAND + COL_DESCRIPTION + 6
         )),
         Print(format!("└{}┘\r\n", border)),
@@ -224,21 +228,21 @@ fn render_header(out: &mut impl Write) -> io::Result<()> {
         Print("│ "),
         ResetColor,
     )?;
-    render_cell(out, "Atajo", COL_SHORTCUT, Color::Yellow, false)?;
+    render_cell(out, &t!("tui.help.column_shortcut"), COL_SHORTCUT, Color::Yellow, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, "Comando", COL_COMMAND, Color::Magenta, false)?;
+    render_cell(out, &t!("tui.help.column_command"), COL_COMMAND, Color::Magenta, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, "Descripcion", COL_DESCRIPTION, Color::Blue, false)?;
+    render_cell(out, &t!("tui.help.column_description"), COL_DESCRIPTION, Color::Blue, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
@@ -292,7 +296,7 @@ fn render_data_row(
     )?;
     render_cell(
         out,
-        row.description,
+        &row.description,
         COL_DESCRIPTION,
         Color::Blue,
         selected && col == 2,

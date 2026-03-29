@@ -1,8 +1,6 @@
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::commands_map::{FlagDef, SubsystemTranslations, TranslationEntry};
 
-/// Representa el subsistema de shell activo.
-/// Es el eje central del Translator — todo lookup pasa por aquí.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subsystem {
     Bash,
@@ -43,8 +41,6 @@ impl Subsystem {
             }
         }
 
-        // $SHELL solo se lee en plataformas no-Windows.
-        // En Windows, $SHELL puede venir de WSL/Git Bash y es engañoso.
         #[cfg(not(target_os = "windows"))]
         if let Ok(shell) = std::env::var("SHELL") {
             if let Some(s) = Self::from_shell_path(&shell) {
@@ -60,8 +56,6 @@ impl Subsystem {
         default
     }
 
-    /// true si el subsistema es compatible con la plataforma actual.
-    /// Fish no tiene soporte oficial en Windows — se advierte al usuario.
     pub fn is_supported_on_platform(&self) -> bool {
         #[cfg(target_os = "windows")]
         if matches!(self, Self::Fish) {
@@ -70,8 +64,6 @@ impl Subsystem {
         true
     }
 
-    /// Parsea un string canónico → Subsystem
-    /// Acepta mayúsculas, minúsculas y variantes comunes
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "bash" => Some(Self::Bash),
@@ -83,13 +75,9 @@ impl Subsystem {
         }
     }
 
-    /// Parsea un path de shell tipo `/usr/bin/zsh`, `/bin/bash`,
-    /// o `C:\Program Files\Git\bin\bash.exe` (Windows backslash)
     fn from_shell_path(path: &str) -> Option<Self> {
-        // Normaliza backslash → forward slash para cubrir rutas Windows
         let normalized = path.replace('\\', "/");
         let exe = normalized.rsplit('/').next().unwrap_or(path);
-        // Elimina extensión .exe si presente
         let name = exe.strip_suffix(".exe").unwrap_or(exe).to_lowercase();
 
         match name.as_str() {
@@ -101,7 +89,6 @@ impl Subsystem {
         }
     }
 
-    /// Default por plataforma — evaluado en compilación, no en runtime
     #[cfg(target_os = "windows")]
     fn platform_default() -> Self {
         Self::PowerShell
@@ -112,7 +99,6 @@ impl Subsystem {
         Self::Bash
     }
 
-    /// Nombre canónico en minúsculas — usado en warnings y logs
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Bash => "bash",
@@ -123,17 +109,14 @@ impl Subsystem {
         }
     }
 
-    /// true si el subsistema es Unix-like
     pub fn is_unix(&self) -> bool {
         matches!(self, Self::Bash | Self::Zsh | Self::Fish)
     }
 
-    /// true si el subsistema es Windows-native
     pub fn is_windows(&self) -> bool {
         matches!(self, Self::PowerShell | Self::Cmd)
     }
 
-    /// Extrae la TranslationEntry para este subsistema
     pub fn entry<'a>(
         &self,
         translations: &'a SubsystemTranslations,
@@ -147,7 +130,6 @@ impl Subsystem {
         }
     }
 
-    /// Extrae la traducción de un flag para este subsistema
     pub fn flag<'a>(&self, flag: &'a FlagDef) -> Option<&'a str> {
         match self {
             Self::Bash => flag.bash.as_deref(),
@@ -158,7 +140,6 @@ impl Subsystem {
         }
     }
 
-    /// Operador AND — ejecuta right solo si left tuvo éxito
     pub fn and_operator(&self) -> &'static str {
         match self {
             Self::Cmd => " & ", // cmd no tiene && real
@@ -166,7 +147,6 @@ impl Subsystem {
         }
     }
 
-    /// Operador OR — ejecuta right solo si left falló
     pub fn or_operator(&self) -> &'static str {
         match self {
             Self::Cmd => " & ", // cmd no tiene || real
@@ -174,7 +154,6 @@ impl Subsystem {
         }
     }
 
-    /// Operador de secuencia — ejecuta siempre en orden
     pub fn sequence_operator(&self) -> &'static str {
         match self {
             Self::Cmd => " & ",
@@ -183,7 +162,6 @@ impl Subsystem {
         }
     }
 
-    /// Envuelve un comando para ejecución en background
     pub fn background_wrap(&self, cmd: &str) -> String {
         match self {
             Self::PowerShell => format!("Start-Process {cmd}"),
@@ -192,7 +170,6 @@ impl Subsystem {
         }
     }
 
-    /// Sintaxis de variable de entorno para este subsistema
     pub fn variable_syntax(&self, name: &str) -> String {
         match self {
             Self::PowerShell => format!("$env:{name}"),
@@ -215,16 +192,11 @@ pub struct ScoredSuggestion {
     pub kind: SuggestionKind,
 }
 
-/// Clasificación semántica de una suggestion
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuggestionKind {
-    /// Coincide exactamente con el `exact` del subsistema activo
     ExactMatch,
-    /// Alias nativo conocido del subsistema (gci → Get-ChildItem)
     NativeAlias,
-    /// Comando nativo del OS que puede sustituir al canónico
     NativeCommand,
-    /// Funciona en múltiples subsistemas (cross-platform)
     CrossPlatform,
 }
 

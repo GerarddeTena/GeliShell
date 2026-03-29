@@ -1,3 +1,4 @@
+use crate::t;
 use crate::shell::config::VisualConfig;
 use crossterm::{
     cursor,
@@ -16,9 +17,9 @@ pub enum ConfigMenuSelection {
 }
 
 struct ConfigRow {
-    feature: &'static str,
+    feature: String,
     action_name: &'static str,
-    description: &'static str,
+    description: String,
 }
 
 const COL_FEATURE: usize = 30;
@@ -36,23 +37,25 @@ const FONT_OPTIONS: &[&str] = &[
     "Monospace",
 ];
 
-const CONFIG_ROWS: &[ConfigRow] = &[
-    ConfigRow {
-        feature: "Personalización de colores",
-        action_name: "ui.colors",
-        description: "foreground/background y prompt",
-    },
-    ConfigRow {
-        feature: "Selector de fuentes",
-        action_name: "ui.fonts",
-        description: "preferencia de fuente de la shell",
-    },
-    ConfigRow {
-        feature: "Editor TOML comandos",
-        action_name: "commands.toml",
-        description: "suggestions, exact y custom commands",
-    },
-];
+fn config_rows() -> Vec<ConfigRow> {
+    vec![
+        ConfigRow {
+            feature: t!("tui.config.color_personalization"),
+            action_name: "ui.colors",
+            description: t!("tui.config.color_desc"),
+        },
+        ConfigRow {
+            feature: t!("tui.config.font_selector"),
+            action_name: "ui.fonts",
+            description: t!("tui.config.font_desc"),
+        },
+        ConfigRow {
+            feature: t!("tui.config.toml_editor"),
+            action_name: "commands.toml",
+            description: t!("tui.config.toml_desc"),
+        },
+    ]
+}
 
 struct ColorPreset {
     label: &'static str,
@@ -137,9 +140,10 @@ fn run_config_menu(
     let mut row = 0usize;
     let mut col = 0usize;
     let mut visual = current_visual.clone();
+    let rows = config_rows();
 
     // Render inicial completo
-    render_config_menu(out, row, col)?;
+    render_config_menu(out, row, col, &rows)?;
 
     loop {
         match event::read()? {
@@ -158,7 +162,7 @@ fn run_config_menu(
                         }
                     }
                     KeyCode::Down => {
-                        if row + 1 < CONFIG_ROWS.len() {
+                        if row + 1 < rows.len() {
                             row += 1;
                         }
                     }
@@ -179,14 +183,14 @@ fn run_config_menu(
                                 return Ok(ConfigMenuSelection::UpdatedVisual(visual));
                             }
                             // Submenú cerrado — render completo para restaurar la pantalla
-                            render_config_menu(out, row, col)?;
+                            render_config_menu(out, row, col, &rows)?;
                         }
                         1 => {
                             if let Some(updated) = show_font_editor(out, &visual)? {
                                 visual = updated;
                                 return Ok(ConfigMenuSelection::UpdatedVisual(visual));
                             }
-                            render_config_menu(out, row, col)?;
+                            render_config_menu(out, row, col, &rows)?;
                         }
                         2 => return Ok(ConfigMenuSelection::TomlEditor),
                         _ => {}
@@ -199,10 +203,10 @@ fn run_config_menu(
 
                 // Render diferencial: solo actualiza las filas que cambiaron
                 if row != prev_row {
-                    update_config_row(out, prev_row, &CONFIG_ROWS[prev_row], false, col)?;
-                    update_config_row(out, row, &CONFIG_ROWS[row], true, col)?;
+                    update_config_row(out, prev_row, &rows[prev_row], false, col)?;
+                    update_config_row(out, row, &rows[row], true, col)?;
                 } else if col != prev_col {
-                    update_config_row(out, row, &CONFIG_ROWS[row], true, col)?;
+                    update_config_row(out, row, &rows[row], true, col)?;
                 }
             }
             _ => {}
@@ -324,12 +328,12 @@ fn render_font_editor(out: &mut impl Write, selected: usize) -> io::Result<()> {
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Geli ConfigMe — Font selector",
+            t!("tui.config.font_editor_title"),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "↑↓ seleccionar · Enter guardar · Esc cancelar",
+            t!("tui.config.font_editor_help"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -381,12 +385,12 @@ fn render_color_editor(
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Geli ConfigMe — Color editor",
+            t!("tui.config.color_editor_title"),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "↑↓ campo · ←→ color · Enter guardar · Esc cancelar",
+            t!("tui.config.color_editor_help"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -420,7 +424,7 @@ fn render_color_editor(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
-        Print(format!("│ {:<width$}│\r\n", "Preview", width = width - 3)),
+        Print(format!("│ {:<width$}│\r\n", t!("tui.config.preview"), width = width - 3)),
         ResetColor,
     )?;
 
@@ -471,7 +475,7 @@ fn update_config_row(
     Ok(())
 }
 
-fn render_config_menu(out: &mut impl Write, row: usize, col: usize) -> io::Result<()> {
+fn render_config_menu(out: &mut impl Write, row: usize, col: usize, rows: &[ConfigRow]) -> io::Result<()> {
     execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
 
     let border = "─".repeat(COL_FEATURE + COL_ACTION + COL_DESCRIPTION + 10);
@@ -483,12 +487,12 @@ fn render_config_menu(out: &mut impl Write, row: usize, col: usize) -> io::Resul
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "Geli ConfigMe — UI interactiva",
+            t!("tui.config.menu_title"),
             width = content_width
         )),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "Navega con flechas y Enter. Persistencia activa.",
+            t!("tui.config.menu_help"),
             width = content_width
         )),
         ResetColor,
@@ -503,7 +507,7 @@ fn render_config_menu(out: &mut impl Write, row: usize, col: usize) -> io::Resul
         ResetColor,
     )?;
 
-    for (idx, item) in CONFIG_ROWS.iter().enumerate() {
+    for (idx, item) in rows.iter().enumerate() {
         render_data_row(out, item, idx == row, col)?;
     }
 
@@ -515,14 +519,14 @@ fn render_config_menu(out: &mut impl Write, row: usize, col: usize) -> io::Resul
         SetForegroundColor(Color::Yellow),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "WARNING: editar TOML sin validación puede fracturar GeliShell.",
+            t!("tui.config.toml_warning"),
             width = content_width
         )),
         ResetColor,
         SetForegroundColor(Color::Cyan),
         Print(format!(
             "│ {:<width$} │\r\n",
-            "↑↓ filas · ←→ columnas · Enter abrir · Esc cerrar",
+            t!("tui.config.menu_navigation"),
             width = content_width
         )),
         Print(format!("└{}┘\r\n", border)),
@@ -540,21 +544,21 @@ fn render_header(out: &mut impl Write) -> io::Result<()> {
         Print("│ "),
         ResetColor,
     )?;
-    render_cell(out, "Feature", COL_FEATURE, Color::Yellow, false)?;
+    render_cell(out, &t!("tui.config.column_feature"), COL_FEATURE, Color::Yellow, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, "Acción", COL_ACTION, Color::Magenta, false)?;
+    render_cell(out, &t!("tui.config.column_action"), COL_ACTION, Color::Magenta, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, "Descripción", COL_DESCRIPTION, Color::Blue, false)?;
+    render_cell(out, &t!("tui.config.column_description"), COL_DESCRIPTION, Color::Blue, false)?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
@@ -578,7 +582,7 @@ fn render_data_row(
     )?;
     render_cell(
         out,
-        row.feature,
+        &row.feature,
         COL_FEATURE,
         Color::Yellow,
         selected && col == 0,
@@ -604,7 +608,7 @@ fn render_data_row(
     )?;
     render_cell(
         out,
-        row.description,
+        &row.description,
         COL_DESCRIPTION,
         Color::Blue,
         selected && col == 2,

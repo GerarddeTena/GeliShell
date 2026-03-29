@@ -21,7 +21,6 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal;
 
-/// Lex → Parse shared helper. Returns the AST or reports the error and returns None.
 pub fn parse_ast(command: &str, reporter: &dyn Reporter) -> Option<ASTNode> {
     let tokens = match Lexer::new(command).tokenize() {
         Ok(t) => t,
@@ -83,8 +82,6 @@ pub async fn process_regular_command(
         }
     };
 
-    // Drive the ModalSelector based on SelectorMode.
-    // Only show if there are alternatives to choose from.
     let final_command = match config.behavior.selector_mode {
         SelectorMode::Always | SelectorMode::Once => {
             if let Some(res) = resolved.as_ref() {

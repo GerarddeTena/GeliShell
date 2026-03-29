@@ -1,3 +1,4 @@
+use crate::t;
 use crate::shell::assistant::params::{AssistantParameter, filter_parameters};
 use crate::shell::assistant::qwen::BootstrapEvent;
 use crossterm::{
@@ -131,7 +132,7 @@ async fn run_bootstrap_loop(
                     key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
                 let escaped = matches!(key.code, KeyCode::Esc);
                 if ctrl_c || escaped {
-                    state.status = "bootstrap interrupted by user".to_owned();
+                    state.status = t!("tui.assistant.bootstrap_interrupted");
                     state.done = true;
                 }
             }
@@ -139,7 +140,7 @@ async fn run_bootstrap_loop(
 
         if rx.is_closed() && !state.done {
             if state.status.is_empty() {
-                state.status = "model bootstrap channel closed".to_owned();
+                state.status = t!("tui.assistant.bootstrap_channel_closed");
             }
             state.done = true;
         }
@@ -194,7 +195,7 @@ fn render_how_to_confirmation_panel(
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "GeliShell Assistant --how-to",
+            t!("tui.assistant.howto_title"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -206,7 +207,7 @@ fn render_how_to_confirmation_panel(
         SetForegroundColor(Color::DarkGrey),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Explicación:",
+            t!("tui.assistant.explanation_label"),
             width = width - 3
         )),
         ResetColor,
@@ -225,7 +226,7 @@ fn render_how_to_confirmation_panel(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
-        Print(format!("│ {:<width$}│\r\n", "Comando:", width = width - 3)),
+        Print(format!("│ {:<width$}│\r\n", t!("tui.assistant.command_label"), width = width - 3)),
         ResetColor,
     )?;
 
@@ -244,12 +245,12 @@ fn render_how_to_confirmation_panel(
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "¿Deseas ejecutarlo? [y/n]",
+            t!("tui.assistant.confirm_prompt"),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "y = ejecutar · n/Esc/Enter/Ctrl+C = cancelar",
+            t!("tui.assistant.confirm_help"),
             width = width - 3
         )),
         SetForegroundColor(Color::Cyan),
@@ -318,7 +319,7 @@ fn render_assistant_error_panel(out: &mut impl Write, message: &str) -> io::Resu
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "GeliShell Assistant Error",
+            t!("tui.assistant.error_title"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -340,7 +341,7 @@ fn render_assistant_error_panel(out: &mut impl Write, message: &str) -> io::Resu
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Press Enter/Esc/Ctrl+C to close",
+            t!("tui.assistant.error_close_hint"),
             width = width - 3
         )),
         SetForegroundColor(Color::Red),
@@ -454,12 +455,12 @@ fn render_assistant_menu(out: &mut impl Write, filter: &str, selected: usize) ->
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "GeliShell Assistant",
+            t!("tui.assistant.menu_title"),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "↑↓ navigate · Enter select · Esc/Ctrl+C close",
+            t!("tui.assistant.menu_navigation"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -472,7 +473,7 @@ fn render_assistant_menu(out: &mut impl Write, filter: &str, selected: usize) ->
             SetForegroundColor(Color::DarkGrey),
             Print(format!(
                 "│ {:<width$}│\r\n",
-                "No matching actions. Keep typing to refine.",
+                t!("tui.assistant.no_matches"),
                 width = width - 3
             )),
             ResetColor,
@@ -500,9 +501,9 @@ fn render_assistant_menu(out: &mut impl Write, filter: &str, selected: usize) ->
     }
 
     let filter_label = if filter.is_empty() {
-        "[ Type to filter... ]".to_owned()
+        t!("tui.assistant.filter_hint")
     } else {
-        format!("[ Type to filter... ] {filter}")
+        format!("{} {filter}", t!("tui.assistant.filter_hint"))
     };
 
     execute!(
@@ -539,13 +540,13 @@ impl BootstrapState {
         match event {
             BootstrapEvent::CheckingModel { path } => {
                 self.model_path = path;
-                self.status = "checking model availability...".to_owned();
+                self.status = t!("tui.assistant.checking_model");
             }
             BootstrapEvent::ExistingModelFound { path, size_bytes } => {
                 self.model_path = path;
                 self.loaded_size = size_bytes;
                 self.downloaded_file = false;
-                self.status = "model already cached locally".to_owned();
+                self.status = t!("tui.assistant.model_cached");
             }
             BootstrapEvent::Downloading {
                 downloaded_bytes,
@@ -554,23 +555,23 @@ impl BootstrapState {
                 self.downloaded = downloaded_bytes;
                 self.total = total_bytes;
                 self.downloaded_file = true;
-                self.status = "downloading qwen gguf model...".to_owned();
+                self.status = t!("tui.assistant.downloading");
             }
             BootstrapEvent::VerifyingModel => {
-                self.status = "verifying gguf integrity...".to_owned();
+                self.status = t!("tui.assistant.verifying");
             }
             BootstrapEvent::ModelLoaded { path, size_bytes } => {
                 self.model_path = path;
                 self.loaded_size = size_bytes;
                 self.status = if self.downloaded_file {
-                    "download complete — model loaded".to_owned()
+                    t!("tui.assistant.download_complete")
                 } else {
-                    "model loaded from local cache".to_owned()
+                    t!("tui.assistant.model_loaded_cache")
                 };
                 self.done = true;
             }
             BootstrapEvent::Failed { reason } => {
-                self.status = format!("bootstrap failed: {reason}");
+                self.status = t!("tui.assistant.bootstrap_failed", reason = reason);
                 self.done = true;
             }
         }
@@ -590,12 +591,12 @@ fn render_bootstrap_frame(out: &mut impl Write, state: &BootstrapState) -> io::R
         Print(format!("┌{}┐\r\n", border)),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "GeliShell Assistant bootstrap",
+            t!("tui.assistant.bootstrap_title"),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Preparing local Qwen model in ~/.config/geliShell/models/",
+            t!("tui.assistant.bootstrap_path"),
             width = width - 3
         )),
         Print(format!("├{}┤\r\n", border)),
@@ -611,20 +612,17 @@ fn render_bootstrap_frame(out: &mut impl Write, state: &BootstrapState) -> io::R
         SetForegroundColor(Color::DarkGrey),
         Print(format!(
             "│ {:<width$}│\r\n",
-            format!("model path: {}", state.model_path),
+            format!("{} {}", t!("tui.assistant.model_path_label"), state.model_path),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            format!(
-                "model size: {} bytes",
-                state.loaded_size.max(state.downloaded)
-            ),
+            t!("tui.assistant.model_size_label", size = state.loaded_size.max(state.downloaded)),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            "Esc/Ctrl+C closes this panel only",
+            t!("tui.assistant.bootstrap_close_hint"),
             width = width - 3
         )),
         SetForegroundColor(Color::Cyan),
