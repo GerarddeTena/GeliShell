@@ -261,6 +261,7 @@ if ($SqliteOk) {
     } else {
         Write-Info "Skipped. GeliShell core works without SQLite; AI assistant will not work."
     }
+ }
 }
 
 # ══════════════════════════════════════════════════════════════
