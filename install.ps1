@@ -262,7 +262,6 @@ if ($SqliteOk) {
         Write-Info "Skipped. GeliShell core works without SQLite; AI assistant will not work."
     }
  }
-}
 
 # ══════════════════════════════════════════════════════════════
 # STEP 3 — sqlite-vec (vec0.dll)
