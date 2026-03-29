@@ -39,36 +39,82 @@ $ErrorActionPreference = "Stop"
 
 # ── Helpers ───────────────────────────────────────────────────
 
-function Write-Step  { param([string]$Msg) Write-Host "  --> $Msg" -ForegroundColor Cyan    }
-function Write-Ok    { param([string]$Msg) Write-Host "   ok $Msg" -ForegroundColor Green   }
-function Write-Warn  { param([string]$Msg) Write-Host " warn $Msg" -ForegroundColor Yellow  }
-function Write-Info  { param([string]$Msg) Write-Host "      $Msg" -ForegroundColor DarkGray }
-function Write-Fail  { param([string]$Msg) Write-Host " FAIL $Msg" -ForegroundColor Red; exit 1 }
+function Write-Step
+{
+    param([string]$Msg) Write-Host "  --> $Msg" -ForegroundColor Cyan
+}
+function Write-Ok
+{
+    param([string]$Msg) Write-Host "   ok $Msg" -ForegroundColor Green
+}
+function Write-Warn
+{
+    param([string]$Msg) Write-Host " warn $Msg" -ForegroundColor Yellow
+}
+function Write-Info
+{
+    param([string]$Msg) Write-Host "      $Msg" -ForegroundColor DarkGray
+}
+function Write-Fail
+{
+    param([string]$Msg) Write-Host " FAIL $Msg" -ForegroundColor Red; exit 1
+}
 
-function Ask-YesNo {
+function Ask-YesNo
+{
     param([string]$Question, [bool]$Default = $true)
-    $hint = if ($Default) { "[Y/n]" } else { "[y/N]" }
+    $hint = if ($Default)
+    {
+        "[Y/n]"
+    }
+    else
+    {
+        "[y/N]"
+    }
     Write-Host "  $Question $hint " -ForegroundColor Cyan -NoNewline
     $answer = (Read-Host).Trim().ToLower()
-    if ($answer -eq "") { return $Default }
+    if ($answer -eq "")
+    {
+        return $Default
+    }
     return ($answer -eq "y" -or $answer -eq "yes")
 }
 
-function Write-StatusLine {
+function Write-StatusLine
+{
     param([bool]$Ok, [string]$Label, [string]$Detail)
-    $icon  = if ($Ok) { "  [OK]" } else { "  [--]" }
-    $color = if ($Ok) { "Green" } else { "DarkGray" }
+    $icon = if ($Ok)
+    {
+        "  [OK]"
+    }
+    else
+    {
+        "  [--]"
+    }
+    $color = if ($Ok)
+    {
+        "Green"
+    }
+    else
+    {
+        "DarkGray"
+    }
     Write-Host "$icon $Label" -ForegroundColor $color
-    if ($Detail) { Write-Host "       $Detail" -ForegroundColor DarkGray }
+    if ($Detail)
+    {
+        Write-Host "       $Detail" -ForegroundColor DarkGray
+    }
 }
 
-function Invoke-Vec0Download {
+function Invoke-Vec0Download
+{
     param([string]$DestPath)
     Write-Info "fetching latest release info from GitHub API..."
-    try {
+    try
+    {
         $Headers = @{
             "User-Agent" = "GeliShell-Installer/0.1"
-            "Accept"     = "application/vnd.github+json"
+            "Accept" = "application/vnd.github+json"
         }
         $Release = Invoke-RestMethod `
             -Uri "https://api.github.com/repos/asg017/sqlite-vec/releases/latest" `
@@ -82,37 +128,44 @@ function Invoke-Vec0Download {
             $_.name -match "loadable-windows-x86_64\.zip$"
         } | Select-Object -First 1
 
-        if (-not $Asset) {
+        if (-not $Asset)
+        {
             Write-Warn "Windows x64 loadable zip not found in release $Tag"
             Write-Info "Available assets:"
-            $Release.assets | ForEach-Object { Write-Info "  $($_.name)" }
+            $Release.assets | ForEach-Object { Write-Info "  $( $_.name )" }
             return $false
         }
 
         $TempZip = Join-Path $env:TEMP "sqlite-vec-$Tag.zip"
         $TempDir = Join-Path $env:TEMP "sqlite-vec-extract-$Tag"
 
-        Write-Info "downloading: $($Asset.name) ..."
+        Write-Info "downloading: $( $Asset.name ) ..."
         Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -TimeoutSec 120
 
-        if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
+        if (Test-Path $TempDir)
+        {
+            Remove-Item $TempDir -Recurse -Force
+        }
         Expand-Archive -Path $TempZip -DestinationPath $TempDir -Force
 
         $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "vec0.dll" |
                 Select-Object -First 1
 
-        if (-not $Dll) {
+        if (-not $Dll)
+        {
             $Dll = Get-ChildItem -Path $TempDir -Recurse -Filter "*.dll" |
                     Select-Object -First 1
         }
 
-        if (-not $Dll) {
+        if (-not $Dll)
+        {
             Write-Warn "vec0.dll not found inside the downloaded archive."
             return $false
         }
 
         $Parent = Split-Path $DestPath -Parent
-        if (-not (Test-Path $Parent)) {
+        if (-not (Test-Path $Parent))
+        {
             New-Item -ItemType Directory -Path $Parent -Force | Out-Null
         }
         Copy-Item -Path $Dll.FullName -Destination $DestPath -Force
@@ -123,7 +176,9 @@ function Invoke-Vec0Download {
         Write-Ok "vec0.dll installed at: $DestPath"
         return $true
 
-    } catch {
+    }
+    catch
+    {
         Write-Warn "Download failed: $_"
         Write-Info "Manual install:"
         Write-Info "  1. https://github.com/asg017/sqlite-vec/releases"
@@ -142,7 +197,8 @@ Write-Host ""
 # ── Project root ──────────────────────────────────────────────
 
 $ProjectRoot = $PSScriptRoot
-if (-not (Test-Path (Join-Path $ProjectRoot "Cargo.toml"))) {
+if (-not (Test-Path (Join-Path $ProjectRoot "Cargo.toml")))
+{
     Write-Fail "Run this script from the GeliShell project root (where Cargo.toml lives)"
 }
 Write-Info "project root: $ProjectRoot"
@@ -150,17 +206,25 @@ Write-Info "project root: $ProjectRoot"
 # ── Paths ─────────────────────────────────────────────────────
 
 $UserProfile = $env:USERPROFILE
-if (-not $UserProfile) { Write-Fail "USERPROFILE is not set" }
+if (-not $UserProfile)
+{
+    Write-Fail "USERPROFILE is not set"
+}
 
-if ($BinDir -eq "") { $BinDir = Join-Path $UserProfile ".local\bin" }
+if ($BinDir -eq "")
+{
+    $BinDir = Join-Path $UserProfile ".local\bin"
+}
 $ConfigRoot = Join-Path $UserProfile ".config\geliShell"
-$ModelsDir  = Join-Path $ConfigRoot "models"
-$DocsDir    = Join-Path $ConfigRoot "docs"
-$Vec0Dest   = Join-Path $ModelsDir  "vec0.dll"
+$ModelsDir = Join-Path $ConfigRoot "models"
+$DocsDir = Join-Path $ConfigRoot "docs"
+$Vec0Dest = Join-Path $ModelsDir  "vec0.dll"
 $DocsDbPath = Join-Path $DocsDir    "docs.db"
 
-foreach ($Dir in @($BinDir, $ConfigRoot, $ModelsDir, $DocsDir)) {
-    if (-not (Test-Path $Dir)) {
+foreach ($Dir in @($BinDir, $ConfigRoot, $ModelsDir, $DocsDir))
+{
+    if (-not (Test-Path $Dir))
+    {
         New-Item -ItemType Directory -Path $Dir -Force | Out-Null
     }
 }
@@ -173,34 +237,39 @@ Write-Host ""
 Write-Step "installing GeliShell binaries..."
 
 $BinariesToInstall = @(
-    @{ Name = "geli.exe";       Source = Join-Path $ProjectRoot "target\release\geli.exe" },
-    @{ Name = "gerisabet.exe";  Source = Join-Path $ProjectRoot "target\release\gerisabet.exe" }
+    @{ Name = "geli.exe"; Source = Join-Path $ProjectRoot "target\release\geli.exe" },
+    @{ Name = "gerisabet.exe"; Source = Join-Path $ProjectRoot "target\release\gerisabet.exe" }
 )
 
-foreach ($Binary in $BinariesToInstall) {
-    if (-not (Test-Path $Binary.Source)) {
+foreach ($Binary in $BinariesToInstall)
+{
+    if (-not (Test-Path $Binary.Source))
+    {
         Write-Host ""
-        Write-Warn "$($Binary.Name) not found at: $($Binary.Source)"
+        Write-Warn "$( $Binary.Name ) not found at: $( $Binary.Source )"
         Write-Host "  Run first:  cargo build --release" -ForegroundColor Yellow
         Write-Host ""
         exit 1
     }
     $Dest = Join-Path $BinDir $Binary.Name
     Copy-Item -Path $Binary.Source -Destination $Dest -Force
-    Write-Ok "$($Binary.Name) → $Dest"
+    Write-Ok "$( $Binary.Name ) → $Dest"
 }
 
 $BinaryDest = Join-Path $BinDir "geli.exe"
 
 # PATH
 $CurrentPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-$BinDirNorm  = $BinDir.TrimEnd('\')
-if (-not ($CurrentPath -split ";" | Where-Object { $_.TrimEnd('\') -eq $BinDirNorm })) {
+$BinDirNorm = $BinDir.TrimEnd('\')
+if (-not ($CurrentPath -split ";" | Where-Object { $_.TrimEnd('\') -eq $BinDirNorm }))
+{
     [System.Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$BinDirNorm", "User")
     $env:PATH = "$env:PATH;$BinDirNorm"
     Write-Ok "added to user PATH: $BinDirNorm"
     Write-Warn "Restart your terminal for PATH to take effect in new sessions"
-} else {
+}
+else
+{
     Write-Info "$BinDir already in PATH"
 }
 
@@ -217,51 +286,72 @@ Write-Step "checking SQLite..."
 
 $SqliteOk = $null -ne (Get-Command "sqlite3" -ErrorAction SilentlyContinue)
 
-if ($SqliteOk) {
+if ($SqliteOk)
+{
     $SqliteVersion = & sqlite3 --version 2>&1 | Select-Object -First 1
     Write-Ok "sqlite3 found: $SqliteVersion"
-} else {
+}
+else
+{
     Write-Warn "sqlite3 not found in PATH"
     Write-Info "SQLite is a runtime dependency for the GeliShell assistant."
     Write-Host ""
 
     $InstallSqlite = Ask-YesNo "Install SQLite now?"
-    if ($InstallSqlite) {
+    if ($InstallSqlite)
+    {
         $SqliteInstalled = $false
 
-        if (-not $SqliteInstalled -and (Get-Command "winget" -ErrorAction SilentlyContinue)) {
+        if (-not $SqliteInstalled -and (Get-Command "winget" -ErrorAction SilentlyContinue))
+        {
             Write-Info "trying: winget install SQLite.SQLite ..."
-            try {
+            try
+            {
                 & winget install --id SQLite.SQLite --silent --accept-package-agreements --accept-source-agreements
-                if ($null -ne (Get-Command "sqlite3" -ErrorAction SilentlyContinue)) {
+                if ($null -ne (Get-Command "sqlite3" -ErrorAction SilentlyContinue))
+                {
                     Write-Ok "SQLite installed via winget"
                     $SqliteInstalled = $true
                     $SqliteOk = $true
                 }
-            } catch { Write-Warn "winget failed: $_" }
+            }
+            catch
+            {
+                Write-Warn "winget failed: $_"
+            }
         }
 
-        if (-not $SqliteInstalled -and (Get-Command "choco" -ErrorAction SilentlyContinue)) {
+        if (-not $SqliteInstalled -and (Get-Command "choco" -ErrorAction SilentlyContinue))
+        {
             Write-Info "trying: choco install sqlite ..."
-            try {
+            try
+            {
                 & choco install sqlite -y
-                if ($null -ne (Get-Command "sqlite3" -ErrorAction SilentlyContinue)) {
+                if ($null -ne (Get-Command "sqlite3" -ErrorAction SilentlyContinue))
+                {
                     Write-Ok "SQLite installed via Chocolatey"
                     $SqliteInstalled = $true
                     $SqliteOk = $true
                 }
-            } catch { Write-Warn "choco failed: $_" }
+            }
+            catch
+            {
+                Write-Warn "choco failed: $_"
+            }
         }
 
-        if (-not $SqliteInstalled) {
+        if (-not $SqliteInstalled)
+        {
             Write-Warn "Automatic install failed. Download manually:"
             Write-Info "  https://www.sqlite.org/download.html"
             Write-Info "  (sqlite-tools-win-x64-*.zip — add the folder to PATH)"
         }
-    } else {
+    }
+    else
+    {
         Write-Info "Skipped. GeliShell core works without SQLite; AI assistant will not work."
     }
- }
+}
 
 # ══════════════════════════════════════════════════════════════
 # STEP 3 — sqlite-vec (vec0.dll)
@@ -284,20 +374,24 @@ Write-Info "extension: https://github.com/asg017/sqlite-vec"
 $Vec0Available = $false
 $VecDestPath = "GELI_SQLITE_VEC_SOURCE"
 
-if ((Test-Path $Vec0Dest) -and -not $Force) {
+if ((Test-Path $Vec0Dest) -and -not $Force)
+{
     Write-Ok "vec0.dll already present: $Vec0Dest"
     $Vec0Available = $true
 }
 
 # Check local project paths before downloading
-if (-not $Vec0Available) {
+if (-not $Vec0Available)
+{
     $LocalCandidates = @(
         (Join-Path $ProjectRoot "assets\vec0.dll"),
         (Join-Path $ProjectRoot "models\vec0.dll"),
         (Join-Path $ProjectRoot "vec0.dll")
     )
-    foreach ($Candidate in $LocalCandidates) {
-        if (Test-Path $Candidate) {
+    foreach ($Candidate in $LocalCandidates)
+    {
+        if (Test-Path $Candidate)
+        {
             Copy-Item -Path $Candidate -Destination $Vec0Dest -Force
             Write-Ok "vec0.dll found locally → copied from: $Candidate"
             $Vec0Available = $true
@@ -307,7 +401,8 @@ if (-not $Vec0Available) {
 }
 
 # Offer GitHub download
-if (-not $Vec0Available) {
+if (-not $Vec0Available)
+{
     Write-Host ""
     Write-Warn "vec0.dll not found locally."
     Write-Host ""
@@ -317,9 +412,12 @@ if (-not $Vec0Available) {
 
     $DownloadVec0 = Ask-YesNo "Download vec0.dll from github.com/asg017/sqlite-vec now?"
 
-    if ($DownloadVec0) {
+    if ($DownloadVec0)
+    {
         $Vec0Available = Invoke-Vec0Download -DestPath $Vec0Dest
-    } else {
+    }
+    else
+    {
         Write-Info "Skipped. Install manually:"
         Write-Info "  1. https://github.com/asg017/sqlite-vec/releases"
         Write-Info "  2. Download: sqlite-vec-*-loadable-windows-x86_64.zip"
@@ -337,10 +435,13 @@ Write-Step "checking Ollama..."
 
 $OllamaOk = $null -ne (Get-Command "ollama" -ErrorAction SilentlyContinue)
 
-if ($OllamaOk) {
+if ($OllamaOk)
+{
     $OllamaVersion = & ollama --version 2>&1 | Select-Object -First 1
     Write-Ok "ollama found: $OllamaVersion"
-} else {
+}
+else
+{
     Write-Warn "ollama not found in PATH"
     Write-Info "Ollama is required to generate docs.db (the RAG knowledge base)."
     Write-Info "Install from: https://ollama.com/download"
@@ -357,29 +458,40 @@ Write-Step "checking docs.db (RAG knowledge base)..."
 
 $DocsDbOk = (Test-Path $DocsDbPath) -and -not $Force
 
-if ($DocsDbOk) {
+if ($DocsDbOk)
+{
     Write-Ok "docs.db already present: $DocsDbPath"
-} elseif ($SkipDocs) {
+}
+elseif ($SkipDocs)
+{
     Write-Info "skipping docs.db generation (--SkipDocs)"
-} elseif (-not $Vec0Available) {
+}
+elseif (-not $Vec0Available)
+{
     Write-Warn "skipping — vec0.dll not available (required by build_docs_db)"
     Write-Info "Install sqlite-vec first, then run:"
     Write-Info "  cargo run --bin build_docs_db"
-} elseif (-not $OllamaOk) {
+}
+elseif (-not $OllamaOk)
+{
     Write-Warn "skipping — Ollama not available (required to generate embeddings)"
     Write-Info "Start Ollama and run:"
     Write-Info "  ollama pull nomic-embed-text"
     Write-Info "  cargo run --bin build_docs_db"
-} else {
+}
+else
+{
     Write-Host ""
     Write-Host "  docs.db is generated by embedding your markdown docs with Ollama." -ForegroundColor DarkGray
     Write-Host "  Make sure Ollama is running: ollama serve" -ForegroundColor DarkGray
     Write-Host ""
     $RunBuild = Ask-YesNo "Generate docs.db now? (cargo run --bin build_docs_db)"
 
-    if ($RunBuild) {
+    if ($RunBuild)
+    {
         Push-Location $ProjectRoot
-        try {
+        try
+        {
             $OldVec0Env = $env:GELI_SQLITE_VEC_PATH
             $env:GELI_SQLITE_VEC_PATH = $Vec0Dest
             Write-Info "GELI_SQLITE_VEC_PATH=$Vec0Dest"
@@ -387,20 +499,29 @@ if ($DocsDbOk) {
             & cargo run --bin build_docs_db
             $env:GELI_SQLITE_VEC_PATH = $OldVec0Env
             $DocsDbOk = Test-Path $DocsDbPath
-            if ($DocsDbOk) {
+            if ($DocsDbOk)
+            {
                 Write-Ok "docs.db generated at: $DocsDbPath"
-            } else {
+            }
+            else
+            {
                 Write-Warn "build_docs_db finished but docs.db not found at expected path"
             }
-        } catch {
+        }
+        catch
+        {
             Write-Warn "build_docs_db failed: $_"
             Write-Info "Fix the error and re-run:"
             Write-Info "  cd $ProjectRoot"
             Write-Info "  cargo run --bin build_docs_db"
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
-    } else {
+    }
+    else
+    {
         Write-Info "Skipped. Run manually when ready:"
         Write-Info "  cargo run --bin build_docs_db"
     }
@@ -424,9 +545,12 @@ Write-StatusLine -Ok $OllamaOk      -Label "Ollama"         -Detail "ollama in P
 Write-StatusLine -Ok $DocsDbOk      -Label "docs.db"        -Detail $DocsDbPath
 
 Write-Host ""
-if ($Vec0Available -and $OllamaOk -and $DocsDbOk) {
+if ($Vec0Available -and $OllamaOk -and $DocsDbOk)
+{
     Write-Host "  All components ready." -ForegroundColor Green
-} else {
+}
+else
+{
     Write-Host "  GeliShell core is installed and fully functional." -ForegroundColor Green
     Write-Host "  AI assistant features require the missing components above." -ForegroundColor Yellow
 }
