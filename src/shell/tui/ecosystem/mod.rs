@@ -16,7 +16,6 @@ use crossterm::{
     terminal::{self, ClearType},
 };
 use std::io::{self, Write, stdout};
-
 pub(crate) use error::EcosystemTuiError;
 
 const HELP_ROW_PADDING: u16 = 2;
@@ -533,16 +532,19 @@ impl EcosystemTui {
 
 fn get_theme(name: &str) -> (Color, &'static str) {
     match name.to_ascii_lowercase().as_str() {
-        "npm" => (Color::Red, "📦"),
-        "git" => (Color::Green, "🐈‍"),
-        "cargo" => (Color::DarkYellow, "🦀"),
-        "docker" => (Color::Blue, "🐳"),
-        "dotnet" => (Color::Magenta, "🟣"),
-        "python" => (Color::Yellow, "🐍"),
-        "typescript" => (Color::DarkCyan, "#️⃣"),
-        _ => (Color::Cyan, "⚡"),
+        "npm"        => (Color::Rgb { r: 203, g: 56,  b: 55  }, "📦"),
+        "git"        => (Color::Rgb { r: 241, g: 78,  b: 50  }, "🐈‍"),
+        "cargo"      => (Color::Rgb { r: 222, g: 165, b: 132 }, "🦀"),
+        "docker"     => (Color::Rgb { r: 36,  g: 150, b: 237 }, "🐳"),
+        "dotnet"     => (Color::Rgb { r: 81,  g: 43,  b: 212 }, "🟣"),
+        "node"       => (Color::Rgb { r: 104, g: 160, b: 99  }, "✅"),
+        "pnpm"       => (Color::Rgb { r: 246, g: 146, b: 32  }, "🟠"),
+        "python"     => (Color::Rgb { r: 75,  g: 139, b: 190 }, "🐍"),
+        "typescript" => (Color::Rgb { r: 49,  g: 120, b: 198 }, "🔷"),
+        _            => (Color::Rgb { r: 0,   g: 200, b: 220 }, "⚡"),
     }
 }
+
 
 fn terminal_error(error: io::Error) -> EcosystemTuiError {
     EcosystemTuiError::Terminal(error.to_string())

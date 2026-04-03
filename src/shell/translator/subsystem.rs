@@ -75,6 +75,7 @@ impl Subsystem {
         }
     }
 
+    #[cfg(not(target_os = "windows"))]
     fn from_shell_path(path: &str) -> Option<Self> {
         let normalized = path.replace('\\', "/");
         let exe = normalized.rsplit('/').next().unwrap_or(path);
@@ -238,6 +239,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn from_shell_path_parses_correctly() {
         assert_eq!(
             Subsystem::from_shell_path("/usr/bin/zsh"),

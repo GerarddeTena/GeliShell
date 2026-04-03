@@ -13,6 +13,7 @@ use crate::parser::ast::ASTNode;
 use crate::shell::reporter::Reporter;
 use crate::t;
 use g_jump::{GJumpBuiltin, history::GHistory};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 // ══════════════════════════════════════════════════════════════
@@ -48,17 +49,20 @@ pub struct BuiltinRegistry {
 impl BuiltinRegistry {
     pub fn new() -> Self {
         let g_history = Arc::new(Mutex::new(GHistory::load()));
+        // Shared previous-directory state between CdBuiltin and GJumpBuiltin.
+        // Avoids setting OLDPWD in the process environment from the REPL hot path.
+        let oldpwd: Arc<Mutex<Option<PathBuf>>> = Arc::new(Mutex::new(None));
 
         Self {
             builtins: vec![
-                Box::new(cd::CdBuiltin),
+                Box::new(cd::CdBuiltin::new(Arc::clone(&oldpwd))),
                 Box::new(clear::ClearBuiltin),
                 Box::new(exit::ExitBuiltin),
                 Box::new(export::ExportBuiltin),
                 Box::new(gerisabet::GerisabetBuiltin),
                 Box::new(source::SourceBuiltin),
                 Box::new(unset::UnsetBuiltin),
-                Box::new(GJumpBuiltin::new(Arc::clone(&g_history))),
+                Box::new(GJumpBuiltin::new(Arc::clone(&g_history), oldpwd)),
             ],
             history: Vec::new(),
             g_history,

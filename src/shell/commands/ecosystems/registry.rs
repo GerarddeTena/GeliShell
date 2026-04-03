@@ -5,7 +5,9 @@ static CARGO: &str = include_str!("../../../../commands/ecosystems/cargo-lang.to
 static DOCKER: &str = include_str!("../../../../commands/ecosystems/docker.toml");
 static DOTNET: &str = include_str!("../../../../commands/ecosystems/dotnet.toml");
 static GIT: &str = include_str!("../../../../commands/ecosystems/git.toml");
+static NODE: &str = include_str!("../../../../commands/ecosystems/node.toml");
 static NPM: &str = include_str!("../../../../commands/ecosystems/npm.toml");
+static PNPM: &str = include_str!("../../../../commands/ecosystems/pnpm.toml");
 static PYTHON: &str = include_str!("../../../../commands/ecosystems/python.toml");
 static TYPESCRIPT: &str = include_str!("../../../../commands/ecosystems/typescript.toml");
 
@@ -35,7 +37,9 @@ impl EcosystemRegistry {
         ecosystems.insert("docker", parse_catalog("docker", DOCKER)?);
         ecosystems.insert("dotnet", parse_catalog("dotnet", DOTNET)?);
         ecosystems.insert("git", parse_catalog("git", GIT)?);
+        ecosystems.insert("node", parse_catalog("node", NODE)?);
         ecosystems.insert("npm", parse_catalog("npm", NPM)?);
+        ecosystems.insert("pnpm", parse_catalog("pnpm", PNPM)?);
         ecosystems.insert("python", parse_catalog("python", PYTHON)?);
         ecosystems.insert("typescript", parse_catalog("typescript", TYPESCRIPT)?);
 

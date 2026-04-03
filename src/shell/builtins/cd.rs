@@ -1,8 +1,20 @@
 use super::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
 use crate::t;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
-pub struct CdBuiltin;
+pub struct CdBuiltin {
+    /// Shared previous-directory state with GJumpBuiltin.
+    /// Eliminates the need to set OLDPWD in the process environment.
+    oldpwd: Arc<Mutex<Option<PathBuf>>>,
+}
+
+impl CdBuiltin {
+    pub fn new(oldpwd: Arc<Mutex<Option<PathBuf>>>) -> Self {
+        Self { oldpwd }
+    }
+}
 
 impl Builtin for CdBuiltin {
     fn name(&self) -> &'static str {
@@ -15,27 +27,38 @@ impl Builtin for CdBuiltin {
         let path = if target == "~" || target == "$HOME" {
             home_dir()
         } else if target == "-" {
-            std::env::var("OLDPWD").unwrap_or_else(|_| ".".to_owned())
+            // Read previous dir from shared application state instead of env.
+            self.oldpwd
+                .lock()
+                .ok()
+                .and_then(|g| g.clone())
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| ".".to_owned())
         } else {
             target.to_owned()
         };
 
+        // Snapshot current dir into shared state before changing it.
         if let Ok(current) = std::env::current_dir() {
-            // SAFETY: the REPL loop is single-threaded at this point;
-            // no concurrent thread reads OLDPWD while we write it.
-            unsafe {
-                std::env::set_var("OLDPWD", current.to_string_lossy().as_ref());
+            if let Ok(mut guard) = self.oldpwd.lock() {
+                *guard = Some(current);
             }
         }
 
         match std::env::set_current_dir(&path) {
-            Ok(_) => unsafe {
-                // SAFETY: same single-threaded REPL guarantee as OLDPWD above.
-                if let Ok(new) = std::env::current_dir() {
-                    std::env::set_var("PWD", new.to_string_lossy().as_ref());
+            Ok(_) => {
+                // SAFETY: `set_var("PWD")` is required so child processes inherit
+                // the correct POSIX `$PWD` (including symlink-preserved paths).
+                // Builtins execute synchronously with no intervening `.await`
+                // points; the only other async tasks active are signal handlers
+                // which do not read the process environment.
+                unsafe {
+                    if let Ok(new) = std::env::current_dir() {
+                        std::env::set_var("PWD", new.to_string_lossy().as_ref());
+                    }
                 }
                 BuiltinResult::Handled
-            },
+            }
             Err(e) => {
                 reporter.error(&t!("builtin.cd.error", path = path, error = e));
                 BuiltinResult::Handled

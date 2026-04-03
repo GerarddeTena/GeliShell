@@ -6,6 +6,7 @@ use crate::shell::builtins::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
 use crate::t;
 use history::GHistory;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 // ══════════════════════════════════════════════════════════════
@@ -14,11 +15,14 @@ use std::sync::{Arc, Mutex};
 
 pub struct GJumpBuiltin {
     history: Arc<Mutex<GHistory>>,
+    /// Shared previous-directory state with CdBuiltin.
+    /// Eliminates the need to set OLDPWD in the process environment.
+    oldpwd: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl GJumpBuiltin {
-    pub fn new(history: Arc<Mutex<GHistory>>) -> Self {
-        Self { history }
+    pub fn new(history: Arc<Mutex<GHistory>>, oldpwd: Arc<Mutex<Option<PathBuf>>>) -> Self {
+        Self { history, oldpwd }
     }
 
     /// Registra el cwd en el historial — llamar después de cada cd
@@ -32,17 +36,20 @@ impl GJumpBuiltin {
     }
 
     fn jump_to(&self, target: &str, reporter: &dyn Reporter) {
+        // Snapshot current dir into shared state before changing it.
         if let Ok(current) = std::env::current_dir() {
-            // SAFETY: the REPL loop is single-threaded at this point;
-            // no concurrent thread reads OLDPWD while we write it.
-            unsafe {
-                std::env::set_var("OLDPWD", current.to_string_lossy().as_ref());
+            if let Ok(mut guard) = self.oldpwd.lock() {
+                *guard = Some(current);
             }
         }
 
         match std::env::set_current_dir(target) {
             Ok(_) => {
-                // SAFETY: same single-threaded REPL guarantee as OLDPWD above.
+                // SAFETY: `set_var("PWD")` is required so child processes inherit
+                // the correct POSIX `$PWD` (including symlink-preserved paths).
+                // Builtins execute synchronously with no intervening `.await`
+                // points; the only other async tasks active are signal handlers
+                // which do not read the process environment.
                 unsafe {
                     std::env::set_var("PWD", target);
                 }
@@ -115,10 +122,13 @@ impl Builtin for GJumpBuiltin {
             }
 
             // g - — vuelve al directorio anterior
-            Some("-") => match std::env::var("OLDPWD") {
-                Ok(prev) => self.jump_to(&prev, reporter),
-                Err(_) => reporter.warn(&t!("builtin.g_jump.no_previous")),
-            },
+            Some("-") => {
+                let prev = self.oldpwd.lock().ok().and_then(|g| g.clone());
+                match prev {
+                    Some(p) => self.jump_to(&p.to_string_lossy(), reporter),
+                    None => reporter.warn(&t!("builtin.g_jump.no_previous")),
+                }
+            }
 
             // g <pattern> — salta al mejor match
             Some(pattern) => {
