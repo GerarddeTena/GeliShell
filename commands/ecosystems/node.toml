@@ -1,0 +1,283 @@
+[meta]
+name = "node"
+description = "Node.js runtime and built-in tooling"
+levels = ["beginner", "intermediate", "advanced"]
+
+# --- BEGINNER ---
+
+[[ops]]
+operation = "run script file"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node <File>"
+
+[[ops]]
+operation = "open REPL"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node"
+
+[[ops]]
+operation = "check version"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --version"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --version"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --version"
+
+[[ops]]
+operation = "evaluate inline expression"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -e \"<Expression>\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -e \"<Expression>\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -e \"<Expression>\""
+
+[[ops]]
+operation = "print Node.js and V8 info"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -p \"process.versions\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -p \"process.versions\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -p \"process.versions\""
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "run with environment variable"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "NODE_ENV=<Environment> node <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "$env:NODE_ENV=\"<Environment>\"; node <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "set NODE_ENV=<Environment> && node <File>"
+
+[[ops]]
+operation = "run with inspector (debugger)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --inspect <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --inspect <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --inspect <File>"
+
+[[ops]]
+operation = "run with inspector (break on start)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --inspect-brk <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --inspect-brk <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --inspect-brk <File>"
+
+[[ops]]
+operation = "watch mode (auto-restart)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --watch <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --watch <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --watch <File>"
+
+[[ops]]
+operation = "run ESM module"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --input-type=module <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --input-type=module <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --input-type=module <File>"
+
+[[ops]]
+operation = "set max old space (memory limit)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --max-old-space-size=<Mb> <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --max-old-space-size=<Mb> <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --max-old-space-size=<Mb> <File>"
+
+[[ops]]
+operation = "require module before execution"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -r <Module> <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -r <Module> <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -r <Module> <File>"
+
+[[ops]]
+operation = "list active handles and requests"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -e \"process._getActiveHandles().forEach(h => console.log(h))\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -e \"process._getActiveHandles().forEach(h => console.log(h))\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -e \"process._getActiveHandles().forEach(h => console.log(h))\""
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "cpu profiling"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --prof <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --prof <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --prof <File>"
+
+[[ops]]
+operation = "process isolate log (prof output)"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --prof-process <IsolateLog>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --prof-process <IsolateLog>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --prof-process <IsolateLog>"
+
+[[ops]]
+operation = "heap snapshot"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -e \"require('v8').writeHeapSnapshot()\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -e \"require('v8').writeHeapSnapshot()\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -e \"require('v8').writeHeapSnapshot()\""
+
+[[ops]]
+operation = "run with experimental vm modules"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --experimental-vm-modules <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --experimental-vm-modules <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --experimental-vm-modules <File>"
+
+[[ops]]
+operation = "run with permissions (deny fs write)"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --permission --deny-fs-write=* <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --permission --deny-fs-write=* <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --permission --deny-fs-write=* <File>"
+
+[[ops]]
+operation = "print v8 options"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node --v8-options"
+[[ops.commands]]
+subsystem = "powershell"
+command = "node --v8-options"
+[[ops.commands]]
+subsystem = "cmd"
+command = "node --v8-options"
+
+[[ops]]
+operation = "cluster: spawn worker processes"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "node -e \"const c=require('cluster');const os=require('os');if(c.isPrimary){for(let i=0;i<os.cpus().length;i++)c.fork()}else{require('./<File>')}\""
+[[ops.commands]]
+subsystem = "powershell"
+command = "node -e \"const c=require('cluster');const os=require('os');if(c.isPrimary){for(let i=0;i<os.cpus().length;i++)c.fork()}else{require('./<File>')}\""
+[[ops.commands]]
+subsystem = "cmd"
+command = "node -e \"const c=require('cluster');const os=require('os');if(c.isPrimary){for(let i=0;i<os.cpus().length;i++)c.fork()}else{require('./<File>')}\""
+
+[[ops]]
+operation = "run with thread pool size override"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "UV_THREADPOOL_SIZE=<Size> node <File>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "$env:UV_THREADPOOL_SIZE=\"<Size>\"; node <File>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "set UV_THREADPOOL_SIZE=<Size> && node <File>"

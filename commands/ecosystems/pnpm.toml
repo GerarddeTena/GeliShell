@@ -1,0 +1,322 @@
+[meta]
+name = "pnpm"
+description = "Fast, disk space efficient package manager"
+levels = ["beginner", "intermediate", "advanced"]
+
+# --- BEGINNER ---
+
+[[ops]]
+operation = "init project"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm init"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm init"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm init"
+
+[[ops]]
+operation = "install all dependencies"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm install"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm install"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm install"
+
+[[ops]]
+operation = "add package"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm add <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm add <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm add <Package>"
+
+[[ops]]
+operation = "add dev dependency"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm add -D <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm add -D <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm add -D <Package>"
+
+[[ops]]
+operation = "start script"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm start"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm start"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm start"
+
+[[ops]]
+operation = "test script"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm test"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm test"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm test"
+
+[[ops]]
+operation = "remove package"
+level = "beginner"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm remove <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm remove <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm remove <Package>"
+
+# --- INTERMEDIATE ---
+
+[[ops]]
+operation = "run custom script"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm run <Script>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm run <Script>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm run <Script>"
+
+[[ops]]
+operation = "update all packages"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm update"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm update"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm update"
+
+[[ops]]
+operation = "update package interactively"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm update --interactive"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm update --interactive"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm update --interactive"
+
+[[ops]]
+operation = "list installed (top level)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm list --depth=0"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm list --depth=0"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm list --depth=0"
+
+[[ops]]
+operation = "check outdated"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm outdated"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm outdated"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm outdated"
+
+[[ops]]
+operation = "frozen install (ci)"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm install --frozen-lockfile"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm install --frozen-lockfile"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm install --frozen-lockfile"
+
+[[ops]]
+operation = "add global package"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm add -g <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm add -g <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm add -g <Package>"
+
+[[ops]]
+operation = "exec binary from package"
+level = "intermediate"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm dlx <Package>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm dlx <Package>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm dlx <Package>"
+
+# --- ADVANCED ---
+
+[[ops]]
+operation = "workspace: add package to specific workspace"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm add <Package> --filter <WorkspaceName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm add <Package> --filter <WorkspaceName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm add <Package> --filter <WorkspaceName>"
+
+[[ops]]
+operation = "workspace: run script in all packages"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm -r run <Script>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm -r run <Script>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm -r run <Script>"
+
+[[ops]]
+operation = "workspace: run script in filtered packages"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm run <Script> --filter <WorkspaceName>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm run <Script> --filter <WorkspaceName>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm run <Script> --filter <WorkspaceName>"
+
+[[ops]]
+operation = "audit fix"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm audit --fix"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm audit --fix"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm audit --fix"
+
+[[ops]]
+operation = "publish package"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm publish --access public"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm publish --access public"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm publish --access public"
+
+[[ops]]
+operation = "version bump"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm version patch"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm version patch"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm version patch"
+
+[[ops]]
+operation = "link local package"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm link <PackageFolder>"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm link <PackageFolder>"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm link <PackageFolder>"
+
+[[ops]]
+operation = "store prune (clean unused)"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm store prune"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm store prune"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm store prune"
+
+[[ops]]
+operation = "store path"
+level = "advanced"
+[[ops.commands]]
+subsystem = "bash/zsh"
+command = "pnpm store path"
+[[ops.commands]]
+subsystem = "powershell"
+command = "pnpm store path"
+[[ops.commands]]
+subsystem = "cmd"
+command = "pnpm store path"
