@@ -12,6 +12,7 @@ use geli_shell::shell::{
     translator::{CommandMap, Subsystem, TranslationPipeline},
     tui::repl_input::{parse_special_command, read_repl_input, ReplInputAction, SpecialCommand},
 };
+use std::collections::HashSet;
 use std::sync::Arc;
 
 // ══════════════════════════════════════════════════════════════
@@ -32,6 +33,9 @@ pub struct ReplContext {
 
 pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
     let mut completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
+    // Tracks which commands have already shown the ModalSelector this session.
+    // Used by SelectorMode::Once to avoid re-interrupting known commands.
+    let mut seen_once: HashSet<String> = HashSet::new();
 
     loop {
         let g_jump_paths = ctx.builtins.g_completion_paths(64);
@@ -131,6 +135,7 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
             &ctx.exec_config,
             &mut ctx.builtins,
             reporter,
+            &mut seen_once,
         )
         .await
         {

@@ -17,6 +17,7 @@ use geli_shell::{
         tui::repl_input::{parse_special_command, SpecialCommand},
     },
 };
+use std::collections::HashSet;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal;
@@ -47,6 +48,7 @@ pub async fn process_regular_command(
     exec_config: &ExecutorConfig,
     builtins: &mut BuiltinRegistry,
     reporter: &dyn Reporter,
+    seen_once: &mut HashSet<String>,
 ) -> bool {
     builtins.push_history(input.to_owned());
 
@@ -83,11 +85,35 @@ pub async fn process_regular_command(
     };
 
     let final_command = match config.behavior.selector_mode {
-        SelectorMode::Always | SelectorMode::Once => {
+        SelectorMode::Always => {
             if let Some(res) = resolved.as_ref() {
                 if res.has_alternatives() {
                     match ModalSelector::new().select(res) {
                         SelectionResult::Selected(chosen) => chosen,
+                        SelectionResult::Cancelled => {
+                            reporter.info(&t!("selector.cancelled"));
+                            return false;
+                        }
+                    }
+                } else {
+                    command
+                }
+            } else {
+                command
+            }
+        }
+        SelectorMode::Once => {
+            // Show the selector only the first time a given command name is run
+            // per session.  On subsequent invocations the preferred translation
+            // is used directly — no interactive interruption.
+            let cmd_key = input.trim().split_whitespace().next().unwrap_or(input).to_owned();
+            if let Some(res) = resolved.as_ref() {
+                if res.has_alternatives() && !seen_once.contains(&cmd_key) {
+                    match ModalSelector::new().select(res) {
+                        SelectionResult::Selected(chosen) => {
+                            seen_once.insert(cmd_key);
+                            chosen
+                        }
                         SelectionResult::Cancelled => {
                             reporter.info(&t!("selector.cancelled"));
                             return false;

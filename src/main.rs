@@ -21,19 +21,28 @@ use setup::{
 use std::sync::Arc;
 use utils::apply_visual_settings;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // ── Anti-Inception: prevenir ejecución anidada ────────────
+    // Checked and set here, before the tokio runtime is built, so no worker
+    // threads exist yet — this is the only genuinely safe moment to call set_var.
     if std::env::var("GELISHELL_ACTIVE").is_ok() {
         eprintln!("{}", geli_shell::shell::i18n::t("startup.already_running"));
         std::process::exit(1);
     }
-    // SAFETY: called once before the tokio runtime spawns worker threads,
-    // so no concurrent reads of the environment can occur.
+    // SAFETY: no threads exist at this point — the tokio runtime has not yet
+    // been built.  This write happens-before any concurrent env read.
     unsafe {
         std::env::set_var("GELISHELL_ACTIVE", "1");
     }
 
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build tokio runtime")
+        .block_on(async_main());
+}
+
+async fn async_main() {
     // ── Parseo de flags CLI ───────────────────────────────────
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {
