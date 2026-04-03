@@ -200,7 +200,7 @@ pub async fn wait_for_runtime_special_command() -> SpecialCommand {
     }
 }
 
-pub fn drain_crossterm_events(_reporter: &dyn Reporter) {
+pub async fn drain_crossterm_events(_reporter: &dyn Reporter) {
     use crossterm::event::{poll, read};
 
     for _ in 0..50 {
@@ -215,5 +215,5 @@ pub fn drain_crossterm_events(_reporter: &dyn Reporter) {
         }
     }
 
-    std::thread::sleep(Duration::from_millis(10));
+    tokio::time::sleep(Duration::from_millis(10)).await;
 }
