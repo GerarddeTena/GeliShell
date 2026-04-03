@@ -2,6 +2,7 @@ use crate::parser::ast::Command;
 use crate::parser::token::RedirectKind;
 use crate::shell::guard::Guard;
 use crate::shell::guard::error::GuardError;
+use crate::t;
 
 /// Archivos críticos que nunca deben ser sobreescritos con >
 const CRITICAL_FILES: &[&str] = &[
@@ -42,19 +43,14 @@ impl Guard for CriticalRedirectGuard {
             // Bloquea /proc/sysrq-trigger explícitamente — Kernel Panic
             if target == "/proc/sysrq-trigger" {
                 return Err(GuardError::CriticalRedirect {
-                    reason: "writing to /proc/sysrq-trigger causes \
-                             immediate kernel panic and machine shutdown"
-                        .to_owned(),
+                    reason: t!("guard.critical_redirect.sysrq_blocked"),
                 });
             }
 
             // Bloquea archivos críticos del sistema
             if CRITICAL_FILES.iter().any(|&f| target == f) {
                 return Err(GuardError::CriticalRedirect {
-                    reason: format!(
-                        "redirecting to '{target}' would overwrite \
-                         a critical system file"
-                    ),
+                    reason: t!("guard.critical_redirect.system_file_blocked", target = target),
                 });
             }
         }

@@ -2,6 +2,7 @@ use crate::parser::ast::Command;
 use crate::parser::token::Token;
 use crate::shell::guard::Guard;
 use crate::shell::guard::error::GuardError;
+use crate::t;
 
 /// Targets de raíz que nunca deben ser objetivo de operaciones destructivas
 const ROOT_TARGETS: &[&str] = &[
@@ -59,10 +60,7 @@ impl Guard for RmGuard {
         if Self::has_recursive(&args) && Self::has_force(&args) {
             if let Some(target) = Self::targets_root(&args) {
                 return Err(GuardError::DestructiveFs {
-                    reason: format!(
-                        "rm with recursive+force targeting '{target}' \
-                         would destroy the filesystem"
-                    ),
+                    reason: t!("guard.destructive_fs.rm_root_blocked", target = target),
                 });
             }
         }
@@ -101,11 +99,7 @@ impl Guard for ChmodChownGuard {
                 .any(|&p| args.iter().any(|a| a == p));
             if targets_protected {
                 return Err(GuardError::DestructiveFs {
-                    reason: format!(
-                        "'{}' with -R on protected path would break \
-                         system permissions (sudo will stop working)",
-                        cmd.name
-                    ),
+                    reason: t!("guard.destructive_fs.chmod_protected_blocked", cmd = cmd.name),
                 });
             }
         }

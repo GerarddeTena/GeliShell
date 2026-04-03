@@ -1,4 +1,5 @@
 use crate::shell::config::ShellConfig;
+use crate::t;
 use reqwest::StatusCode;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ const EMBEDDING_DIMENSIONS: usize = 768;
 #[derive(Debug, thiserror::Error)]
 pub enum RagError {
     #[error(
-        "Error: Base de conocimiento vectorial o DLL no encontrada. Ejecute geli-update para inicializar el asistente. {details}"
+        "vector knowledge base or DLL not found — run geli-update to initialize the assistant. {details}"
     )]
     KnowledgeBaseUnavailable { details: String },
 
@@ -150,15 +151,20 @@ impl RagEngine {
 
 fn format_chunks_for_prompt(chunks: &[RagChunk]) -> String {
     if chunks.is_empty() {
-        return "Sin contexto recuperado de RAG para esta acción.".to_owned();
+        return t!("assistant.rag.no_context");
     }
+
+    let source_label = t!("assistant.rag.chunk_source_label");
+    let distance_label = t!("assistant.rag.chunk_distance_label");
 
     chunks
         .iter()
         .map(|chunk| {
             format!(
-                "- Fuente: {} | Distancia coseno: {:.4}\n{}",
+                "- {}: {} | {}: {:.4}\n{}",
+                source_label,
                 chunk.path,
+                distance_label,
                 chunk.distance,
                 chunk.text.trim()
             )
@@ -378,10 +384,6 @@ fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn normalize_path_str(path: &str) -> String {
-    path.replace('\\', "/")
-}
-
 fn embedding_to_json_array(embedding: &[f32]) -> String {
     let mut out = String::with_capacity(embedding.len() * 12 + 2);
     out.push('[');
@@ -431,7 +433,7 @@ mod tests {
     #[test]
     fn format_chunks_for_prompt_is_non_empty_without_matches() {
         let rendered = format_chunks_for_prompt(&[]);
-        assert!(rendered.contains("Sin contexto recuperado de RAG"));
+        assert!(rendered.contains("No RAG context retrieved"));
     }
 
     #[test]

@@ -4,6 +4,7 @@ use super::destructive_fs::token_args;
 use crate::parser::ast::Command;
 use crate::shell::guard::Guard;
 use crate::shell::guard::error::GuardError;
+use crate::t;
 
 /// Dispositivos de bloque principales — escritura directa = destrucción
 const BLOCK_DEVICES: &[&str] = &[
@@ -49,10 +50,7 @@ impl Guard for DdGuard {
                     .any(|&dev| target == dev || target.starts_with(dev))
                 {
                     return Err(GuardError::DiskDestroyer {
-                        reason: format!(
-                            "dd writing directly to block device '{target}' \
-                             would destroy all data on that disk"
-                        ),
+                        reason: t!("guard.disk_destroyer.dd_device_blocked", target = target),
                     });
                 }
             }
@@ -90,11 +88,7 @@ impl Guard for MkfsGuard {
         }
 
         Err(GuardError::RequiresConfirmation {
-            reason: format!(
-                "'{}' will FORMAT a filesystem. \
-                 Pass '{}' to confirm you know what you're doing.",
-                cmd.name, MKFS_CONFIRMATION_FLAG
-            ),
+            reason: t!("guard.disk_destroyer.mkfs_format_blocked", cmd = cmd.name, flag = MKFS_CONFIRMATION_FLAG),
         })
     }
 }

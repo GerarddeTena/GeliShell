@@ -1,3 +1,4 @@
+use crate::t;
 use super::params::AssistantParameter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,8 +44,10 @@ pub fn build_user_action(parameter: AssistantParameter, _filter: &str) -> String
 }
 
 pub fn build_chatml_prompt(user_action: &str, rag_context: &str) -> String {
-    format!(
-        "<|im_start|>system\nEres un asistente experto. Responde a la acción solicitada usando ÚNICAMENTE el conocimiento de este contexto:\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nResponde de forma ultra-concisa (1 o 2 líneas máximo) con el comando o solución. No repitas el contexto crudo.\n<|im_end|>\n<|im_start|>user\n{user_action}\n<|im_end|>\n<|im_start|>assistant\n"
+    t!(
+        "assistant.prompt.show_me",
+        rag_context = rag_context,
+        user_action = user_action
     )
 }
 
@@ -67,8 +70,11 @@ pub fn build_how_to_retrieval_query(
 }
 
 pub fn build_how_to_chatml_prompt(subsystem: &str, rag_context: &str, query: &str) -> String {
-    format!(
-        "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsistema: {subsystem}, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\n{query}\n<|im_end|>\n<|im_start|>assistant\n"
+    t!(
+        "assistant.prompt.how_to",
+        subsystem = subsystem,
+        rag_context = rag_context,
+        query = query
     )
 }
 
@@ -142,8 +148,8 @@ mod tests {
     fn chatml_prompt_contains_strict_sections() {
         let prompt = build_chatml_prompt("Search in files", "doc chunk 1");
         assert!(prompt.contains("<|im_start|>system"));
-        assert!(prompt.contains("[CONTEXTO]"));
-        assert!(prompt.contains("[FIN CONTEXTO]"));
+        assert!(prompt.contains("[CONTEXT]"));
+        assert!(prompt.contains("[END CONTEXT]"));
         assert!(prompt.contains("doc chunk 1"));
         assert!(prompt.contains("<|im_start|>user\nSearch in files\n<|im_end|>"));
         assert!(prompt.ends_with("<|im_start|>assistant\n"));
@@ -164,11 +170,11 @@ mod tests {
     #[test]
     fn build_how_to_prompt_contains_strict_format_contract() {
         let prompt = build_how_to_chatml_prompt("powershell", "ctx", "listar archivos");
-        assert!(prompt.contains("subsistema: powershell"));
-        assert!(prompt.contains("[CONTEXTO]"));
-        assert!(prompt.contains("[FIN CONTEXTO]"));
-        assert!(prompt.contains("EXPLANATION: [Tu explicación de una línea]"));
-        assert!(prompt.contains("COMMAND: [El comando extraído del contexto]"));
+        assert!(prompt.contains("subsystem: powershell"));
+        assert!(prompt.contains("[CONTEXT]"));
+        assert!(prompt.contains("[END CONTEXT]"));
+        assert!(prompt.contains("EXPLANATION: [Your one-line explanation]"));
+        assert!(prompt.contains("COMMAND: [The command extracted from context]"));
     }
 
     #[test]

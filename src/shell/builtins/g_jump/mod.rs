@@ -4,6 +4,7 @@ pub mod matcher;
 
 use crate::shell::builtins::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
+use crate::t;
 use history::GHistory;
 use std::sync::{Arc, Mutex};
 
@@ -45,34 +46,34 @@ impl GJumpBuiltin {
                 unsafe {
                     std::env::set_var("PWD", target);
                 }
-                reporter.info(&format!("g: → {target}"));
+                reporter.info(&t!("builtin.g_jump.jumped", target = target));
             }
-            Err(e) => reporter.error(&format!("g: {e}")),
+            Err(e) => reporter.error(&t!("builtin.g_jump.jump_error", error = e)),
         }
     }
 
     fn show_history(&self, reporter: &dyn Reporter) {
         let Ok(history) = self.history.lock() else {
-            reporter.error("g: could not read history");
+            reporter.error(&t!("builtin.g_jump.history_lock_error"));
             return;
         };
 
         if history.is_empty() {
-            reporter.info(
-                "g: no history yet — \
-                 navigate directories and GeliShell will learn them",
-            );
+            reporter.info(&t!("builtin.g_jump.no_history"));
             return;
         }
 
         let top = history.top(10);
 
-        println!();
-        println!(
+        reporter.info("");
+        reporter.info(&format!(
             "  {:<4} {:<8} {:<12} {}",
-            "#", "visits", "last seen", "path"
-        );
-        println!("  {}", "─".repeat(60));
+            t!("builtin.g_jump.col_rank"),
+            t!("builtin.g_jump.col_visits"),
+            t!("builtin.g_jump.col_last"),
+            t!("builtin.g_jump.col_path"),
+        ));
+        reporter.info(&format!("  {}", "─".repeat(60)));
 
         for (i, (entry, score)) in top.iter().enumerate() {
             let last = frequency::elapsed_display(entry.last_visit);
@@ -80,16 +81,16 @@ impl GJumpBuiltin {
             // Acorta el home a ~
             let display_path = shorten_home(&entry.path);
 
-            println!(
+            reporter.info(&format!(
                 "  {:<4} {:<8} {:<12} {}  \x1b[38;5;240m({:.0})\x1b[0m",
                 i + 1,
                 entry.visits,
                 last,
                 display_path,
                 score,
-            );
+            ));
         }
-        println!();
+        reporter.info("");
     }
 }
 
@@ -109,14 +110,14 @@ impl Builtin for GJumpBuiltin {
             Some("--clear") => {
                 if let Ok(mut h) = self.history.lock() {
                     h.clear();
-                    reporter.info("g: history cleared");
+                    reporter.info(&t!("builtin.g_jump.cleared"));
                 }
             }
 
             // g - — vuelve al directorio anterior
             Some("-") => match std::env::var("OLDPWD") {
                 Ok(prev) => self.jump_to(&prev, reporter),
-                Err(_) => reporter.warn("g: no previous directory"),
+                Err(_) => reporter.warn(&t!("builtin.g_jump.no_previous")),
             },
 
             // g <pattern> — salta al mejor match
@@ -134,9 +135,9 @@ impl Builtin for GJumpBuiltin {
                         GJumpBuiltin::record_visit(&self.history);
                     }
                     None => {
-                        reporter.warn(&format!(
-                            "g: no match for '{pattern}' — \
-                             visit the directory first so GeliShell learns it"
+                        reporter.warn(&t!(
+                            "builtin.g_jump.no_match",
+                            pattern = pattern
                         ));
                     }
                 }

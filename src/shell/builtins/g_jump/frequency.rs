@@ -1,3 +1,4 @@
+use crate::t;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Timestamp Unix actual en segundos
@@ -47,15 +48,15 @@ pub fn elapsed_display(last_visit_secs: u64) -> String {
     const DAY: u64 = 86_400;
 
     if elapsed < MINUTE {
-        "just now".to_owned()
+        t!("builtin.g_jump.elapsed_just_now")
     } else if elapsed < HOUR {
-        format!("{}m ago", elapsed / MINUTE)
+        t!("builtin.g_jump.elapsed_minutes_ago", minutes = elapsed / MINUTE)
     } else if elapsed < DAY {
-        format!("{}h ago", elapsed / HOUR)
+        t!("builtin.g_jump.elapsed_hours_ago", hours = elapsed / HOUR)
     } else if elapsed < DAY * 2 {
-        "yesterday".to_owned()
+        t!("builtin.g_jump.elapsed_yesterday")
     } else {
-        format!("{}d ago", elapsed / DAY)
+        t!("builtin.g_jump.elapsed_days_ago", days = elapsed / DAY)
     }
 }
 

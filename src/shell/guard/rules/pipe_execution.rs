@@ -1,6 +1,7 @@
 use crate::parser::ast::{ASTNode, Command};
 use crate::shell::guard::Guard;
 use crate::shell::guard::error::GuardError;
+use crate::t;
 
 const NETWORK_FETCHERS: &[&str] = &["curl", "wget", "fetch", "http"];
 const SHELL_EXECUTORS: &[&str] = &[
@@ -54,10 +55,7 @@ impl Guard for PipeExecutionGuard {
 
                 if left_is_fetcher && right_is_executor {
                     return Err(GuardError::PipeExecution {
-                        reason: "piping network content directly into a shell \
-                                 is a common malware delivery vector. \
-                                 Download the script first and inspect it."
-                            .to_owned(),
+                        reason: t!("guard.pipe_execution.network_pipe_blocked"),
                     });
                 }
             }

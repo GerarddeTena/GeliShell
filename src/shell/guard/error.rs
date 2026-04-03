@@ -29,7 +29,6 @@ pub enum GuardError {
 }
 
 impl GuardError {
-    /// true si el error es irrecuperable — debe bloquear siempre
     pub fn is_fatal(&self) -> bool {
         !matches!(self, Self::RequiresConfirmation { .. })
     }
