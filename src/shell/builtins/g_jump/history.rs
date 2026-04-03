@@ -199,7 +199,7 @@ mod tests {
 
         GHistory {
             entries,
-            path: PathBuf::from("/tmp/test_g_history.toml"),
+            path: std::env::temp_dir().join("test_g_history.toml"),
             dirty: false,
         }
     }
