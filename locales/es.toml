@@ -226,3 +226,45 @@ model_loaded_cache = "modelo cargado desde caché local"
 bootstrap_failed = "arranque fallido: {reason}"
 bootstrap_interrupted = "bootstrap interrumpido por el usuario"
 bootstrap_channel_closed = "canal de bootstrap del modelo cerrado"
+
+[guard.destructive_fs]
+rm_root_blocked = "rm con recursive+force apuntando a '{target}' destruiría el sistema de archivos"
+chmod_protected_blocked = "'{cmd}' con -R en una ruta protegida rompería los permisos del sistema (sudo dejará de funcionar)"
+
+[guard.disk_destroyer]
+dd_device_blocked = "dd escribiendo directamente en el dispositivo de bloque '{target}' destruiría todos los datos de ese disco"
+mkfs_format_blocked = "'{cmd}' va a FORMATEAR un sistema de archivos. Pasa '{flag}' para confirmar que sabes lo que estás haciendo."
+
+[guard.critical_redirect]
+sysrq_blocked = "escribir en /proc/sysrq-trigger provoca un pánico del kernel inmediato y el apagado de la máquina"
+system_file_blocked = "redirigir a '{target}' sobreescribiría un archivo crítico del sistema"
+
+[guard.pipe_execution]
+network_pipe_blocked = "enviar contenido de red directamente a una shell es un vector habitual de distribución de malware. Descarga el script primero e inspecciónalo."
+
+[assistant.rag]
+no_context = "Sin contexto recuperado de RAG para esta acción."
+chunk_source_label = "Fuente"
+chunk_distance_label = "Distancia coseno"
+
+[assistant.prompt]
+show_me = "<|im_start|>system\nEres un asistente experto. Responde a la acción solicitada usando ÚNICAMENTE el conocimiento de este contexto:\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nResponde de forma ultra-concisa (1 o 2 líneas máximo) con el comando o solución. No repitas el contexto crudo.\n<|im_end|>\n<|im_start|>user\n{user_action}\n<|im_end|>\n<|im_start|>assistant\n"
+how_to = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsistema: {subsystem}, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\n{query}\n<|im_end|>\n<|im_start|>assistant\n"
+
+[builtin.g_jump]
+history_lock_error = "g: no se pudo leer el historial"
+no_history        = "g: sin historial aún — navega por directorios y GeliShell los aprenderá"
+col_rank          = "#"
+col_visits        = "visitas"
+col_last          = "última vez"
+col_path          = "ruta"
+jumped            = "g: → {target}"
+jump_error        = "g: {error}"
+cleared           = "g: historial limpiado"
+no_previous       = "g: no hay directorio anterior"
+no_match          = "g: sin coincidencia para '{pattern}' — visita el directorio primero para que GeliShell lo aprenda"
+elapsed_just_now  = "ahora mismo"
+elapsed_minutes_ago = "hace {minutes}m"
+elapsed_hours_ago = "hace {hours}h"
+elapsed_yesterday = "ayer"
+elapsed_days_ago  = "hace {days}d"

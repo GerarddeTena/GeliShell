@@ -226,3 +226,45 @@ model_loaded_cache = "model loaded from local cache"
 bootstrap_failed = "bootstrap failed: {reason}"
 bootstrap_interrupted = "bootstrap interrupted by user"
 bootstrap_channel_closed = "model bootstrap channel closed"
+
+[guard.destructive_fs]
+rm_root_blocked = "rm with recursive+force targeting '{target}' would destroy the filesystem"
+chmod_protected_blocked = "'{cmd}' with -R on protected path would break system permissions (sudo will stop working)"
+
+[guard.disk_destroyer]
+dd_device_blocked = "dd writing directly to block device '{target}' would destroy all data on that disk"
+mkfs_format_blocked = "'{cmd}' will FORMAT a filesystem. Pass '{flag}' to confirm you know what you're doing."
+
+[guard.critical_redirect]
+sysrq_blocked = "writing to /proc/sysrq-trigger causes immediate kernel panic and machine shutdown"
+system_file_blocked = "redirecting to '{target}' would overwrite a critical system file"
+
+[guard.pipe_execution]
+network_pipe_blocked = "piping network content directly into a shell is a common malware delivery vector. Download the script first and inspect it."
+
+[assistant.rag]
+no_context = "No RAG context retrieved for this action."
+chunk_source_label = "Source"
+chunk_distance_label = "Cosine distance"
+
+[assistant.prompt]
+show_me = "<|im_start|>system\nYou are an expert assistant. Respond to the requested action using ONLY the knowledge from this context:\n[CONTEXT]\n{rag_context}\n[END CONTEXT]\nRespond ultra-concisely (1 or 2 lines max) with the command or solution. Do not repeat the raw context.\n<|im_end|>\n<|im_start|>user\n{user_action}\n<|im_end|>\n<|im_start|>assistant\n"
+how_to = "<|im_start|>system\nYou are a strict terminal assistant. Your only purpose is to extract the exact command for subsystem: {subsystem}, based EXCLUSIVELY on the following context.\n[CONTEXT]\n{rag_context}\n[END CONTEXT]\nRULE: Your response must have this exact two-line format, without adding markdown or greetings:\nEXPLANATION: [Your one-line explanation]\nCOMMAND: [The command extracted from context]\n<|im_end|>\n<|im_start|>user\n{query}\n<|im_end|>\n<|im_start|>assistant\n"
+
+[builtin.g_jump]
+history_lock_error = "g: could not read history"
+no_history        = "g: no history yet — navigate directories and GeliShell will learn them"
+col_rank          = "#"
+col_visits        = "visits"
+col_last          = "last seen"
+col_path          = "path"
+jumped            = "g: → {target}"
+jump_error        = "g: {error}"
+cleared           = "g: history cleared"
+no_previous       = "g: no previous directory"
+no_match          = "g: no match for '{pattern}' — visit the directory first so GeliShell learns it"
+elapsed_just_now  = "just now"
+elapsed_minutes_ago = "{minutes}m ago"
+elapsed_hours_ago = "{hours}h ago"
+elapsed_yesterday = "yesterday"
+elapsed_days_ago  = "{days}d ago"
