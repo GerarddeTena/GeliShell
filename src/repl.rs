@@ -134,7 +134,7 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
         )
         .await
         {
-            drain_crossterm_events(reporter);
+            drain_crossterm_events(reporter).await;
         }
     }
 }
