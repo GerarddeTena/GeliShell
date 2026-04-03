@@ -325,7 +325,7 @@ translate   = { bash = { exact = "which", suggestions = ["type", "command -v"] }
 name        = "run-background"
 description = "Run a command in the background"
 category    = "process"
-translate   = { bash = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, zsh = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, fish = { exact = "{cmd} &", suggestions = ["fish -c '{cmd} &'"] }, powershell = { exact = "Start-Process {cmd}", suggestions = ["Start-Job { {cmd} }"] }, cmd = { exact = "start {cmd}", suggestions = ["start /b {cmd}"] } }
+translate   = { bash = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, zsh = { exact = "nohup {cmd} &", suggestions = ["{cmd} &"] }, fish = { exact = "fish -c '{cmd}' &", suggestions = ["nohup fish -c '{cmd}' &"] }, powershell = { exact = "Start-Process {cmd}", suggestions = ["Start-Job { {cmd} }"] }, cmd = { exact = "start {cmd}", suggestions = ["start /b {cmd}"] } }
 
 # ══════════════════════════════════════════════
 # network
@@ -400,7 +400,7 @@ canonical  = "--recursive"
 bash       = "-r"
 zsh        = "-r"
 fish       = "-r"
-powershell = "-Path ** -Recurse"
+powershell = "-Path ** -CaseSensitive -Recurse"
 cmd        = "/s"
 
 [[commands.flags]]
@@ -489,7 +489,7 @@ fish       = "-c"
 name        = "replace"
 description = "Replace text in a stream"
 category    = "text"
-translate   = { bash = { exact = "sed", suggestions = ["awk", "perl -pe"] }, zsh = { exact = "sed", suggestions = ["awk", "perl -pe"] }, fish = { exact = "sed", suggestions = ["awk"] }, powershell = { exact = "ForEach-Object { $_ -replace", suggestions = ["%{ $_ -replace", "sed"] }, cmd = { exact = "powershell -c \"ForEach-Object { $_ -replace\"", suggestions = [] } }
+translate   = { bash = { exact = "sed", suggestions = ["awk", "perl -pe"] }, zsh = { exact = "sed", suggestions = ["awk", "perl -pe"] }, fish = { exact = "sed", suggestions = ["awk"] }, powershell = { exact = "ForEach-Object { $_ -replace 'old','new' }", suggestions = ["%{ $_ -replace 'old','new' }", "sed 's/old/new/g'"] }, cmd = { exact = "powershell -c \"ForEach-Object { $_ -replace\"", suggestions = [] } }
 
 # ══════════════════════════════════════════════
 # system
@@ -592,7 +592,7 @@ bash       = "-R"
 zsh        = "-R"
 fish       = "-R"
 powershell = "/T"
-cmd        = "/T"
+cmd        = "/t"
 
 # ──────────────────────────────────────────────
 
@@ -607,7 +607,7 @@ canonical  = "--symbolic"
 bash       = "-s"
 zsh        = "-s"
 fish       = "-s"
-powershell = "-ItemType SymbolicLink"
+powershell = "SymbolicLink"
 
 # ══════════════════════════════════════════════
 # dev
@@ -661,7 +661,7 @@ cmd        = "-czf"
 
 # ──────────────────────────────────────────────
 [[commands]]
-name = "list all"
-description = "List all files in the translation map with linux custom command"
+name = "list-all"
+description = "List all files including hidden ones with detailed info"
 category = "dev"
 translate = { bash = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, zsh = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, fish = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, powershell = { exact = "Get-ChildItem", suggestions = ["Get-ChildItem -Force", "dir", "ls"] }, cmd = { exact = "dir", suggestions = ["dir /a", "dir /w"] } }
