@@ -209,27 +209,29 @@ dim       → \x1b[38;5;240m  gray (brackets, separators)
 
 # Pending Features (priority order)
 
-## P1 — Complete existing systems
-1. **Selector ↔ Pipeline connection**
-   `pipeline.run()` must return `(String, Option<ResolvedCommand>)`
-   `main.rs` checks `SelectorMode` and shows `ModalSelector`
+## ✅ P1 — Complete existing systems (DONE)
+1. **Selector ↔ Pipeline connection** — ✅ IMPLEMENTED
+   `pipeline.run_resolving()` returns `(String, Option<ResolvedCommand>)`.
+   `handlers/command.rs` checks `SelectorMode` and calls `ModalSelector` when alternatives exist.
+   ⚠️ Remaining gap: `SelectorMode::Once` behaves identically to `Always` (see tech debt).
 
-2. **Reverse index in CommandMap**
-   `"Get-ChildItem"` → `"list"` → bash translation → `"ls"`
-   Add `reverse_index: HashMap<String, String>` to `CommandMap`
-   `CommandMap::resolve()` = canonical lookup OR native lookup
+2. **Reverse index in CommandMap** — ✅ IMPLEMENTED
+   `reverse_index: HashMap<String, String>` is in `CommandMap` (commands_map.rs).
+   `find_by_exact()` resolves native commands (e.g. `"Get-ChildItem"`) back to canonical names.
+   Used by `NormalizedCompositeGuard` and `CommandResolver`.
 
 ## P2 — AI Assistant
 ```
-src/shell/assistant/
+src/shell/assistant/    (implemented in gerisabet binary, NOT wired to geli REPL)
 ├── mod.rs      LLM client trait
 ├── qwen.rs     Qwen 1.5B via candle or llama.cpp
 ├── rag.rs      RAG + embeddings on custom docs
 ├── params.rs   predefined parameter menu
 └── suggest.rs  command suggestion output
 ```
-Trigger: `help` builtin or `?` prefix
+Trigger: `help` builtin or `?` prefix (currently only in `gerisabet` binary)
 UX: predefined parameter selector (not free text input)
+⚠️ REPL `OpenAssistant` shortcut (Ctrl+Alt+G) only shows a warning — not wired to assistant.
 
 ## P3 — TriggerEngine / ScriptRunner
 ```
@@ -250,13 +252,32 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 
 # Known Technical Debt
 
-| Issue | Location | Fix |
+## ✅ Resolved (verified in code — do NOT re-open)
+| Issue | Location | How it was fixed |
 |---|---|---|
-| stdout/stderr read sequentially | executor/mod.rs | tokio::spawn two concurrent tasks |
-| g_history saves every visit | g_jump/history.rs | dirty flag + save on exit |
-| pipeline.run() sync in async | pipeline/mod.rs | revisit when steps go async |
-| source is a stub | builtins/source.rs | blocked by TriggerEngine |
-| SelectorMode has no effect | main.rs | blocked by P1 selector connection |
+| stdout/stderr read sequentially | executor/mod.rs | `spawn_stdout_task` + `spawn_stderr_task` both use `tokio::spawn` — fully concurrent |
+| g_history saves every visit | g_jump/history.rs | `dirty: bool` flag implemented; `save()` is a no-op when clean; persists on `Drop` |
+| `pipeline.run()` sync in async context | shell/translator/pipeline/mod.rs | CPU-only in-memory iteration — no I/O, no blocking; acceptable sync in async |
+| `println!` in `show_history` bypasses Reporter | shell/builtins/g_jump/mod.rs | Already uses `reporter.info()` exclusively — zero `println!` in the function |
+| `HistoryBuiltin` dead code | shell/builtins/history.rs | Intentional: history is handled inline in `BuiltinRegistry::try_execute()` directly on the internal `Vec` |
+| `from_shell_path` dead code on `Subsystem` | shell/translator/subsystem.rs:78 | Only called from a `#[cfg(not(target_os = "windows"))]` block; annotated the fn with the same cfg so the Windows build doesn't see it as dead. |
+| `handle_assistant_how_to` / `handle_assistant_show_me` dead code | handlers/assistant.rs | NOT called anywhere in the geli binary. Preserved as P2 REPL assistant wiring (OpenAssistant). Annotated with `#[allow(dead_code)]` and a comment pointing to P2. |
+| Assistant REPL shortcut disconnected from handler | repl.rs:63–67, handlers/assistant.rs | Intentional UX: warns user to use `gerisabet` binary; `t!("repl.assistant_moved")` hint is correct behaviour |
+| Spanish strings hardcoded in assistant logic, bypassing i18n | shell/assistant/rag.rs, shell/assistant/suggest.rs | All prompts and labels moved through `t!()`; locale keys added to `[assistant.rag]` and `[assistant.prompt]` in both locales |
+| `std::thread::sleep` inside async function | handlers/command.rs (`drain_crossterm_events`) | Made `async fn`; replaced with `tokio::time::sleep(...).await`; call site in repl.rs updated |
+| `normalize_path_str` function is never called | shell/assistant/rag.rs | Deleted — caused dead-code warning with zero callers |
+| g_jump unit test uses hardcoded Unix `/tmp/` path | shell/builtins/g_jump/history.rs | Replaced with `std::env::temp_dir()` — cross-platform |
+| `unsafe std::env::set_var` in REPL hot path | builtins/cd.rs, g_jump/mod.rs, main.rs | `GELISHELL_ACTIVE` moved to sync `fn main()` before tokio runtime builds (genuinely safe). `OLDPWD` eliminated from env entirely — both `CdBuiltin` and `GJumpBuiltin` share an `Arc<Mutex<Option<PathBuf>>>` via `BuiltinRegistry`. `PWD` kept with accurate SAFETY comment (POSIX requirement for child processes). |
+| `SelectorMode::Once` behaves identically to `Always` | handlers/command.rs | Split into separate match arms; `Once` arm now tracks seen command names in a `HashSet<String>` (`seen_once`) declared in `run_repl` and passed into `process_regular_command`. Selector fires only on the first invocation per session per command name. |
+
+## 🔴 Active Technical Debt
+
+<!-- Priority: 🔴 HIGH = UX/security regression · 🟡 MEDIUM = hygiene/correctness · 🟢 LOW = blocked/deferred -->
+
+| Priority | Issue | Location | Proposed Fix |
+|---|---|---|---|
+| 🟡 MEDIUM | `build_docs_db.rs` compiled silently by Cargo autodiscovery (`autobins = true`). Not intended for end-user distribution; inflates build time; `cargo install` would install it. | `src/bin/build_docs_db.rs`, `Cargo.toml` | Add `autobins = false` to `[package]` in Cargo.toml and add an explicit `[[bin]]` entry for `build_docs_db` gated behind a `--features dev-tools` flag, OR move it to a separate workspace crate. |
+| 🟢 LOW | `source` builtin is a stub — emits a warning, does not execute scripts. | `shell/builtins/source.rs` | Blocked by P3 TriggerEngine. Implement when `@bash { }` scripting engine is ready. |
 
 ---
 
