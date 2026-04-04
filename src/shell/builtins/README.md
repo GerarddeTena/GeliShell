@@ -56,7 +56,7 @@ cd ..
 cd ~
 cd -          # vuelve al directorio anterior
 ```
-Actualiza `PWD` y `OLDPWD` en el entorno. Registra la visita en el historial de `g`.
+Actualiza `PWD` en el entorno de proceso (necesario para que los procesos hijos hereden el directorio correcto). El directorio anterior se almacena en memoria de sesión compartida con `g` — no se escribe en la variable de entorno `OLDPWD`. Registra la visita en el historial de `g`.
 
 ### `clear` — Limpiar pantalla
 ```bash
@@ -103,7 +103,14 @@ gerisabet ¿cómo listo ficheros ocultos?
 Alias builtin para invocar el asistente desde el REPL.
 
 ### `g` — Navegación inteligente
-Ver documentación completa en [`g_jump/README.md`](g_jump/README.md).
+Ver documentación completa en [`g_jump/`](g_jump/).
+
+```bash
+g               # muestra top 10 directorios por frecency
+g rust          # salta al directorio más relevante que contiene "rust"
+g -             # vuelve al directorio anterior
+g --clear       # limpia el historial de g
+```
 
 ---
 

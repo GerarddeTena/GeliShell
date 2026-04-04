@@ -51,10 +51,13 @@ Los catálogos se cargan desde `commands/ecosystems/*.toml` (directorio `command
 Catálogos incluidos por defecto:
 - `git.toml` — comandos Git
 - `npm.toml` — comandos npm
+- `pnpm.toml` — comandos pnpm
 - `cargo-lang.toml` — comandos Cargo/Rust
 - `docker.toml` — comandos Docker
 - `dotnet.toml` — comandos .NET
+- `node.toml` — comandos Node.js
 - `python.toml` — comandos Python/pip
+- `typescript.toml` — comandos TypeScript
 
 ---
 

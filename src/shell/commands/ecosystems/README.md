@@ -26,11 +26,28 @@ El campo `subsystem` de `EcosystemCommand` puede ser:
 
 **¿Qué hace?** Lee los archivos TOML de `commands/ecosystems/` y los deserializa en `EcosystemCatalog`.
 
-Expone una función para obtener el catálogo por nombre:
+Expone métodos para obtener catálogos por nombre:
 ```rust
+// Carga todos los catálogos disponibles
+let registry = EcosystemRegistry::load()?;
+
 // Obtiene el catálogo de git
-let catalog = registry::get("git")?;
+let catalog = registry.get("git");
+
+// Lista los nombres disponibles
+let names = EcosystemRegistry::available();
 ```
+
+Catálogos cargados:
+- `git.toml` — comandos Git
+- `npm.toml` — comandos npm
+- `pnpm.toml` — comandos pnpm
+- `cargo-lang.toml` — comandos Cargo/Rust
+- `docker.toml` — comandos Docker
+- `dotnet.toml` — comandos .NET
+- `node.toml` — comandos Node.js
+- `python.toml` — comandos Python/pip
+- `typescript.toml` — comandos TypeScript
 
 Si el nombre no existe o el TOML está mal formado, devuelve un error descriptivo.
 

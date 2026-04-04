@@ -15,6 +15,10 @@ Este directorio contiene los **archivos TOML** que definen el vocabulario de Gel
 | `cargo-commands.toml` | Comandos Cargo/Rust (build, test, run, check, etc.) |
 | `docker-commands.toml` | Comandos Docker (build, run, ps, stop, etc.) |
 | `dotnet-commands.toml` | Comandos .NET CLI (build, run, test, publish, etc.) |
+| `node-commands.toml` | Comandos Node.js (node, npx, nvm, etc.) |
+| `npm-commands.toml` | Comandos npm (install, run, publish, etc.) |
+| `pnpm-commands.toml` | Comandos pnpm (add, install, run, etc.) |
+| `typescript-commands.toml` | Comandos TypeScript (tsc, ts-node, etc.) |
 
 ---
 

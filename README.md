@@ -169,7 +169,7 @@ necesario para usuarios con caracteres no-ASCII en rutas o variables de entorno.
 
 | Comando | Comportamiento actual |
 | --- | --- |
-| `cd <ruta>` | Cambia directorio y actualiza `PWD`/`OLDPWD` |
+| `cd <ruta>` | Cambia directorio, actualiza `PWD`. El directorio anterior se almacena en sesión (no en `OLDPWD` del entorno) |
 | `clear` | Limpia pantalla/buffer |
 | `exit [code]` | Termina la shell |
 | `export K=V` | Define variable de entorno de sesión |
@@ -390,23 +390,36 @@ Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db`.
 ```text
 src/
   main.rs
+  repl.rs
   lib.rs
+  cli.rs
+  setup.rs
+  utils.rs
+  gerisabet.rs
+  bin/build_docs_db.rs
+  cli/
+  commands/        ← TOMLs de comandos canónicos (list, copy, git, cargo…)
+  handlers/
   parser/
   shell/
     assistant/
     banner.rs
     builtins/
+    commands/      ← Estructuras y registro de catálogos de ecosistemas
     config/
     executor/
     guard/
+    i18n/
     reporter.rs
     selector/
     translator/
     tui/
       show_me/
-  commands/commands.toml
-  bin/build_docs_db.rs
+      ecosystem/
+commands/          ← TOMLs de catálogos TUI de ecosistemas (git, npm, docker…)
+  ecosystems/
 docs/kb/
+locales/
 install.ps1
 install.sh
 install.bat
@@ -433,4 +446,3 @@ El proyecto usa Rust 2024 (`edition = "2024"`) y crates como `tokio`, `crossterm
 - `source` builtin sigue en modo stub (pendiente de TriggerEngine).
 - La acción `:search` está interceptada, pero la UI de búsqueda avanzada sigue en estado skeleton.
 - El asistente depende de contexto RAG y síntesis local; no está en modo LLM completo de generación libre.
-- `g_history.toml` se escribe en cada visita (pendiente dirty-flag + save on exit).

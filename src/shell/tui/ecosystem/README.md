@@ -56,11 +56,14 @@ Si el comando contiene `<placeholders>` (ej. `git checkout <branch>`), la TUI pa
 | Ecosistema | Color | Icono |
 |------------|-------|-------|
 | npm | Rojo | 📦 |
-| git | Verde | 🌲 |
-| cargo | Amarillo oscuro | 🦀 |
+| git | Naranja-rojo | 🐈‍ |
+| cargo | Salmón | 🦀 |
 | docker | Azul | 🐳 |
-| dotnet | Magenta | 🟣 |
-| python | Amarillo | 🐍 |
+| dotnet | Violeta | 🟣 |
+| node | Verde | ✅ |
+| pnpm | Naranja | 🟠 |
+| python | Azul claro | 🐍 |
+| typescript | Azul | 🔷 |
 | (otros) | Cyan | ⚡ |
 
 ### `error.rs` — `EcosystemTuiError`
