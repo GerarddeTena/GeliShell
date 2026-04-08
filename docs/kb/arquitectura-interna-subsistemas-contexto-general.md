@@ -135,7 +135,7 @@ GeliShell prioriza no bloquear el loop de interacción:
 - separación de modo TTY para procesos interactivos
 
 El objetivo de diseño es latencia estable en prompt aun con tareas pesadas en segundo plano lógico.
-
+[sha256-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba](../../../.ollama/models/blobs/sha256-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba)
 ## Contrato de compatibilidad para componentes futuros
 
 Reglas de evolución arquitectónica:

@@ -269,6 +269,11 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 | g_jump unit test uses hardcoded Unix `/tmp/` path | shell/builtins/g_jump/history.rs | Replaced with `std::env::temp_dir()` — cross-platform |
 | `unsafe std::env::set_var` in REPL hot path | builtins/cd.rs, g_jump/mod.rs, main.rs | `GELISHELL_ACTIVE` moved to sync `fn main()` before tokio runtime builds (genuinely safe). `OLDPWD` eliminated from env entirely — both `CdBuiltin` and `GJumpBuiltin` share an `Arc<Mutex<Option<PathBuf>>>` via `BuiltinRegistry`. `PWD` kept with accurate SAFETY comment (POSIX requirement for child processes). |
 | `SelectorMode::Once` behaves identically to `Always` | handlers/command.rs | Split into separate match arms; `Once` arm now tracks seen command names in a `HashSet<String>` (`seen_once`) declared in `run_repl` and passed into `process_regular_command`. Selector fires only on the first invocation per session per command name. |
+| Dead `else if handle_config_menu` branch | src/repl.rs | `is_config_trigger()` solo cubre `geli-reset-config`; el `else if` nunca se ejecutaba. Eliminado el branch muerto — el config-menu sigue accesible por hotkey (`ReplInputAction::OpenConfig`). |
+| Raw ANSI codes en `reporter.error()` | src/setup.rs:54 | Eliminado `format!("\x1b[31m{}\x1b[0m", ...)` — el `StderrReporter` ya aplica color rojo. La llamada ahora es `reporter.error(&t!("config.parse_error", ...))`. |
+| `geli lang set` (sin argumento) silenciado | src/handlers/geli_internal.rs:43 | Añadida variante `SetLangMissingArg` al enum. El arm ahora retorna `Some(SetLangMissingArg)` y el handler emite `reporter.warn(&t!("geli.lang_set_missing_arg"))`. Locale keys añadidos a `en.toml` / `es.toml`. |
+| Variable `before` muerta en `node_decomposer.rs` | src/shell/translator/pipeline/steps/node_decomposer.rs:37+46 | Eliminadas las líneas `let before = out.len()` y `let _ = before` — la variable no cumplía ningún propósito. |
+| Ruta de desarrollo hardcodeada en TomlEditor | src/handlers/menu.rs:32–38 | Sustituida `std::env::current_dir().join("src/commands/commands.toml")` por `ShellConfig::geli_config_dir().join("commands.toml")` — apunta a la ruta de usuario en producción. |
 
 ## 🔴 Active Technical Debt
 
@@ -276,8 +281,16 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 
 | Priority | Issue | Location | Proposed Fix |
 |---|---|---|---|
-| 🟡 MEDIUM | `build_docs_db.rs` compiled silently by Cargo autodiscovery (`autobins = true`). Not intended for end-user distribution; inflates build time; `cargo install` would install it. | `src/bin/build_docs_db.rs`, `Cargo.toml` | Add `autobins = false` to `[package]` in Cargo.toml and add an explicit `[[bin]]` entry for `build_docs_db` gated behind a `--features dev-tools` flag, OR move it to a separate workspace crate. |
-| 🟢 LOW | `source` builtin is a stub — emits a warning, does not execute scripts. | `shell/builtins/source.rs` | Blocked by P3 TriggerEngine. Implement when `@bash { }` scripting engine is ready. |
+| 🟡 MEDIUM | `build_docs_db.rs` compilado silenciosamente por autodiscovery de Cargo (`autobins = true`). No está previsto para distribución; infla el tiempo de build; `cargo install` lo instalaría. | `src/bin/build_docs_db.rs`, `Cargo.toml` | Añadir `autobins = false` a `[package]` y un `[[bin]]` explícito gateado con `--features dev-tools`, o moverlo a un workspace crate separado. |
+| 🟡 MEDIUM | `println!` / `eprintln!` en `spawn_stdout_task` / `spawn_stderr_task` violan Prime Directive #2 (todo output por Reporter). Las tareas `tokio::spawn` no tienen acceso al reporter. | `src/shell/executor/mod.rs:211,229` | Refactorizar `Reporter` como `Arc<dyn Reporter + Send + Sync + 'static>` para poder clonarlo en los spawns. Bloqueado por el trait signature actual. |
+| 🟡 MEDIUM | Múltiples mensajes de detección de subsistema hardcodeados en inglés, no pasan por `t!()`. | `src/shell/translator/subsystem.rs:24–55` | Añadir sección `[subsystem]` a los locales y envolver con `t!()`. |
+| 🟡 MEDIUM | Mensajes de error en `append_history_or_warn` / `apply_visual_settings` hardcodeados en inglés. | `src/utils.rs:148,158–165` | Añadir claves `[utils]` a los locales y envolver con `t!()`. |
+| 🟡 MEDIUM | Mensajes hardcodeados en inglés en la TUI de `show_me` ("docs.db was not found", "catalog is empty"). | `src/shell/tui/show_me/mod.rs:73–85` | Añadir claves `[show_me]` a los locales y envolver con `t!()`. |
+| 🟡 MEDIUM | Todo el wizard de primer inicio (`first_run.rs`) tiene texto en inglés hardcodeado sin pasar por i18n. | `src/shell/config/first_run.rs:17–33,111–174` | Añadir sección `[first_run]` a los locales con todas las etiquetas, descripciones e instrucciones de navegación del wizard. |
+| 🟡 MEDIUM | Función `is_config_trigger()` solo cubre `"geli-reset-config"`. Su nombre sugiere una lista de triggers expandible pero no se ha ampliado. | `src/handlers/menu.rs:96–98` | Documentar explícitamente que la función es un match de un único trigger, o expandirla según necesidades futuras (p.ej. `geli reset-config`, `geli config reset`). |
+| 🟢 LOW | `source` builtin es un stub — emite un warning, no ejecuta scripts. | `shell/builtins/source.rs` | Bloqueado por P3 TriggerEngine. Implementar cuando el motor `@bash { }` esté listo. |
+| 🟢 LOW | `run_loop` en `show_me/mod.rs` recibe `_reporter` pero nunca lo usa dentro del bucle de eventos TUI. Indica reporting de errores incompleto en la TUI. | `src/shell/tui/show_me/mod.rs` | Pasar el reporter al manejador de eventos TUI para reportar fallos en tiempo real. |
+| 🟢 LOW | Función `handle_special_command(SpecialCommand::Search, reporter)` es un skeleton: solo emite `special.search_skeleton`, sin búsqueda real implementada. | `src/handlers/menu.rs` | Implementar motor de búsqueda (P4 o posterior). |
 
 ---
 
