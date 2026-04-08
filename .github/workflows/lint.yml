@@ -3,7 +3,7 @@ name: Rust Lints
 on:
   pull_request:
   push:
-    branches: [main, dev]
+    branches: [main, master, releases]
 
 permissions:
   contents: read
