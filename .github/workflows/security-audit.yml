@@ -1,0 +1,33 @@
+name: Security Audit
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+  schedule:
+    - cron: '0 7 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run audit
+        run: cargo audit

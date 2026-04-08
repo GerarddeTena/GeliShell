@@ -1,0 +1,7 @@
+# Cocogitto — conventional commits
+# Built-in types (no need to redeclare):
+#   feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+
+[commit_message]
+max_summary_length = 72
+require_body = true

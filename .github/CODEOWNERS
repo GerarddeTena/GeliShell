@@ -1,0 +1,11 @@
+* @gerarddetena
+
+/.github/ @gerarddetena
+/.github/workflows/ @gerarddetena
+
+/src/ @gerarddetena
+/crates/ @gerarddetena
+
+/Cargo.toml @gerarddetena
+/Cargo.lock @gerarddetena
+/deny.toml @gerarddetena

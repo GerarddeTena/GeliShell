@@ -1,0 +1,40 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  schedule:
+    - cron: '25 6 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL Analysis (Rust)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: rust
+
+      - name: Build
+        run: cargo build --locked --all-targets
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
