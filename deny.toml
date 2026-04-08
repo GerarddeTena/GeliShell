@@ -1,7 +1,17 @@
+[graph]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+all-features = true
 [advisories]
 vulnerability = "deny"
-unmaintained = "warn"
-unsound = "deny"
+unmaintained = "workspace"
+unsound = "all"
 yanked = "deny"
 notice = "warn"
 
@@ -25,7 +35,9 @@ deny = [
     "AGPL-3.0-only",
     "AGPL-3.0-or-later",
 ]
+unused-allowed-license = "warn"
 confidence-threshold = 0.8
+copyleft = "deny"
 
 [bans]
 multiple-versions = "warn"
