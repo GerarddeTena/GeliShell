@@ -2,9 +2,9 @@
 name = "geli_shell"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "LicenseRef-NC"
 repository = "https://github.com/GerarddeTena/GeliShell"
-description = "Cross-platform shell REPL with canonical command translation and security guardrails"
+description = "Cross-platform shell REPL with canonical command translation and security guardrails. Non-commercial use only."
 
 [[bin]]
 name = "geli"
