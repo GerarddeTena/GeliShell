@@ -97,18 +97,13 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
 
         if is_config_trigger(&input) {
             append_history_or_warn(&mut ctx.command_history, &input, reporter).await;
-
-            if input.eq_ignore_ascii_case("geli-reset-config") {
-                match ShellConfig::reset().await {
-                    Ok(()) => {
-                        reporter.info(&t!("config.reset_ok"));
-                    }
-                    Err(error) => {
-                        reporter.error(&t!("config.reset_failed", error = error));
-                    }
+            match ShellConfig::reset().await {
+                Ok(()) => {
+                    reporter.info(&t!("config.reset_ok"));
                 }
-            } else if handle_config_menu(&mut ctx.config, reporter).await {
-                completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
+                Err(error) => {
+                    reporter.error(&t!("config.reset_failed", error = error));
+                }
             }
             continue;
         }

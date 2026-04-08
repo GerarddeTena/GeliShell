@@ -147,11 +147,15 @@ executing = "asistente ejecutando en {subsystem}: {command}"
 command_exit_code = "código de salida del asistente: {code}"
 command_exec_failed = "error al ejecutar el comando del asistente: {error}"
 ctrl_c = "^C — comando del asistente cancelado"
+how_to_expl_from_intent    = "Comando extraído del contexto para la intención: {intent}"
+how_to_expl_from_subsystem = "Comando extraído del contexto RAG para el subsistema {subsystem}"
+how_to_expl_generic        = "Comando extraído del contexto RAG."
 
 [geli]
 no_args = "Ya estás dentro de GeliShell. Usa 'exit' para salir o 'geli --help' para ver comandos disponibles."
 lang_set = "idioma cambiado a: {lang}"
 lang_not_supported = "idioma no soportado: '{lang}' — disponibles: en, es"
+lang_set_missing_arg = "uso: geli lang set <idioma>  (disponibles: en, es)"
 
 [pipeline]
 decomposed = "{step}: descompuesto en {count} fragmento(s)"
@@ -244,12 +248,12 @@ network_pipe_blocked = "enviar contenido de red directamente a una shell es un v
 
 [assistant.rag]
 no_context = "Sin contexto recuperado de RAG para esta acción."
-chunk_source_label = "Fuente"
-chunk_distance_label = "Distancia coseno"
+chunk_source_label = "Source"
+chunk_distance_label = "Cosine distance"
 
 [assistant.prompt]
-show_me = "<|im_start|>system\nEres un asistente experto. Responde a la acción solicitada usando ÚNICAMENTE el conocimiento de este contexto:\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nResponde de forma ultra-concisa (1 o 2 líneas máximo) con el comando o solución. No repitas el contexto crudo.\n<|im_end|>\n<|im_start|>user\n{user_action}\n<|im_end|>\n<|im_start|>assistant\n"
-how_to = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsistema: {subsystem}, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXTO]\n{rag_context}\n[FIN CONTEXTO]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\n{query}\n<|im_end|>\n<|im_start|>assistant\n"
+show_me = "<|im_start|>system\nEres un asistente experto. Responde a la acción solicitada usando ÚNICAMENTE el conocimiento de este contexto:\n[CONTEXT]\n{rag_context}\n[END CONTEXT]\nResponde de forma ultra-concisa (1 o 2 líneas máximo) con el comando o solución. No repitas el contexto crudo.\n<|im_end|>\n<|im_start|>user\n{user_action}\n<|im_end|>\n<|im_start|>assistant\n"
+how_to = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsystem: {subsystem}, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXT]\n{rag_context}\n[END CONTEXT]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\n{query}\n<|im_end|>\n<|im_start|>assistant\n"
 
 [builtin.g_jump]
 history_lock_error = "g: no se pudo leer el historial"

@@ -11,6 +11,11 @@ path = "src/main.rs"
 name = "gerisabet"
 path = "src/gerisabet.rs"
 
+[build]
+rustflags = [
+    "-Dunsafe_code"
+]
+
 [dependencies]
 thiserror = "2.0.18"
 serde = { version = "1.0.188", features = ["derive"] }

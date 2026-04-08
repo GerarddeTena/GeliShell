@@ -13,6 +13,7 @@ pub enum GeliInternalCommand {
     ConfigMe,
     ShowCommands { ecosystem: String },
     SetLang(String),
+    SetLangMissingArg,
     NoArgs,
 }
 
@@ -40,7 +41,9 @@ pub fn parse_geli_internal_command(input: &str) -> Option<GeliInternalCommand> {
                 None
             }
         }
-        "lang" if parts.len() == 3 && parts[2] == "set" => None,
+        "lang" if parts.len() == 3 && parts[2] == "set" => {
+            Some(GeliInternalCommand::SetLangMissingArg)
+        }
         "lang" if parts.len() == 4 && parts[2] == "set" => {
             Some(GeliInternalCommand::SetLang(parts[3].to_owned()))
         }
@@ -77,6 +80,9 @@ pub async fn handle_geli_internal_command(
             } else {
                 reporter.warn(&t!("geli.lang_not_supported", lang = lang));
             }
+        }
+        GeliInternalCommand::SetLangMissingArg => {
+            reporter.warn(&t!("geli.lang_set_missing_arg"));
         }
     }
 }

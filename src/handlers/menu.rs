@@ -29,11 +29,7 @@ pub async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporte
         }
         Ok(ConfigMenuSelection::TomlEditor) => {
             reporter.warn(&t!("config.toml_warning"));
-            let commands_path = std::env::current_dir()
-                .unwrap_or_default()
-                .join("src")
-                .join("commands")
-                .join("commands.toml");
+            let commands_path = ShellConfig::geli_config_dir().join("commands.toml");
             reporter.info(&t!("config.customization_path", path = commands_path.display()));
             false
         }

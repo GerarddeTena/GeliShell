@@ -292,12 +292,22 @@ fn synthesize_response(_model: &str, prompt: &str) -> String {
 }
 
 fn expects_how_to_contract(prompt: &str) -> bool {
-    prompt.contains("REGLA: Tu respuesta debe tener este formato exacto de dos líneas")
-        && prompt.contains("EXPLANATION:")
-        && prompt.contains("COMMAND:")
+    // EXPLANATION: and COMMAND: are language-neutral structural tokens present
+    // identically in every locale's how_to prompt template. They do NOT appear
+    // in the show_me template, making them a safe discriminator.
+    prompt.contains("EXPLANATION:") && prompt.contains("COMMAND:")
 }
 
 fn extract_rag_context(prompt: &str) -> Option<String> {
+    // Primary: language-neutral markers used in all locale prompt templates.
+    if let Some(context) = extract_between(prompt, "[CONTEXT]", "[END CONTEXT]") {
+        let trimmed = context.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_owned());
+        }
+    }
+
+    // Legacy fallback: Spanish markers from older builds / handcrafted prompts.
     if let Some(context) = extract_between(prompt, "[CONTEXTO]", "[FIN CONTEXTO]") {
         let trimmed = context.trim();
         if !trimmed.is_empty() {
@@ -305,6 +315,7 @@ fn extract_rag_context(prompt: &str) -> Option<String> {
         }
     }
 
+    // Legacy fallback: old inline RAG marker.
     if let Some((_, tail)) = prompt.split_once("[CONTEXTO RECUPERADO DE RAG]") {
         let context = tail
             .split_once("<|im_end|>")
@@ -326,20 +337,23 @@ fn extract_between<'a>(text: &'a str, start: &str, end: &str) -> Option<&'a str>
 }
 
 fn extract_how_to_subsystem(prompt: &str) -> Option<String> {
-    let marker = "subsistema:";
+    // Try language-neutral marker first, then legacy Spanish marker.
     let lowercase = prompt.to_ascii_lowercase();
-    let marker_idx = lowercase.find(marker)?;
-    let tail = &prompt[marker_idx + marker.len()..];
-    let subsystem = tail
-        .split(|ch| ch == ',' || ch == '\n')
-        .next()?
-        .trim()
-        .trim_end_matches('.');
-    if subsystem.is_empty() {
-        None
-    } else {
-        Some(subsystem.to_owned())
+    for marker in &["subsystem:", "subsistema:"] {
+        let Some(marker_idx) = lowercase.find(marker) else {
+            continue;
+        };
+        let tail = &prompt[marker_idx + marker.len()..];
+        let subsystem = tail
+            .split(|ch| ch == ',' || ch == '\n')
+            .next()?
+            .trim()
+            .trim_end_matches('.');
+        if !subsystem.is_empty() {
+            return Some(subsystem.to_owned());
+        }
     }
+    None
 }
 
 fn extract_user_action(prompt: &str) -> Option<String> {
@@ -535,10 +549,14 @@ fn fallback_context_line(rag_context: &str) -> Option<String> {
 
 fn is_context_metadata_line(line: &str) -> bool {
     let lowercase = line.to_ascii_lowercase();
-    lowercase.starts_with("- fuente:")
-        || lowercase.starts_with("distancia coseno:")
-        || lowercase.starts_with("[contexto]")
-        || lowercase.starts_with("[fin contexto]")
+    lowercase.starts_with("- source:")          // EN (neutral)
+        || lowercase.starts_with("- fuente:")   // ES legacy
+        || lowercase.starts_with("cosine distance:") // EN (neutral)
+        || lowercase.starts_with("distancia coseno:") // ES legacy
+        || lowercase.starts_with("[context]")        // EN (neutral)
+        || lowercase.starts_with("[end context]")    // EN (neutral)
+        || lowercase.starts_with("[contexto]")       // ES legacy
+        || lowercase.starts_with("[fin contexto]")   // ES legacy
 }
 
 fn looks_command_like(candidate: &str) -> bool {
@@ -547,7 +565,12 @@ fn looks_command_like(candidate: &str) -> bool {
         return false;
     }
     let lowercase = cleaned.to_ascii_lowercase();
-    if lowercase.starts_with("intención") || lowercase.starts_with("fuente") {
+    // Reject lines that are clearly metadata or intent headers from the KB.
+    // "intención" / "source" / "fuente" are never valid shell commands.
+    if lowercase.starts_with("intención")
+        || lowercase.starts_with("source")
+        || lowercase.starts_with("fuente")
+    {
         return false;
     }
     let first_token = cleaned.split_whitespace().next().unwrap_or_default();
@@ -558,14 +581,14 @@ fn looks_command_like(candidate: &str) -> bool {
 
 fn build_how_to_explanation(rag_context: &str, subsystem: Option<&str>) -> String {
     if let Some(intent) = extract_intent_line(rag_context) {
-        return format!("Comando extraído del contexto para la intención: {intent}");
+        return crate::t!("assistant.how_to_expl_from_intent", intent = intent);
     }
 
     if let Some(subsystem) = subsystem {
-        return format!("Comando extraído del contexto RAG para el subsistema {subsystem}");
+        return crate::t!("assistant.how_to_expl_from_subsystem", subsystem = subsystem);
     }
 
-    "Comando extraído del contexto RAG.".to_owned()
+    crate::t!("assistant.how_to_expl_generic")
 }
 
 fn extract_intent_line(rag_context: &str) -> Option<String> {
@@ -616,7 +639,7 @@ mod tests {
 
     #[test]
     fn synthesize_response_extracts_command_from_rag_context() {
-        let prompt = "<|im_start|>system\n[CONTEXTO]\n## Intención: Buscar texto por patrón\n- Bash/Zsh: `rg \"<patron>\" <ruta_base>`\n- PowerShell: `Select-String -Path \"<ruta_base>\\*\" -Pattern \"<patron>\" -Recurse`\n[FIN CONTEXTO]\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant\n";
+        let prompt = "<|im_start|>system\n[CONTEXT]\n## Intención: Buscar texto por patrón\n- Bash/Zsh: `rg \"<patron>\" <ruta_base>`\n- PowerShell: `Select-String -Path \"<ruta_base>\\*\" -Pattern \"<patron>\" -Recurse`\n[END CONTEXT]\n<|im_end|>\n<|im_start|>user\nSearch in files\n<|im_end|>\n<|im_start|>assistant\n";
         let generated = synthesize_response("qwen2.5-1.5b-instruct-q4_k_m", prompt);
 
         assert_eq!(generated, "rg \"<patron>\" <ruta_base>");
@@ -624,7 +647,7 @@ mod tests {
 
     #[test]
     fn strict_how_to_prompt_produces_two_line_contract() {
-        let prompt = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsistema: powershell, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXTO]\n## Intención: Listar contenido de un directorio\n- Bash/Zsh: `ls -la <ruta_directorio>`\n- Fish: `ls -la <ruta_directorio>`\n- PowerShell: `Get-ChildItem -Force -Path <ruta_directorio>`\n- CMD: `dir <ruta_directorio>`\n[FIN CONTEXTO]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\nhazlo\n<|im_end|>\n<|im_start|>assistant\n";
+        let prompt = "<|im_start|>system\nYou are a strict terminal assistant. Your only purpose is to extract the exact command for subsystem: powershell, based EXCLUSIVELY on the following context.\n[CONTEXT]\n## Intención: Listar contenido de un directorio\n- Bash/Zsh: `ls -la <ruta_directorio>`\n- Fish: `ls -la <ruta_directorio>`\n- PowerShell: `Get-ChildItem -Force -Path <ruta_directorio>`\n- CMD: `dir <ruta_directorio>`\n[END CONTEXT]\nRULE: Your response must have this exact two-line format, without adding markdown or greetings:\nEXPLANATION: [Your one-line explanation]\nCOMMAND: [The command extracted from context]\n<|im_end|>\n<|im_start|>user\nhazlo\n<|im_end|>\n<|im_start|>assistant\n";
         let generated = synthesize_response("qwen2.5-0.5b-instruct-q4_k_m", prompt);
         let lines: Vec<&str> = generated.lines().collect();
 
@@ -638,7 +661,27 @@ mod tests {
     }
 
     #[test]
-    fn extract_rag_context_supports_new_context_markers() {
+    fn strict_how_to_prompt_produces_two_line_contract_spanish_locale() {
+        // Verify legacy Spanish locale prompt still routes through the how-to
+        // contract branch and produces the required two-line output.
+        let prompt = "<|im_start|>system\nEres un asistente de terminal estricto. Tu único propósito es extraer el comando exacto para el subsystem: powershell, basándote EXCLUSIVAMENTE en el siguiente contexto.\n[CONTEXT]\n## Intención: Listar contenido de un directorio\n- Bash/Zsh: `ls -la <ruta_directorio>`\n- Fish: `ls -la <ruta_directorio>`\n- PowerShell: `Get-ChildItem -Force -Path <ruta_directorio>`\n- CMD: `dir <ruta_directorio>`\n[END CONTEXT]\nREGLA: Tu respuesta debe tener este formato exacto de dos líneas, sin añadir markdown ni saludos:\nEXPLANATION: [Tu explicación de una línea]\nCOMMAND: [El comando extraído del contexto]\n<|im_end|>\n<|im_start|>user\nhazlo\n<|im_end|>\n<|im_start|>assistant\n";
+        let generated = synthesize_response("qwen2.5-0.5b-instruct-q4_k_m", prompt);
+        let lines: Vec<&str> = generated.lines().collect();
+
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].starts_with("EXPLANATION: "));
+        assert!(lines[1].starts_with("COMMAND: "));
+    }
+
+    #[test]
+    fn extract_rag_context_supports_neutral_context_markers() {
+        let prompt = "<|im_start|>system\n[CONTEXT]\nchunk one\n[END CONTEXT]\n<|im_end|>\n<|im_start|>user\nx\n<|im_end|>";
+        let context = extract_rag_context(prompt);
+        assert_eq!(context.as_deref(), Some("chunk one"));
+    }
+
+    #[test]
+    fn extract_rag_context_supports_legacy_spanish_markers() {
         let prompt = "<|im_start|>system\n[CONTEXTO]\nchunk one\n[FIN CONTEXTO]\n<|im_end|>\n<|im_start|>user\nx\n<|im_end|>";
         let context = extract_rag_context(prompt);
         assert_eq!(context.as_deref(), Some("chunk one"));

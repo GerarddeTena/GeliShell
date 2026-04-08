@@ -51,7 +51,7 @@ pub async fn load_or_init_config(reporter: &dyn Reporter) -> ShellConfig {
             cfg
         }
         Err(ConfigError::Parse(error)) => {
-            reporter.error(&format!("\x1b[31m{}\x1b[0m", t!("config.parse_error", error = error)));
+            reporter.error(&t!("config.parse_error", error = error));
             ShellConfig::default()
         }
         Err(error) => {

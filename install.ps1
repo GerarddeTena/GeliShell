@@ -102,7 +102,7 @@ function Invoke-Vec0Download
         $MatchLine = $Lines | Where-Object { $_ -match [regex]::Escape($AssetName) }
         if ($MatchLine)
         {
-            $ExpectedHash = ($MatchLine.Trim() -split '\s+')[0]
+            $ExpectedHash = ($MatchLine.Trim() -split '\s+')[1]
             Write-Info "found SHA-256 for $AssetName in checksums.txt"
         }
         else

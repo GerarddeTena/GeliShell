@@ -147,11 +147,15 @@ executing = "assistant executing in {subsystem}: {command}"
 command_exit_code = "assistant command exit code: {code}"
 command_exec_failed = "assistant command execution failed: {error}"
 ctrl_c = "^C — assistant command cancelled"
+how_to_expl_from_intent    = "Command extracted from context for intent: {intent}"
+how_to_expl_from_subsystem = "Command extracted from RAG context for subsystem {subsystem}"
+how_to_expl_generic        = "Command extracted from RAG context."
 
 [geli]
 no_args = "You are already inside GeliShell. Use 'exit' to quit or 'geli --help' to see available commands."
 lang_set = "language changed to: {lang}"
 lang_not_supported = "language not supported: '{lang}' — available: en, es"
+lang_set_missing_arg = "usage: geli lang set <lang>  (available: en, es)"
 
 [pipeline]
 decomposed = "{step}: decomposed into {count} fragment(s)"

@@ -34,16 +34,13 @@ impl NodeDecomposer {
             ASTNode::Pipeline(nodes) => {
                 let last_idx = nodes.len().saturating_sub(1);
                 for (i, n) in nodes.iter().enumerate() {
-                    let before = out.len();
                     self.decompose(n, out, reporter);
-                    // Todos los fragments de este nodo excepto
-                    // el último llevan Pipe
+                    // Todos los fragments de este nodo excepto el último llevan Pipe
                     if i < last_idx {
                         if let Some(last) = out.last_mut() {
                             last.operator = Some(FragmentOperator::Pipe);
                         }
                     }
-                    let _ = before;
                 }
             }
 
