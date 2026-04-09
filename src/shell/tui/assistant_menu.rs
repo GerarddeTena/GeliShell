@@ -122,19 +122,19 @@ async fn run_bootstrap_loop(
             break;
         }
 
-        if event::poll(std::time::Duration::from_millis(10))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
+        if event::poll(std::time::Duration::from_millis(10))?
+            && let Event::Key(key) = event::read()?
+        {
+            if key.kind == KeyEventKind::Release {
+                continue;
+            }
 
-                let ctrl_c =
-                    key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
-                let escaped = matches!(key.code, KeyCode::Esc);
-                if ctrl_c || escaped {
-                    state.status = t!("tui.assistant.bootstrap_interrupted");
-                    state.done = true;
-                }
+            let ctrl_c =
+                key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
+            let escaped = matches!(key.code, KeyCode::Esc);
+            if ctrl_c || escaped {
+                state.status = t!("tui.assistant.bootstrap_interrupted");
+                state.done = true;
             }
         }
 

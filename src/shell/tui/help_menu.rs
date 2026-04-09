@@ -97,54 +97,47 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
     render_help_menu(out, row, col, &rows)?;
 
     loop {
-        match event::read()? {
-            Event::Key(key) => {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
-
-                let prev_row = row;
-                let prev_col = col;
-
-                match key.code {
-                    KeyCode::Up => {
-                        if row > 0 {
-                            row -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if row + 1 < rows.len() {
-                            row += 1;
-                        }
-                    }
-                    KeyCode::Left => {
-                        if col > 0 {
-                            col -= 1;
-                        }
-                    }
-                    KeyCode::Right => {
-                        if col < 2 {
-                            col += 1;
-                        }
-                    }
-                    KeyCode::Enter => {
-                        return Ok(rows[row].action);
-                    }
-                    KeyCode::Esc | KeyCode::Char('q') => {
-                        return Ok(HelpMenuAction::None);
-                    }
-                    _ => {}
-                }
-
-                // Render diferencial: solo actualiza las filas que cambiaron
-                if row != prev_row {
-                    update_help_row(out, prev_row, &rows[prev_row], false, col)?;
-                    update_help_row(out, row, &rows[row], true, col)?;
-                } else if col != prev_col {
-                    update_help_row(out, row, &rows[row], true, col)?;
-                }
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                continue;
             }
-            _ => {}
+
+            let prev_row = row;
+            let prev_col = col;
+
+            match key.code {
+                KeyCode::Up => {
+                    row = row.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    if row + 1 < rows.len() {
+                        row += 1;
+                    }
+                }
+                KeyCode::Left => {
+                    col = col.saturating_sub(1);
+                }
+                KeyCode::Right => {
+                    if col < 2 {
+                        col += 1;
+                    }
+                }
+                KeyCode::Enter => {
+                    return Ok(rows[row].action);
+                }
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    return Ok(HelpMenuAction::None);
+                }
+                _ => {}
+            }
+
+            // Render diferencial: solo actualiza las filas que cambiaron
+            if row != prev_row {
+                update_help_row(out, prev_row, &rows[prev_row], false, col)?;
+                update_help_row(out, row, &rows[row], true, col)?;
+            } else if col != prev_col {
+                update_help_row(out, row, &rows[row], true, col)?;
+            }
         }
     }
 }

@@ -18,32 +18,37 @@ impl ForkBombGuard {
     /// Comprueba si un nodo es un pipeline donde el mismo
     /// comando aparece en ambos lados y se ejecuta en background
     fn is_fork_bomb_pattern(node: &ASTNode) -> bool {
-        if let ASTNode::Background(inner) = node {
-            if let ASTNode::Pipeline(cmds) = inner.as_ref() {
-                if cmds.len() >= 2 {
-                    let names: Vec<&str> = cmds
-                        .iter()
-                        .filter_map(|n| {
-                            if let ASTNode::Command(cmd) = n {
-                                Some(cmd.name.as_str())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    // Todos los comandos del pipeline son iguales
-                    // y hay al menos 2 — patrón de fork bomb
-                    if names.len() >= 2 {
-                        let first = names[0];
-                        if names.iter().all(|&n| n == first) {
-                            return true;
-                        }
+        if let ASTNode::Background(inner) = node
+            && let ASTNode::Pipeline(cmds) = inner.as_ref()
+            && cmds.len() >= 2
+        {
+            let names: Vec<&str> = cmds
+                .iter()
+                .filter_map(|n| {
+                    if let ASTNode::Command(cmd) = n {
+                        Some(cmd.name.as_str())
+                    } else {
+                        None
                     }
+                })
+                .collect();
+
+            // Todos los comandos del pipeline son iguales
+            // y hay al menos 2 — patrón de fork bomb
+            if names.len() >= 2 {
+                let first = names[0];
+                if names.iter().all(|&n| n == first) {
+                    return true;
                 }
             }
         }
         false
+    }
+}
+
+impl Default for ForkBombGuard {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

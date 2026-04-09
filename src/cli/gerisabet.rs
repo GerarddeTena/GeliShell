@@ -29,7 +29,7 @@ pub async fn handle_gerisabet_args(args: &[String], reporter: &dyn Reporter) {
                 std::process::exit(1);
             }
 
-            execute_how_to_cli(&query, reporter).await;
+            execute_how_to_cli(query, reporter).await;
             std::process::exit(0);
         }
         "--show-me" => {

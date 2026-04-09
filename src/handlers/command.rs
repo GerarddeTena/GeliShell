@@ -36,6 +36,7 @@ pub fn parse_ast(command: &str, reporter: &dyn Reporter) -> Option<ASTNode> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn process_regular_command(
     input: &str,
     config: &ShellConfig,
@@ -104,7 +105,6 @@ pub async fn process_regular_command(
             // per session.  On subsequent invocations the preferred translation
             // is used directly — no interactive interruption.
             let cmd_key = input
-                .trim()
                 .split_whitespace()
                 .next()
                 .unwrap_or(input)

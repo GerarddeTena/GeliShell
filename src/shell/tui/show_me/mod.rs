@@ -100,7 +100,6 @@ impl<'a> ShowMeTui<'a> {
         }
     }
 
-    #[must_use]
     pub(crate) fn run(&mut self, reporter: &dyn Reporter) -> Result<Option<String>, ShowMeError> {
         if self.catalog.ops.is_empty() {
             return Err(ShowMeError::EmptyCatalog);

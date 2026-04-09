@@ -27,6 +27,12 @@ impl CriticalRedirectGuard {
     }
 }
 
+impl Default for CriticalRedirectGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Guard for CriticalRedirectGuard {
     fn check_command(&self, cmd: &Command) -> Result<(), GuardError> {
         for redir in &cmd.redirections {

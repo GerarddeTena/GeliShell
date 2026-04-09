@@ -29,18 +29,13 @@ pub enum ConfigError {
 // SelectorMode
 // ══════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SelectorMode {
+    #[default]
     Always,
     Auto,
     Once,
-}
-
-impl Default for SelectorMode {
-    fn default() -> Self {
-        Self::Always
-    }
 }
 
 impl std::fmt::Display for SelectorMode {
@@ -57,7 +52,7 @@ impl std::fmt::Display for SelectorMode {
 // ShellConfig
 // ══════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ShellConfig {
     pub behavior: BehaviorConfig,
@@ -84,38 +79,19 @@ impl Default for BehaviorConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SubsystemConfig {
     pub override_subsystem: String,
 }
 
-impl Default for SubsystemConfig {
-    fn default() -> Self {
-        Self {
-            override_subsystem: String::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ShellExecutionConfig {
     pub capture_output: bool,
     pub capture_duration: bool,
     pub capture_command_trace: bool,
     pub timeout_secs: u64,
-}
-
-impl Default for ShellExecutionConfig {
-    fn default() -> Self {
-        Self {
-            capture_output: false,
-            capture_duration: false,
-            capture_command_trace: false,
-            timeout_secs: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -159,17 +135,12 @@ pub struct CustomCommand {
     pub template: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AssistantModelVariant {
+    #[default]
     Qwen05b,
     Qwen15b,
-}
-
-impl Default for AssistantModelVariant {
-    fn default() -> Self {
-        Self::Qwen05b
-    }
 }
 
 impl AssistantModelVariant {
@@ -199,18 +170,6 @@ impl Default for AssistantConfig {
     }
 }
 
-impl Default for ShellConfig {
-    fn default() -> Self {
-        Self {
-            behavior: BehaviorConfig::default(),
-            subsystem: SubsystemConfig::default(),
-            execution: ShellExecutionConfig::default(),
-            visual: VisualConfig::default(),
-            customization: CustomizationConfig::default(),
-            assistant: AssistantConfig::default(),
-        }
-    }
-}
 
 // ══════════════════════════════════════════════════════════════
 // Persistencia
@@ -316,7 +275,7 @@ impl ShellConfig {
     ) -> crate::shell::translator::Subsystem {
         use crate::shell::translator::Subsystem;
         if self.has_subsystem_override() {
-            Subsystem::from_str(&self.subsystem.override_subsystem)
+            Subsystem::from_name(&self.subsystem.override_subsystem)
                 .unwrap_or_else(|| Subsystem::detect(reporter))
         } else {
             Subsystem::detect(reporter)

@@ -19,7 +19,7 @@ impl Subsystem {
 
     pub fn detect(reporter: &dyn Reporter) -> Self {
         if let Ok(val) = std::env::var("GELI_SUBSYSTEM") {
-            match Self::from_str(val.trim()) {
+            match Self::from_name(val.trim()) {
                 Some(s) => {
                     reporter.info(&format!("subsystem: using GELI_SUBSYSTEM='{}'", val.trim()));
                     if !s.is_supported_on_platform() {
@@ -42,11 +42,11 @@ impl Subsystem {
         }
 
         #[cfg(not(target_os = "windows"))]
-        if let Ok(shell) = std::env::var("SHELL") {
-            if let Some(s) = Self::from_shell_path(&shell) {
-                reporter.info(&format!("subsystem: detected from $SHELL='{shell}'"));
-                return s;
-            }
+        if let Ok(shell) = std::env::var("SHELL")
+            && let Some(s) = Self::from_shell_path(&shell)
+        {
+            reporter.info(&format!("subsystem: detected from $SHELL='{shell}'"));
+            return s;
         }
         let default = Self::platform_default();
         reporter.info(&format!(
@@ -64,7 +64,7 @@ impl Subsystem {
         true
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "bash" => Some(Self::Bash),
             "zsh" => Some(Self::Zsh),
@@ -229,13 +229,13 @@ mod tests {
 
     #[test]
     fn from_str_case_insensitive() {
-        assert_eq!(Subsystem::from_str("BASH"), Some(Subsystem::Bash));
+        assert_eq!(Subsystem::from_name("BASH"), Some(Subsystem::Bash));
         assert_eq!(
-            Subsystem::from_str("PowerShell"),
+            Subsystem::from_name("PowerShell"),
             Some(Subsystem::PowerShell)
         );
-        assert_eq!(Subsystem::from_str("pwsh"), Some(Subsystem::PowerShell));
-        assert_eq!(Subsystem::from_str("unknown"), None);
+        assert_eq!(Subsystem::from_name("pwsh"), Some(Subsystem::PowerShell));
+        assert_eq!(Subsystem::from_name("unknown"), None);
     }
 
     #[test]

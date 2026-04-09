@@ -47,6 +47,7 @@ pub struct BuiltinRegistry {
 }
 
 impl BuiltinRegistry {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let g_history = Arc::new(Mutex::new(GHistory::load()));
         // Shared previous-directory state between CdBuiltin and GJumpBuiltin.

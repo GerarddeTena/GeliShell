@@ -32,8 +32,10 @@ pub async fn ensure_runtime_layout(
     tokio::fs::create_dir_all(&docs_dir).await?;
     tokio::fs::create_dir_all(&models_dir).await?;
 
-    let mut report = RuntimeBootstrapReport::default();
-    report.migrated_legacy_files = migrate_legacy_files(&config_dir).await?;
+    let mut report = RuntimeBootstrapReport {
+        migrated_legacy_files: migrate_legacy_files(&config_dir).await?,
+        ..Default::default()
+    };
 
     let roots = candidate_roots();
 
@@ -294,9 +296,9 @@ async fn download_asset(http: &reqwest::Client, url: &str) -> Result<Vec<u8>, Do
 ///
 /// - `Found(hash)` — hash present; SHA-256 verification is mandatory.
 /// - `Absent`      — `checksums.txt` unreachable (404 / network error); skip silently
-///                   for backward compatibility with releases that predate checksums.
+///   for backward compatibility with releases that predate checksums.
 /// - `Unlisted`    — `checksums.txt` was fetched successfully but the asset is not
-///                   listed; caller should warn the user and proceed without verification.
+///   listed; caller should warn the user and proceed without verification.
 enum HashLookup {
     Found(String),
     Absent,
@@ -330,16 +332,16 @@ async fn lookup_checksum(
 
     for line in text.lines() {
         // Text mode: "<hash>  <filename>"
-        if let Some((hash_part, name_part)) = line.split_once("  ") {
-            if name_part.trim() == asset_name {
-                return HashLookup::Found(hash_part.trim().to_owned());
-            }
+        if let Some((hash_part, name_part)) = line.split_once("  ")
+            && name_part.trim() == asset_name
+        {
+            return HashLookup::Found(hash_part.trim().to_owned());
         }
         // Binary mode: "<hash> *<filename>"
-        if let Some((hash_part, name_part)) = line.split_once(" *") {
-            if name_part.trim() == asset_name {
-                return HashLookup::Found(hash_part.trim().to_owned());
-            }
+        if let Some((hash_part, name_part)) = line.split_once(" *")
+            && name_part.trim() == asset_name
+        {
+            return HashLookup::Found(hash_part.trim().to_owned());
         }
     }
 
@@ -489,10 +491,10 @@ fn join_relative(base: &Path, relative: &str) -> PathBuf {
 
 fn prepend_env_sources(var_names: &[&str], mut candidates: Vec<PathBuf>) -> Vec<PathBuf> {
     for var_name in var_names.iter().rev() {
-        if let Ok(value) = std::env::var(var_name) {
-            if !value.trim().is_empty() {
-                candidates.insert(0, PathBuf::from(value));
-            }
+        if let Ok(value) = std::env::var(var_name)
+            && !value.trim().is_empty()
+        {
+            candidates.insert(0, PathBuf::from(value));
         }
     }
     candidates
@@ -504,22 +506,22 @@ fn candidate_roots() -> Vec<PathBuf> {
         ordered.push(cwd);
     }
 
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            ordered.push(exe_dir.to_path_buf());
-            if let Some(parent) = exe_dir.parent() {
-                ordered.push(parent.to_path_buf());
-                if let Some(grand_parent) = parent.parent() {
-                    ordered.push(grand_parent.to_path_buf());
-                }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(exe_dir) = exe.parent()
+    {
+        ordered.push(exe_dir.to_path_buf());
+        if let Some(parent) = exe_dir.parent() {
+            ordered.push(parent.to_path_buf());
+            if let Some(grand_parent) = parent.parent() {
+                ordered.push(grand_parent.to_path_buf());
             }
         }
     }
 
-    if let Ok(install_root) = std::env::var("GELI_INSTALL_ROOT") {
-        if !install_root.trim().is_empty() {
-            ordered.push(PathBuf::from(install_root));
-        }
+    if let Ok(install_root) = std::env::var("GELI_INSTALL_ROOT")
+        && !install_root.trim().is_empty()
+    {
+        ordered.push(PathBuf::from(install_root));
     }
 
     let mut unique = Vec::new();
@@ -639,7 +641,7 @@ mod tests {
             .await
             .expect("source file should be written");
 
-        let copied = seed_from_candidates(&target, &[source.clone()])
+        let copied = seed_from_candidates(&target, std::slice::from_ref(&source))
             .await
             .expect("seed copy should succeed");
         assert_eq!(copied, Some(source));

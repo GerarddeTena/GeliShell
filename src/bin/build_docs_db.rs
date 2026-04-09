@@ -597,10 +597,10 @@ fn assert_embedding_dimensions(embedding: &[f32]) {
 }
 
 fn persist_docs_db(options: &IngestOptions, embedded: &[EmbeddedChunk]) -> Result<(), IngestError> {
-    if let Some(parent) = options.db_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = options.db_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)?;
     }
 
     let mut conn = Connection::open(&options.db_path)?;

@@ -39,10 +39,10 @@ impl Builtin for CdBuiltin {
         };
 
         // Snapshot current dir into shared state before changing it.
-        if let Ok(current) = std::env::current_dir() {
-            if let Ok(mut guard) = self.oldpwd.lock() {
-                *guard = Some(current);
-            }
+        if let Ok(current) = std::env::current_dir()
+            && let Ok(mut guard) = self.oldpwd.lock()
+        {
+            *guard = Some(current);
         }
 
         match std::env::set_current_dir(&path) {

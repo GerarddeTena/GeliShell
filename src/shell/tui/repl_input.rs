@@ -111,9 +111,7 @@ pub fn read_repl_input(
                         }
                     }
                     KeyCode::Left => {
-                        if cursor_pos > 0 {
-                            cursor_pos -= 1;
-                        }
+                        cursor_pos = cursor_pos.saturating_sub(1);
                     }
                     KeyCode::Right => {
                         if let Some(suffix) = find_suggestion_suffix(
@@ -215,6 +213,7 @@ pub fn parse_special_command(input: &str) -> Option<SpecialCommand> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_input_line(
     stdout: &mut impl Write,
     prompt: &str,

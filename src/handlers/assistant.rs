@@ -89,6 +89,7 @@ pub async fn handle_assistant_show_me(
 }
 
 #[allow(dead_code)]
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_assistant_how_to(
     assistant: &mut AssistantRuntime,
     config: &ShellConfig,

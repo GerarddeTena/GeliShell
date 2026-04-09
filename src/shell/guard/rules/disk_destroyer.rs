@@ -34,6 +34,12 @@ impl DdGuard {
     }
 }
 
+impl Default for DdGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Guard for DdGuard {
     fn check_command(&self, cmd: &Command) -> Result<(), GuardError> {
         if cmd.name != "dd" {
@@ -44,15 +50,14 @@ impl Guard for DdGuard {
 
         for arg in &args {
             // Detecta of=/dev/sda*, of=/dev/nvme* etc.
-            if let Some(target) = arg.strip_prefix("of=") {
-                if BLOCK_DEVICES
+            if let Some(target) = arg.strip_prefix("of=")
+                && BLOCK_DEVICES
                     .iter()
                     .any(|&dev| target == dev || target.starts_with(dev))
-                {
-                    return Err(GuardError::DiskDestroyer {
-                        reason: t!("guard.disk_destroyer.dd_device_blocked", target = target),
-                    });
-                }
+            {
+                return Err(GuardError::DiskDestroyer {
+                    reason: t!("guard.disk_destroyer.dd_device_blocked", target = target),
+                });
             }
         }
         Ok(())
@@ -70,6 +75,12 @@ pub struct MkfsGuard;
 impl MkfsGuard {
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for MkfsGuard {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

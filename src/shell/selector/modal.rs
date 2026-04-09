@@ -57,36 +57,31 @@ fn show_modal(stdout: &mut impl Write, options: &[&str]) -> SelectionResult {
     loop {
         render_modal(stdout, options, selected).ok();
 
-        match event::read() {
-            Ok(Event::Key(key)) => {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
-
-                match key.code {
-                    KeyCode::Up => {
-                        if selected > 0 {
-                            selected -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if selected < total - 1 {
-                            selected += 1;
-                        }
-                    }
-                    KeyCode::Enter => {
-                        let chosen = options[selected].to_owned();
-                        clear_modal(stdout, total + 5).ok();
-                        return SelectionResult::Selected(chosen);
-                    }
-                    KeyCode::Esc => {
-                        clear_modal(stdout, total + 5).ok();
-                        return SelectionResult::Cancelled;
-                    }
-                    _ => {}
-                }
+        if let Ok(Event::Key(key)) = event::read() {
+            if key.kind == KeyEventKind::Release {
+                continue;
             }
-            _ => {}
+
+            match key.code {
+                KeyCode::Up => {
+                    selected = selected.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    if selected < total - 1 {
+                        selected += 1;
+                    }
+                }
+                KeyCode::Enter => {
+                    let chosen = options[selected].to_owned();
+                    clear_modal(stdout, total + 5).ok();
+                    return SelectionResult::Selected(chosen);
+                }
+                KeyCode::Esc => {
+                    clear_modal(stdout, total + 5).ok();
+                    return SelectionResult::Cancelled;
+                }
+                _ => {}
+            }
         }
     }
 }

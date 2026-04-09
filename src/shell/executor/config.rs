@@ -3,7 +3,7 @@
 ///
 /// Todos los campos excepto `exit_code` son opt-in:
 /// el usuario activa lo que necesita sin overhead innecesario.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExecutionConfig {
     /// Captura stdout+stderr además de hacer streaming.
     /// Por defecto false — solo streaming en tiempo real.
@@ -26,17 +26,7 @@ pub struct ExecutionConfig {
     pub extra_tty_commands: Vec<String>,
 }
 
-impl Default for ExecutionConfig {
-    fn default() -> Self {
-        Self {
-            capture_output: false,
-            capture_duration: false,
-            capture_command_trace: false,
-            timeout_secs: None,
-            extra_tty_commands: Vec::new(),
-        }
-    }
-}
+
 
 impl ExecutionConfig {
     /// Config mínima — solo exit code, sin overhead

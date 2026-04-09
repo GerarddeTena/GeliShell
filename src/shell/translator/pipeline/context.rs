@@ -167,10 +167,10 @@ impl<'a> TranslationContext<'a> {
             parts.push(with_bg);
 
             // Añade el operador si no es el último fragment
-            if i < self.fragments.len() - 1 {
-                if let Some(op) = &fragment.operator {
-                    parts.push(op.to_native(self.subsystem).to_owned());
-                }
+            if i < self.fragments.len() - 1
+                && let Some(op) = &fragment.operator
+            {
+                parts.push(op.to_native(self.subsystem).to_owned());
             }
         }
 

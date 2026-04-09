@@ -146,70 +146,63 @@ fn run_config_menu(
     render_config_menu(out, row, col, &rows)?;
 
     loop {
-        match event::read()? {
-            Event::Key(key) => {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
-
-                let prev_row = row;
-                let prev_col = col;
-
-                match key.code {
-                    KeyCode::Up => {
-                        if row > 0 {
-                            row -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if row + 1 < rows.len() {
-                            row += 1;
-                        }
-                    }
-                    KeyCode::Left => {
-                        if col > 0 {
-                            col -= 1;
-                        }
-                    }
-                    KeyCode::Right => {
-                        if col < 2 {
-                            col += 1;
-                        }
-                    }
-                    KeyCode::Enter => match row {
-                        0 => {
-                            if let Some(updated) = show_color_editor(out, &visual)? {
-                                visual = updated;
-                                return Ok(ConfigMenuSelection::UpdatedVisual(visual));
-                            }
-                            // Submenú cerrado — render completo para restaurar la pantalla
-                            render_config_menu(out, row, col, &rows)?;
-                        }
-                        1 => {
-                            if let Some(updated) = show_font_editor(out, &visual)? {
-                                visual = updated;
-                                return Ok(ConfigMenuSelection::UpdatedVisual(visual));
-                            }
-                            render_config_menu(out, row, col, &rows)?;
-                        }
-                        2 => return Ok(ConfigMenuSelection::TomlEditor),
-                        _ => {}
-                    },
-                    KeyCode::Esc | KeyCode::Char('q') => {
-                        return Ok(ConfigMenuSelection::Closed);
-                    }
-                    _ => {}
-                }
-
-                // Render diferencial: solo actualiza las filas que cambiaron
-                if row != prev_row {
-                    update_config_row(out, prev_row, &rows[prev_row], false, col)?;
-                    update_config_row(out, row, &rows[row], true, col)?;
-                } else if col != prev_col {
-                    update_config_row(out, row, &rows[row], true, col)?;
-                }
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                continue;
             }
-            _ => {}
+
+            let prev_row = row;
+            let prev_col = col;
+
+            match key.code {
+                KeyCode::Up => {
+                    row = row.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    if row + 1 < rows.len() {
+                        row += 1;
+                    }
+                }
+                KeyCode::Left => {
+                    col = col.saturating_sub(1);
+                }
+                KeyCode::Right => {
+                    if col < 2 {
+                        col += 1;
+                    }
+                }
+                KeyCode::Enter => match row {
+                    0 => {
+                        if let Some(updated) = show_color_editor(out, &visual)? {
+                            visual = updated;
+                            return Ok(ConfigMenuSelection::UpdatedVisual(visual));
+                        }
+                        // Submenú cerrado — render completo para restaurar la pantalla
+                        render_config_menu(out, row, col, &rows)?;
+                    }
+                    1 => {
+                        if let Some(updated) = show_font_editor(out, &visual)? {
+                            visual = updated;
+                            return Ok(ConfigMenuSelection::UpdatedVisual(visual));
+                        }
+                        render_config_menu(out, row, col, &rows)?;
+                    }
+                    2 => return Ok(ConfigMenuSelection::TomlEditor),
+                    _ => {}
+                },
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    return Ok(ConfigMenuSelection::Closed);
+                }
+                _ => {}
+            }
+
+            // Render diferencial: solo actualiza las filas que cambiaron
+            if row != prev_row {
+                update_config_row(out, prev_row, &rows[prev_row], false, col)?;
+                update_config_row(out, row, &rows[row], true, col)?;
+            } else if col != prev_col {
+                update_config_row(out, row, &rows[row], true, col)?;
+            }
         }
     }
 }
@@ -227,34 +220,31 @@ fn show_font_editor(
     render_font_editor(out, selected)?;
 
     loop {
-        match event::read()? {
-            Event::Key(key) => {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
-
-                match key.code {
-                    KeyCode::Up => {
-                        if selected > 0 {
-                            selected -= 1;
-                            render_font_editor(out, selected)?;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if selected + 1 < FONT_OPTIONS.len() {
-                            selected += 1;
-                            render_font_editor(out, selected)?;
-                        }
-                    }
-                    KeyCode::Enter => {
-                        visual.font_family = FONT_OPTIONS[selected].to_owned();
-                        return Ok(Some(visual));
-                    }
-                    KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
-                    _ => {}
-                }
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                continue;
             }
-            _ => {}
+
+            match key.code {
+                KeyCode::Up => {
+                    if selected > 0 {
+                        selected -= 1;
+                        render_font_editor(out, selected)?;
+                    }
+                }
+                KeyCode::Down => {
+                    if selected + 1 < FONT_OPTIONS.len() {
+                        selected += 1;
+                        render_font_editor(out, selected)?;
+                    }
+                }
+                KeyCode::Enter => {
+                    visual.font_family = FONT_OPTIONS[selected].to_owned();
+                    return Ok(Some(visual));
+                }
+                KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
+                _ => {}
+            }
         }
     }
 }
@@ -269,49 +259,46 @@ fn show_color_editor(
     render_color_editor(out, &visual, row)?;
 
     loop {
-        match event::read()? {
-            Event::Key(key) => {
-                if key.kind == KeyEventKind::Release {
-                    continue;
-                }
-
-                match key.code {
-                    KeyCode::Up => {
-                        if row > 0 {
-                            row -= 1;
-                            render_color_editor(out, &visual, row)?;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if row + 1 < COLOR_FIELDS.len() {
-                            row += 1;
-                            render_color_editor(out, &visual, row)?;
-                        }
-                    }
-                    KeyCode::Left => {
-                        let current_code = color_field_value(&visual, row);
-                        let current_idx = preset_index(current_code);
-                        let next_idx = current_idx.saturating_sub(1);
-                        set_color_field(&mut visual, row, COLOR_PRESETS[next_idx].code);
-                        render_color_editor(out, &visual, row)?;
-                    }
-                    KeyCode::Right => {
-                        let current_code = color_field_value(&visual, row);
-                        let current_idx = preset_index(current_code);
-                        let next_idx = if current_idx + 1 < COLOR_PRESETS.len() {
-                            current_idx + 1
-                        } else {
-                            current_idx
-                        };
-                        set_color_field(&mut visual, row, COLOR_PRESETS[next_idx].code);
-                        render_color_editor(out, &visual, row)?;
-                    }
-                    KeyCode::Enter => return Ok(Some(visual)),
-                    KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
-                    _ => {}
-                }
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                continue;
             }
-            _ => {}
+
+            match key.code {
+                KeyCode::Up => {
+                    if row > 0 {
+                        row -= 1;
+                        render_color_editor(out, &visual, row)?;
+                    }
+                }
+                KeyCode::Down => {
+                    if row + 1 < COLOR_FIELDS.len() {
+                        row += 1;
+                        render_color_editor(out, &visual, row)?;
+                    }
+                }
+                KeyCode::Left => {
+                    let current_code = color_field_value(&visual, row);
+                    let current_idx = preset_index(current_code);
+                    let next_idx = current_idx.saturating_sub(1);
+                    set_color_field(&mut visual, row, COLOR_PRESETS[next_idx].code);
+                    render_color_editor(out, &visual, row)?;
+                }
+                KeyCode::Right => {
+                    let current_code = color_field_value(&visual, row);
+                    let current_idx = preset_index(current_code);
+                    let next_idx = if current_idx + 1 < COLOR_PRESETS.len() {
+                        current_idx + 1
+                    } else {
+                        current_idx
+                    };
+                    set_color_field(&mut visual, row, COLOR_PRESETS[next_idx].code);
+                    render_color_editor(out, &visual, row)?;
+                }
+                KeyCode::Enter => return Ok(Some(visual)),
+                KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
+                _ => {}
+            }
         }
     }
 }

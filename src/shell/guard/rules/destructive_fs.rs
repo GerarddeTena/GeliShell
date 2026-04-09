@@ -48,6 +48,12 @@ impl RmGuard {
     }
 }
 
+impl Default for RmGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Guard for RmGuard {
     fn check_command(&self, cmd: &Command) -> Result<(), GuardError> {
         if cmd.name != "rm" {
@@ -57,12 +63,12 @@ impl Guard for RmGuard {
         let args = token_args(&cmd.args);
 
         // Bloquea si: recursivo + forzado + target es raíz
-        if Self::has_recursive(&args) && Self::has_force(&args) {
-            if let Some(target) = Self::targets_root(&args) {
-                return Err(GuardError::DestructiveFs {
-                    reason: t!("guard.destructive_fs.rm_root_blocked", target = target),
-                });
-            }
+        if Self::has_recursive(&args) && Self::has_force(&args)
+            && let Some(target) = Self::targets_root(&args)
+        {
+            return Err(GuardError::DestructiveFs {
+                reason: t!("guard.destructive_fs.rm_root_blocked", target = target),
+            });
         }
         Ok(())
     }
@@ -80,6 +86,12 @@ impl ChmodChownGuard {
     }
 
     const PROTECTED_PATHS: &'static [&'static str] = &["/", "/usr", "/usr/*", "/etc", "/etc/*"];
+}
+
+impl Default for ChmodChownGuard {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Guard for ChmodChownGuard {

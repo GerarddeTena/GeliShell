@@ -1,7 +1,6 @@
 /// Contrato de presentación de mensajes del sistema.
 /// Cualquier módulo que necesite emitir output implementa
 /// este trait en vez de llamar a eprintln! directamente.
-
 pub trait Reporter: Send + Sync {
     fn warn(&self, message: &str);
     fn error(&self, message: &str);

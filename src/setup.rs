@@ -94,7 +94,7 @@ pub async fn init_command_map_or_exit(reporter: &dyn Reporter) -> Arc<CommandMap
 
 pub fn resolve_subsystem(config: &ShellConfig, reporter: &dyn Reporter) -> Subsystem {
     if config.has_subsystem_override() {
-        Subsystem::from_str(&config.subsystem.override_subsystem)
+        Subsystem::from_name(&config.subsystem.override_subsystem)
             .unwrap_or_else(|| Subsystem::detect(reporter))
     } else {
         Subsystem::detect(reporter)
@@ -131,10 +131,10 @@ async fn load_command_map_for_startup() -> Result<(translator::LoadResult, Strin
 fn command_map_runtime_candidates() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
-    if let Ok(raw_path) = std::env::var("GELI_COMMANDS_PATH") {
-        if !raw_path.trim().is_empty() {
-            candidates.push(PathBuf::from(raw_path.trim()));
-        }
+    if let Ok(raw_path) = std::env::var("GELI_COMMANDS_PATH")
+        && !raw_path.trim().is_empty()
+    {
+        candidates.push(PathBuf::from(raw_path.trim()));
     }
 
     candidates.push(ShellConfig::geli_config_dir().join("commands.toml"));
@@ -143,12 +143,12 @@ fn command_map_runtime_candidates() -> Vec<PathBuf> {
         append_command_map_patterns(&cwd, &mut candidates);
     }
 
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            append_command_map_patterns(exe_dir, &mut candidates);
-            if let Some(parent) = exe_dir.parent() {
-                append_command_map_patterns(parent, &mut candidates);
-            }
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(exe_dir) = exe_path.parent()
+    {
+        append_command_map_patterns(exe_dir, &mut candidates);
+        if let Some(parent) = exe_dir.parent() {
+            append_command_map_patterns(parent, &mut candidates);
         }
     }
 

@@ -553,6 +553,7 @@ git push origin v0.1.0
 | `pnpm` y `node` ausentes de `AVAILABLE` | src/shell/commands/ecosystems/registry.rs:14–22 | Ambos ecosistemas se cargaban en `load()` pero no aparecían en `AVAILABLE`. `available()` no los listaba → nunca se mostraban como opciones válidas en mensajes de ayuda/error. Añadidos `"node"` y `"pnpm"` a la constante en orden alfabético. |
 | `build_docs_db.rs` compilado por autodiscovery de Cargo | `src/bin/build_docs_db.rs`, `Cargo.toml` | `autobins = false` ya en `[package]`; `[[bin]]` explícito con `required-features = ["dev-tools"]`. Resuelto antes de ser registrado como tech debt. |
 | `fetch_expected_hash` devuelve `Option<String>` — best-effort indiscriminado | `src/shell/config/bootstrap.rs` | Sustituido por `lookup_checksum() -> HashLookup`. `Found(hash)` → verificación fatal. `Absent` (404/red) → silencioso. `Unlisted` (checksums.txt existe, asset ausente) → `reporter.warn`. Locale key `bootstrap.sha256_not_listed` añadida a en/es. |
+| 53 errores de `cargo clippy -D warnings` en 24 archivos | múltiples | Resueltos en su totalidad: `new_without_default`, `derivable_impls`, `collapsible_if`, `single_match`, `implicit_saturating_sub`, `needless_borrow`, `trim_split_whitespace`, `too_many_arguments` (×3), `only_used_in_recursion`, `cloned_ref_to_slice_refs`, `doc_overindented_list_items`, `should_implement_trait` (rename `from_str`→`from_name`), `double_must_use`, `field_reassign_with_default`. `cargo clippy --all-targets --all-features -- -D warnings` pasa limpio. |
 
 ## 🔴 Active Technical Debt
 

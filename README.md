@@ -1,6 +1,6 @@
 # GeliShell
 ![Rust](https://img.shields.io/badge/rust-edition%202024-orange.svg)
-![License](https://img.shields.io/badge/license-NC-red.svg)
+![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
 Shell interactiva cross-platform escrita en Rust. Dos binarios, instalación en un paso.

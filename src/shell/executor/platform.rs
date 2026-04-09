@@ -1,6 +1,7 @@
 use crate::shell::translator::subsystem::Subsystem;
-use std::sync::OnceLock;
 use tokio::process::Command;
+#[cfg(target_os = "windows")]
+use std::sync::OnceLock;
 
 /// Resuelve el ejecutable correcto de PowerShell escaneando PATH.
 ///

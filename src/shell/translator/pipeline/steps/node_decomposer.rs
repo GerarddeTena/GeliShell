@@ -16,6 +16,7 @@ impl NodeDecomposer {
 
     /// Descompone recursivamente un ASTNode en Vec<CommandFragment>
     /// Esta es la única función del sistema que hace match sobre ASTNode
+    #[allow(clippy::only_used_in_recursion)]
     fn decompose(&self, node: &ASTNode, out: &mut Vec<CommandFragment>, reporter: &dyn Reporter) {
         match node {
             ASTNode::Command(cmd) => {
@@ -36,10 +37,10 @@ impl NodeDecomposer {
                 for (i, n) in nodes.iter().enumerate() {
                     self.decompose(n, out, reporter);
                     // Todos los fragments de este nodo excepto el último llevan Pipe
-                    if i < last_idx {
-                        if let Some(last) = out.last_mut() {
-                            last.operator = Some(FragmentOperator::Pipe);
-                        }
+                    if i < last_idx
+                        && let Some(last) = out.last_mut()
+                    {
+                        last.operator = Some(FragmentOperator::Pipe);
                     }
                 }
             }

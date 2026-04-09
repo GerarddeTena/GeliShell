@@ -150,18 +150,18 @@ impl QwenRuntime {
             path: normalized_path.clone(),
         });
 
-        if let Ok(metadata) = tokio::fs::metadata(&final_path).await {
-            if metadata.len() > 0 {
-                let _ = progress.send(BootstrapEvent::ExistingModelFound {
-                    path: normalized_path,
-                    size_bytes: metadata.len(),
-                });
-                return Ok(ModelArtifact {
-                    variant,
-                    path: final_path,
-                    size_bytes: metadata.len(),
-                });
-            }
+        if let Ok(metadata) = tokio::fs::metadata(&final_path).await
+            && metadata.len() > 0
+        {
+            let _ = progress.send(BootstrapEvent::ExistingModelFound {
+                path: normalized_path,
+                size_bytes: metadata.len(),
+            });
+            return Ok(ModelArtifact {
+                variant,
+                path: final_path,
+                size_bytes: metadata.len(),
+            });
         }
 
         tokio::fs::create_dir_all(&self.models_dir).await?;
@@ -345,7 +345,7 @@ fn extract_how_to_subsystem(prompt: &str) -> Option<String> {
         };
         let tail = &prompt[marker_idx + marker.len()..];
         let subsystem = tail
-            .split(|ch| ch == ',' || ch == '\n')
+            .split([',', '\n'])
             .next()?
             .trim()
             .trim_end_matches('.');
@@ -527,7 +527,7 @@ fn line_matches_subsystem(line_label: Option<&str>, targets: &[&str]) -> bool {
     let Some(line_label) = line_label else {
         return false;
     };
-    targets.iter().any(|target| *target == line_label)
+    targets.contains(&line_label)
 }
 
 fn fallback_context_line(rag_context: &str) -> Option<String> {

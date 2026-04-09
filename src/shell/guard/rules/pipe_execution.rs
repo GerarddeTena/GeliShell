@@ -31,6 +31,12 @@ impl PipeExecutionGuard {
     }
 }
 
+impl Default for PipeExecutionGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Guard for PipeExecutionGuard {
     // Sobreescribe check_node para analizar pipelines completos
     fn check_node(&self, node: &ASTNode) -> Result<(), GuardError> {
