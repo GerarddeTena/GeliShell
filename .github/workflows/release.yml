@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"     # v0.1.0, v1.2.3
+      - "v[0-9]+.[0-9]+.[0-9]+-*"   # v0.1.0-beta.1, v0.2.0-rc.1
+
+permissions:
+  contents: write   # required to create releases and upload assets
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # never cancel an in-flight release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build matrix — compiles geli + gerisabet for each platform
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  build:
+    name: Build (${{ matrix.asset_name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+            asset_name: geli-windows-x86_64
+
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            asset_name: geli-linux-x86_64
+
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            asset_name: geli-linux-aarch64
+            use_cross: true
+
+          - target: x86_64-apple-darwin
+            os: macos-13       # Intel runner
+            archive: tar.gz
+            asset_name: geli-macos-x86_64
+
+          - target: aarch64-apple-darwin
+            os: macos-latest   # Apple Silicon runner
+            archive: tar.gz
+            asset_name: geli-macos-aarch64
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: release-${{ matrix.target }}
+
+      # cross-rs handles Linux aarch64 cross-compilation transparently
+      - name: Install cross
+        if: matrix.use_cross == true
+        run: cargo install cross --locked
+
+      - name: Build (native)
+        if: matrix.use_cross != true
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.use_cross == true
+        run: cross build --release --locked --target ${{ matrix.target }}
+
+      # ── Package: Windows ────────────────────────────────────────────────────
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $dir = "${{ matrix.asset_name }}"
+          New-Item -ItemType Directory $dir | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/geli.exe"      "$dir/"
+          Copy-Item "target/${{ matrix.target }}/release/gerisabet.exe" "$dir/"
+          Compress-Archive -Path "$dir/*" -DestinationPath "${{ matrix.asset_name }}.zip"
+
+      # ── Package: Linux / macOS ───────────────────────────────────────────────
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          dir="${{ matrix.asset_name }}"
+          mkdir "$dir"
+          cp "target/${{ matrix.target }}/release/geli"      "$dir/"
+          cp "target/${{ matrix.target }}/release/gerisabet" "$dir/"
+          tar -czf "${{ matrix.asset_name }}.tar.gz" "$dir/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4   # TODO: pin SHA
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.${{ matrix.archive }}
+          retention-days: 1
+          if-no-files-found: error
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Release — collects all artifacts, generates checksums.txt, creates release
+  # ───────────────────────────────────────────────────────────────────────────
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4   # TODO: pin SHA
+        with:
+          path: artifacts/
+          merge-multiple: true
+
+      # ── Generate checksums.txt (GNU sha256sum format) ────────────────────────
+      # bootstrap.rs expects: "<sha256hex>  <filename>" (two spaces, text mode)
+      # docs.db is uploaded manually after the release; it will show as
+      # HashLookup::Unlisted in bootstrap until the checksum is added below.
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          sha256sum geli-*.zip geli-*.tar.gz > checksums.txt
+          echo "--- checksums.txt ---"
+          cat checksums.txt
+
+      # ── Create GitHub Release ────────────────────────────────────────────────
+      # prerelease is inferred automatically: tags containing '-' (e.g. v0.1.0-beta.1)
+      # are marked as pre-releases; clean tags (v0.1.0) become stable releases.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2   # TODO: pin SHA
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "GeliShell ${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/geli-windows-x86_64.zip
+            artifacts/geli-linux-x86_64.tar.gz
+            artifacts/geli-linux-aarch64.tar.gz
+            artifacts/geli-macos-x86_64.tar.gz
+            artifacts/geli-macos-aarch64.tar.gz
+            artifacts/checksums.txt

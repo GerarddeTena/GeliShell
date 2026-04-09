@@ -16,7 +16,9 @@ const AVAILABLE: &[&str] = &[
     "docker",
     "dotnet",
     "git",
+    "node",
     "npm",
+    "pnpm",
     "python",
     "typescript",
 ];

@@ -19,6 +19,7 @@ failed = "error al inicializar el layout: {error}"
 downloading_sqlite_vec = "descargando sqlite-vec ({pattern})..."
 downloading_docs_db = "descargando docs.db desde la release de GeliShell..."
 sha256_verified = "SHA-256 verificado"
+sha256_not_listed = "{name} no aparece en checksums.txt — integridad no verificada"
 installed = "{name} instalado (release {tag})"
 download_failed = "descarga de {name} falló: {error}"
 

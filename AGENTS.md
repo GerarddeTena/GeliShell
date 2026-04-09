@@ -219,7 +219,7 @@ src/shell/
   │       └── registry.rs               EcosystemRegistry (9 embedded TOML catalogs)
   ├── config/
   │   ├── mod.rs                        ShellConfig + sub-structs, SelectorMode, ConfigError
-  │   ├── bootstrap.rs                  ensure_runtime_layout(), migration, seeding
+  │   ├── bootstrap.rs                  ensure_runtime_layout(), migration, seeding, HTTP downloads con HashLookup (Found/Absent/Unlisted)
   │   ├── first_run.rs                  run_first_run_wizard() (TUI wizard — tech debt: EN only)
   │   └── history_store.rs              PersistentCommandHistory
   ├── executor/
@@ -303,7 +303,7 @@ commands/ecosystems/
   ├── git.toml                  Git operations
   ├── node.toml                 Node.js operations
   ├── npm.toml                  npm operations
-  ├── pnpm.toml                 pnpm operations  (⚠ see tech debt: not in AVAILABLE)
+  ├── pnpm.toml                 pnpm operations
   ├── python.toml               Python operations
   └── typescript.toml           TypeScript operations
 locales/en.toml                 English strings (fallback)
@@ -499,6 +499,31 @@ Currently a stub. Unblocked when TriggerEngine is ready.
 cargo-dist → GitHub releases
 Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 
+### Estado actual (bootstrap + release pipeline — ✅ operativo)
+
+El sistema de distribución manual está completo para v0.1.0:
+
+**Workflow CI:** `.github/workflows/release.yml` — dispara en `push: tags: v*.*.*`
+- Matriz 5 plataformas: Windows x64, Linux x64, Linux arm64 (cross-rs), macOS Intel, macOS AS
+- Genera `checksums.txt` (SHA-256, formato GNU) en el job `release` (ubuntu-latest)
+- Crea GitHub Release con binarios + `checksums.txt` via `softprops/action-gh-release`
+- `docs.db` se sube manualmente post-release (ver `releases-plan.md` sección 6)
+
+**Bootstrap (`bootstrap.rs`):** usa `HashLookup` para descargas verificadas:
+```
+HashLookup::Found(hash)  → SHA-256 fatal en mismatch (no instala)
+HashLookup::Absent       → checksums.txt no disponible (404/red) → silencioso
+HashLookup::Unlisted     → checksums.txt existe pero asset no listado → reporter.warn
+```
+
+**Para crear una release:**
+```powershell
+git tag -a v0.1.0 -m "feat: first public release"
+git push origin v0.1.0
+# CI compila y crea la release automáticamente
+# Después, subir docs.db manualmente (ver releases-plan.md §6)
+```
+
 ---
 
 # Known Technical Debt
@@ -525,6 +550,9 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 | `geli lang set` (sin argumento) silenciado | src/handlers/geli_internal.rs:43 | Añadida variante `SetLangMissingArg` al enum. El arm ahora retorna `Some(SetLangMissingArg)` y el handler emite `reporter.warn(&t!("geli.lang_set_missing_arg"))`. Locale keys añadidos a `en.toml` / `es.toml`. |
 | Variable `before` muerta en `node_decomposer.rs` | src/shell/translator/pipeline/steps/node_decomposer.rs:37+46 | Eliminadas las líneas `let before = out.len()` y `let _ = before` — la variable no cumplía ningún propósito. |
 | Ruta de desarrollo hardcodeada en TomlEditor | src/handlers/menu.rs:32–38 | Sustituida `std::env::current_dir().join("src/commands/commands.toml")` por `ShellConfig::geli_config_dir().join("commands.toml")` — apunta a la ruta de usuario en producción. |
+| `pnpm` y `node` ausentes de `AVAILABLE` | src/shell/commands/ecosystems/registry.rs:14–22 | Ambos ecosistemas se cargaban en `load()` pero no aparecían en `AVAILABLE`. `available()` no los listaba → nunca se mostraban como opciones válidas en mensajes de ayuda/error. Añadidos `"node"` y `"pnpm"` a la constante en orden alfabético. |
+| `build_docs_db.rs` compilado por autodiscovery de Cargo | `src/bin/build_docs_db.rs`, `Cargo.toml` | `autobins = false` ya en `[package]`; `[[bin]]` explícito con `required-features = ["dev-tools"]`. Resuelto antes de ser registrado como tech debt. |
+| `fetch_expected_hash` devuelve `Option<String>` — best-effort indiscriminado | `src/shell/config/bootstrap.rs` | Sustituido por `lookup_checksum() -> HashLookup`. `Found(hash)` → verificación fatal. `Absent` (404/red) → silencioso. `Unlisted` (checksums.txt existe, asset ausente) → `reporter.warn`. Locale key `bootstrap.sha256_not_listed` añadida a en/es. |
 
 ## 🔴 Active Technical Debt
 
@@ -532,9 +560,7 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 
 | Priority | Issue | Location | Proposed Fix |
 |---|---|---|---|
-| 🔴 HIGH | `pnpm` se carga en `EcosystemRegistry::load()` (línea 51) pero **NO aparece en la constante `AVAILABLE`** (líneas 14–22). `EcosystemRegistry::available()` no lista pnpm → CLI nunca lo muestra como opción válida en mensajes de ayuda y error, aunque `geli --show --commands pnpm` funciona. | `src/shell/commands/ecosystems/registry.rs:14-22 vs 51` | Añadir `"pnpm"` a la constante `AVAILABLE` |
 | 🟡 MEDIUM | `ValidationWarning` usa `#[derive(Debug, Deserialize)]` + `impl Display` manual. Viola Prime Directive #7 (thiserror en todo error enum). | `src/shell/translator/commands_map.rs:17-48` | Cambiar a `#[derive(Debug, thiserror::Error)]`, eliminar `Deserialize` del enum y el `Display` manual |
-| 🟡 MEDIUM | `build_docs_db.rs` compilado silenciosamente por autodiscovery de Cargo (`autobins = true`). No está previsto para distribución; infla el tiempo de build; `cargo install` lo instalaría. | `src/bin/build_docs_db.rs`, `Cargo.toml` | Añadir `autobins = false` a `[package]` y un `[[bin]]` explícito gateado con `--features dev-tools`, o moverlo a un workspace crate separado. |
 | 🟡 MEDIUM | `println!` / `eprintln!` en `spawn_stdout_task` / `spawn_stderr_task` violan Prime Directive #2 (todo output por Reporter). Las tareas `tokio::spawn` no tienen acceso al reporter. | `src/shell/executor/mod.rs:211,229` | Refactorizar `Reporter` como `Arc<dyn Reporter + Send + Sync + 'static>` para poder clonarlo en los spawns. Bloqueado por el trait signature actual. |
 | 🟡 MEDIUM | Múltiples mensajes de detección de subsistema hardcodeados en inglés, no pasan por `t!()`. | `src/shell/translator/subsystem.rs:24–55` | Añadir sección `[subsystem]` a los locales y envolver con `t!()`. |
 | 🟡 MEDIUM | Mensajes de error en `append_history_or_warn` / `apply_visual_settings` hardcodeados en inglés. | `src/utils.rs:148,158–165` | Añadir claves `[utils]` a los locales y envolver con `t!()`. |

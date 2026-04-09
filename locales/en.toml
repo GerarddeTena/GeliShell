@@ -19,6 +19,7 @@ failed = "bootstrap layout failed: {error}"
 downloading_sqlite_vec = "downloading sqlite-vec ({pattern})..."
 downloading_docs_db = "downloading docs.db from GeliShell release..."
 sha256_verified = "SHA-256 verified"
+sha256_not_listed = "{name} not listed in checksums.txt — integrity unverified"
 installed = "{name} installed (release {tag})"
 download_failed = "{name} download failed: {error}"
 

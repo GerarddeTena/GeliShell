@@ -56,7 +56,11 @@ pub async fn ensure_runtime_layout(
             }
             Ok(false) => {}
             Err(error) => {
-                reporter.warn(&t!("bootstrap.download_failed", name = "docs.db", error = error));
+                reporter.warn(&t!(
+                    "bootstrap.download_failed",
+                    name = "docs.db",
+                    error = error
+                ));
             }
         }
     }
@@ -76,10 +80,9 @@ pub async fn ensure_runtime_layout(
     } else if !file_exists(&sqlite_vec_target).await {
         match download_sqlite_vec_if_absent(&sqlite_vec_target, reporter).await {
             Ok(true) => {
-                report.seeded_model_files.push(format!(
-                    "{} <= GitHub release",
-                    sqlite_vec_target.display()
-                ));
+                report
+                    .seeded_model_files
+                    .push(format!("{} <= GitHub release", sqlite_vec_target.display()));
             }
             Ok(false) => {}
             Err(error) => {
@@ -118,7 +121,10 @@ async fn download_sqlite_vec_if_absent(
     reporter: &dyn Reporter,
 ) -> Result<bool, DownloadError> {
     let asset_pattern = sqlite_vec_asset_pattern();
-    reporter.info(&t!("bootstrap.downloading_sqlite_vec", pattern = asset_pattern));
+    reporter.info(&t!(
+        "bootstrap.downloading_sqlite_vec",
+        pattern = asset_pattern
+    ));
 
     let http = build_http_client()?;
     let release: GithubRelease = fetch_github_release(&http, SQLITE_VEC_RELEASE_API).await?;
@@ -134,16 +140,24 @@ async fn download_sqlite_vec_if_absent(
         })?;
 
     // Fetch checksums.txt for SHA-256 verification
-    let checksums_url = format!(
-        "https://github.com/asg017/sqlite-vec/releases/download/{tag}/checksums.txt"
-    );
-    let expected_hash = fetch_expected_hash(&http, &checksums_url, &asset.name).await;
+    let checksums_url =
+        format!("https://github.com/asg017/sqlite-vec/releases/download/{tag}/checksums.txt");
+    let hash_lookup = lookup_checksum(&http, &checksums_url, &asset.name).await;
 
     let archive_bytes = download_asset(&http, &asset.browser_download_url).await?;
 
-    if let Some(ref hash) = expected_hash {
-        verify_sha256(&archive_bytes, hash)?;
-        reporter.info(&t!("bootstrap.sha256_verified"));
+    match &hash_lookup {
+        HashLookup::Found(hash) => {
+            verify_sha256(&archive_bytes, hash)?;
+            reporter.info(&t!("bootstrap.sha256_verified"));
+        }
+        HashLookup::Unlisted => {
+            reporter.warn(&t!(
+                "bootstrap.sha256_not_listed",
+                name = default_sqlite_vec_filename()
+            ));
+        }
+        HashLookup::Absent => {}
     }
 
     let extracted = extract_file_from_tar_gz(&archive_bytes, default_sqlite_vec_filename())?;
@@ -178,16 +192,21 @@ async fn download_docs_db_if_absent(
         })?;
 
     // Fetch checksums.txt for SHA-256 verification
-    let checksums_url = format!(
-        "https://github.com/GerarddeTena/GeliShell/releases/download/{tag}/checksums.txt"
-    );
-    let expected_hash = fetch_expected_hash(&http, &checksums_url, &asset.name).await;
+    let checksums_url =
+        format!("https://github.com/GerarddeTena/GeliShell/releases/download/{tag}/checksums.txt");
+    let hash_lookup = lookup_checksum(&http, &checksums_url, &asset.name).await;
 
     let file_bytes = download_asset(&http, &asset.browser_download_url).await?;
 
-    if let Some(ref hash) = expected_hash {
-        verify_sha256(&file_bytes, hash)?;
-        reporter.info(&t!("bootstrap.sha256_verified"));
+    match &hash_lookup {
+        HashLookup::Found(hash) => {
+            verify_sha256(&file_bytes, hash)?;
+            reporter.info(&t!("bootstrap.sha256_verified"));
+        }
+        HashLookup::Unlisted => {
+            reporter.warn(&t!("bootstrap.sha256_not_listed", name = "docs.db"));
+        }
+        HashLookup::Absent => {}
     }
 
     write_with_parent_dirs(target, &file_bytes).await?;
@@ -260,10 +279,7 @@ async fn fetch_github_release(
     Ok(response.json().await?)
 }
 
-async fn download_asset(
-    http: &reqwest::Client,
-    url: &str,
-) -> Result<Vec<u8>, DownloadError> {
+async fn download_asset(http: &reqwest::Client, url: &str) -> Result<Vec<u8>, DownloadError> {
     let response = http.get(url).send().await?;
     if !response.status().is_success() {
         return Err(DownloadError::HttpStatus {
@@ -274,25 +290,60 @@ async fn download_asset(
     Ok(response.bytes().await?.to_vec())
 }
 
-/// Fetches checksums.txt and extracts the SHA-256 hash for the given asset name.
-/// Returns None on any failure (non-fatal — verification is best-effort).
-async fn fetch_expected_hash(
+/// Result of looking up an asset hash in a `checksums.txt` file.
+///
+/// - `Found(hash)` — hash present; SHA-256 verification is mandatory.
+/// - `Absent`      — `checksums.txt` unreachable (404 / network error); skip silently
+///                   for backward compatibility with releases that predate checksums.
+/// - `Unlisted`    — `checksums.txt` was fetched successfully but the asset is not
+///                   listed; caller should warn the user and proceed without verification.
+enum HashLookup {
+    Found(String),
+    Absent,
+    Unlisted,
+}
+
+/// Fetches `checksums.txt` and looks up the SHA-256 hash for `asset_name`.
+///
+/// Matches the GNU `sha256sum` format: `<hash>  <filename>` (two spaces) or
+/// `<hash> *<filename>` (binary mode). Matching is exact on the filename token.
+async fn lookup_checksum(
     http: &reqwest::Client,
     checksums_url: &str,
     asset_name: &str,
-) -> Option<String> {
-    let response = http.get(checksums_url).send().await.ok()?;
+) -> HashLookup {
+    let response = match http.get(checksums_url).send().await {
+        Ok(r) => r,
+        Err(_) => return HashLookup::Absent,
+    };
+
+    // 404 = release predates checksums.txt; anything else non-2xx = infra issue.
+    // Both cases are treated as Absent to avoid blocking the bootstrap.
     if !response.status().is_success() {
-        return None;
+        return HashLookup::Absent;
     }
-    let text = response.text().await.ok()?;
+
+    let text = match response.text().await {
+        Ok(t) => t,
+        Err(_) => return HashLookup::Absent,
+    };
+
     for line in text.lines() {
-        if line.contains(asset_name) {
-            // Format: "<hash>  <filename>" or "<hash> <filename>"
-            return line.split_whitespace().next().map(|s| s.to_owned());
+        // Text mode: "<hash>  <filename>"
+        if let Some((hash_part, name_part)) = line.split_once("  ") {
+            if name_part.trim() == asset_name {
+                return HashLookup::Found(hash_part.trim().to_owned());
+            }
+        }
+        // Binary mode: "<hash> *<filename>"
+        if let Some((hash_part, name_part)) = line.split_once(" *") {
+            if name_part.trim() == asset_name {
+                return HashLookup::Found(hash_part.trim().to_owned());
+            }
         }
     }
-    None
+
+    HashLookup::Unlisted
 }
 
 fn verify_sha256(data: &[u8], expected_hex: &str) -> Result<(), DownloadError> {
@@ -320,15 +371,16 @@ fn extract_file_from_tar_gz(
     let gz = flate2::read::GzDecoder::new(archive_bytes);
     let mut tar = tar::Archive::new(gz);
 
-    for entry_result in tar.entries().map_err(|e| DownloadError::Extraction(e.to_string()))? {
+    for entry_result in tar
+        .entries()
+        .map_err(|e| DownloadError::Extraction(e.to_string()))?
+    {
         let mut entry = entry_result.map_err(|e| DownloadError::Extraction(e.to_string()))?;
         let path = entry
             .path()
             .map_err(|e| DownloadError::Extraction(e.to_string()))?;
 
-        let matches = path
-            .file_name()
-            .is_some_and(|name| name == target_filename);
+        let matches = path.file_name().is_some_and(|name| name == target_filename);
 
         if matches {
             let mut buf = Vec::new();
