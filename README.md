@@ -1,8 +1,9 @@
 # GeliShell
 ![Rust](https://img.shields.io/badge/rust-edition%202024-orange.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-NC-red.svg)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
-Shell interactiva cross-platform escrita en Rust. Dos binarios, un solo instalador.
+Shell interactiva cross-platform escrita en Rust. Dos binarios, instalación en un paso.
 
 | Binario | Función |
 |---------|---------|
@@ -22,71 +23,52 @@ GeliShell traduce comandos canónicos (`list`, `copy`, `find`…) al subsistema 
 - Asistente local con recuperación RAG sobre `docs.db`, catálogo interactivo `--show-me` y consultas `--how-to`.
 
 ## ¿Por qué GeliShell? (Filosofía)
+
 A diferencia de las shells tradicionales que te obligan a aprender una sintaxis nueva o limitan tu entorno, GeliShell actúa como un **metacompilador interactivo de comandos**.
+
 - **Escribe una vez, ejecuta en cualquier parte:** Aprende los comandos canónicos de GeliShell y úsalos indistintamente en Windows, Linux o macOS. La shell se encarga de traducirlos al subsistema subyacente.
 - **Seguridad por diseño:** El guardrail semántico evita desastres (borrado recursivo accidental, fork bombs, pipe-executions de red) interceptando el AST antes de que el OS lo vea.
 - **IA integrada y determinista:** No es un wrapper de ChatGPT. Es un sistema RAG local, confinado a tu documentación técnica, diseñado para ser útil sin ser impredecible.
 
-## Instalación (scripts oficiales)
+---
 
-Esta guía usa como fuente de verdad `install.ps1`, `install.sh` e `install.bat`. Los tres instaladores instalan **ambos binarios** (`geli` + `gerisabet`) en un solo paso.
+## Instalación
 
-### Requisitos mínimos
+### Opción A — Descargar binario precompilado (recomendado)
 
-- Rust instalado (el instalador **no** instala Rust).
-- Compilar los binarios release desde la raíz del proyecto:
+Descarga el paquete para tu plataforma desde la [página de Releases](https://github.com/GerarddeTena/GeliShell/releases/latest):
 
-```powershell
+| Plataforma | Archivo |
+|---|---|
+| Windows x64 | `geli-windows-x86_64.zip` |
+| Linux x64 | `geli-linux-x86_64.tar.gz` |
+| Linux ARM64 | `geli-linux-aarch64.tar.gz` |
+| macOS Intel | `geli-macos-x86_64.tar.gz` |
+| macOS Apple Silicon | `geli-macos-aarch64.tar.gz` |
+
+Extrae el archivo y mueve `geli` (o `geli.exe`) a cualquier carpeta en tu `PATH`. Al ejecutar por primera vez, GeliShell descarga automáticamente sus dependencias opcionales (ver [Bootstrap automático](#bootstrap-automático)).
+
+### Opción B — Desde el código fuente (clone local)
+
+Para usuarios que prefieren compilar desde el repositorio:
+
+```bash
+git clone https://github.com/GerarddeTena/GeliShell.git
+cd GeliShell
 cargo build --release
 ```
 
-### Qué instala el setup
+Luego usa el script de instalación correspondiente:
 
-- **Core obligatorio:**
-  - `geli` + `gerisabet` (o `.exe` en Windows) en la carpeta de binarios de usuario.
-  - Ajuste de `PATH` de usuario para ejecutar ambos globalmente.
-- **Assistant/RAG opcional:**
-  - Verificación de `sqlite3` (intenta instalarlo si aceptas).
-  - Descarga de `sqlite-vec` (`vec0.dll` / `vec0.so` / `vec0.dylib`) desde GitHub Releases.
-  - Verificación de `ollama`.
-  - Generación de `docs.db` con `cargo run --bin build_docs_db` (si no usas `--skip-docs` / `-SkipDocs`).
-
-### Windows (PowerShell)
-
-`install.ps1` acepta:
-
-- `-Force`: sobrescribe archivos existentes.
-- `-SkipDocs`: omite la generación de `docs.db`.
-- `-BinDir "C:\\ruta\\bin"`: carpeta personalizada para los binarios.
-
+**Windows (PowerShell):**
 ```powershell
 .\install.ps1
-.\install.ps1 -Force
-.\install.ps1 -SkipDocs
-.\install.ps1 -BinDir "C:\bin"
+.\install.ps1 -Force              # sobrescribe archivos existentes
+.\install.ps1 -SkipDocs           # omite la siembra de docs.db local
+.\install.ps1 -BinDir "C:\bin"   # carpeta personalizada
 ```
 
-### Windows (CMD)
-
-`install.bat` es un wrapper de `install.ps1`:
-
-- Llama a `powershell.exe -ExecutionPolicy Bypass` **solo para ese proceso**.
-- Reenvía todos los argumentos con `%*`.
-
-```bat
-install.bat
-install.bat -Force -SkipDocs
-install.bat -BinDir "C:\bin"
-```
-
-### Linux/macOS (Bash)
-
-`install.sh` acepta:
-
-- `--force` o `-f`: sobrescribe archivos existentes.
-- `--skip-docs`: omite la generación de `docs.db`.
-- `--bin-dir <ruta>` o `--bin-dir=<ruta>`: carpeta personalizada para los binarios.
-
+**Linux / macOS:**
 ```bash
 ./install.sh
 ./install.sh --force
@@ -94,22 +76,40 @@ install.bat -BinDir "C:\bin"
 ./install.sh --bin-dir "$HOME/.local/bin"
 ```
 
-### Rutas por defecto
+> Los scripts solo copian los binarios compilados e inyectan `PATH`. No descargan `sqlite-vec` ni comprueban `sqlite3` — eso lo gestiona el propio binario al arrancar (ver [Bootstrap automático](#bootstrap-automático)).
 
-| Artefacto | Windows | Linux/macOS |
-|-----------|---------|-------------|
+### Rutas de instalación por defecto
+
+| Artefacto | Windows | Linux / macOS |
+|---|---|---|
 | `geli` | `%USERPROFILE%\.local\bin\geli.exe` | `~/.local/bin/geli` |
 | `gerisabet` | `%USERPROFILE%\.local\bin\gerisabet.exe` | `~/.local/bin/gerisabet` |
 | Config | `%USERPROFILE%\.config\geliShell\` | `~/.config/geliShell/` |
 | sqlite-vec | `…\models\vec0.dll` | `…/models/vec0.so` (Linux) / `vec0.dylib` (macOS) |
 | RAG DB | `…\docs\docs.db` | `…/docs/docs.db` |
 
-### Verificación final
+---
 
-1. Abre una terminal nueva (si el script modificó `PATH`).
-2. Ejecuta `geli` para la shell o `gerisabet --help` para el asistente.
+## Bootstrap automático
 
-Si faltan componentes opcionales, el core sigue funcionando; puedes completar Assistant/RAG después.
+Al ejecutar `geli` por primera vez, el bootstrap de runtime comprueba y descarga los componentes opcionales que no estén presentes:
+
+| Componente | Fuente | Impacto si falta |
+|---|---|---|
+| `sqlite-vec` (`vec0.dll` / `vec0.so` / `vec0.dylib`) | [asg017/sqlite-vec releases](https://github.com/asg017/sqlite-vec/releases/latest) | Asistente RAG no disponible |
+| `docs.db` | [GeliShell releases](https://github.com/GerarddeTena/GeliShell/releases/latest) | Asistente RAG sin base de conocimiento |
+
+**El core de GeliShell funciona al 100% sin estos componentes.** Traducción de comandos, guardrails, historial y g-jump son independientes del asistente.
+
+Las descargas son **no bloqueantes y no fatales**: si la red no está disponible, GeliShell arranca igualmente con un aviso. La verificación SHA-256 se realiza automáticamente cuando `checksums.txt` está disponible en la release.
+
+Para forzar que el bootstrap compruebe de nuevo, basta con eliminar el archivo correspondiente de `~/.config/geliShell/models/` o `~/.config/geliShell/docs/`.
+
+Variables de entorno para sobrescribir las fuentes de descarga:
+
+- `GELI_DOCS_DB_SOURCE` / `GELI_DOCS_DB_PATH` — ruta local o alternativa para `docs.db`
+- `GELI_SQLITE_VEC_SOURCE` / `GELI_SQLITE_VEC_PATH` — ruta local o alternativa para `sqlite-vec`
+
 ---
 
 ## Flujo de ejecución real
@@ -294,7 +294,8 @@ Variables de entorno utilizadas:
 > **IMPORTANTE**
 > - El retrieval RAG está integrado.
 > - La respuesta del asistente se sintetiza localmente a partir del contexto recuperado.
-> - La base RAG no se incluye en el repo; se genera con `cargo run --bin build_docs_db`.
+> - `docs.db` se distribuye como artefacto en la [página de Releases](https://github.com/GerarddeTena/GeliShell/releases/latest) y se descarga automáticamente en el primer arranque. No se incluye en el repositorio.
+> - La construcción manual de `docs.db` (para contribuir o actualizar el conocimiento) requiere Ollama y se ejecuta con `cargo run --bin build_docs_db --features dev-tools`.
 ---
 
 ## Configuración y rutas de runtime
@@ -373,15 +374,15 @@ g -
 g --clear
 ```
 
-### Rebuild de base RAG
+### Rebuild de base RAG (desarrollo)
 
-CLI:
+> ⚠️ Solo necesario si contribuyes al conocimiento del asistente. Requiere Ollama en ejecución y el feature `dev-tools`.
 
 ```powershell
-cargo run --bin build_docs_db -- --help
+cargo run --bin build_docs_db --features dev-tools -- --help
 ```
 
-Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db`.
+Genera/actualiza `docs.db` en `~/.config/geliShell/docs/docs.db` a partir de los Markdown en `geli-docs/`.
 
 ---
 
@@ -396,7 +397,7 @@ src/
   setup.rs
   utils.rs
   gerisabet.rs
-  bin/build_docs_db.rs
+  bin/build_docs_db.rs   ← dev-only (--features dev-tools), excluido del crate publicado
   cli/
   commands/        ← TOMLs de comandos canónicos (list, copy, git, cargo…)
   handlers/
@@ -420,9 +421,9 @@ commands/          ← TOMLs de catálogos TUI de ecosistemas (git, npm, docker�
   ecosystems/
 docs/kb/
 locales/
-install.ps1
-install.sh
-install.bat
+releases-plan.md   ← Guía para crear y gestionar GitHub Releases
+install.ps1        ← Script simplificado: copia binarios + PATH (no descarga sqlite-vec)
+install.sh         ← Ídem para Linux/macOS
 ```
 
 ---
@@ -437,7 +438,7 @@ cargo test
 cargo run
 ```
 
-El proyecto usa Rust 2024 (`edition = "2024"`) y crates como `tokio`, `crossterm`, `rusqlite`, `reqwest`, `serde`, `thiserror`.
+El proyecto usa Rust 2024 (`edition = "2024"`) y crates como `tokio`, `crossterm`, `rusqlite`, `reqwest`, `serde`, `thiserror`, `flate2`, `tar`.
 
 ---
 
