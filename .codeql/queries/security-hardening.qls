@@ -1,0 +1,2 @@
+- description: "GeliShell custom security rules — all .ql files in this directory"
+- queries: .
