@@ -43,7 +43,12 @@ impl TranslationStep for VariableExpander {
                 if arg.starts_with('$') {
                     let var_name = arg.trim_start_matches('$');
                     let expanded = subsystem.variable_syntax(var_name);
-                    reporter.info(&t!("pipeline.variable_expanded", step = self.name(), var = arg, expanded = expanded));
+                    reporter.info(&t!(
+                        "pipeline.variable_expanded",
+                        step = self.name(),
+                        var = arg,
+                        expanded = expanded
+                    ));
                     *arg = expanded;
                 }
             }

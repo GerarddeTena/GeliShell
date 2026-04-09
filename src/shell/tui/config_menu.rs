@@ -1,5 +1,5 @@
-use crate::t;
 use crate::shell::config::VisualConfig;
+use crate::t;
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEventKind},
@@ -424,7 +424,11 @@ fn render_color_editor(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
-        Print(format!("│ {:<width$}│\r\n", t!("tui.config.preview"), width = width - 3)),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            t!("tui.config.preview"),
+            width = width - 3
+        )),
         ResetColor,
     )?;
 
@@ -469,13 +473,22 @@ fn update_config_row(
     col: usize,
 ) -> io::Result<()> {
     let y = CONFIG_DATA_START_ROW + row_idx as u16;
-    execute!(out, cursor::MoveTo(0, y), terminal::Clear(ClearType::CurrentLine))?;
+    execute!(
+        out,
+        cursor::MoveTo(0, y),
+        terminal::Clear(ClearType::CurrentLine)
+    )?;
     render_data_row(out, item, selected, col)?;
     out.flush()?;
     Ok(())
 }
 
-fn render_config_menu(out: &mut impl Write, row: usize, col: usize, rows: &[ConfigRow]) -> io::Result<()> {
+fn render_config_menu(
+    out: &mut impl Write,
+    row: usize,
+    col: usize,
+    rows: &[ConfigRow],
+) -> io::Result<()> {
     execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
 
     let border = "─".repeat(COL_FEATURE + COL_ACTION + COL_DESCRIPTION + 10);
@@ -544,21 +557,39 @@ fn render_header(out: &mut impl Write) -> io::Result<()> {
         Print("│ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.config.column_feature"), COL_FEATURE, Color::Yellow, false)?;
+    render_cell(
+        out,
+        &t!("tui.config.column_feature"),
+        COL_FEATURE,
+        Color::Yellow,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.config.column_action"), COL_ACTION, Color::Magenta, false)?;
+    render_cell(
+        out,
+        &t!("tui.config.column_action"),
+        COL_ACTION,
+        Color::Magenta,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.config.column_description"), COL_DESCRIPTION, Color::Blue, false)?;
+    render_cell(
+        out,
+        &t!("tui.config.column_description"),
+        COL_DESCRIPTION,
+        Color::Blue,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),

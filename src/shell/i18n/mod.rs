@@ -86,7 +86,11 @@ fn normalize_lang_code(lang: &str) -> String {
         .next()
         .unwrap_or("en")
         .to_ascii_lowercase();
-    if is_supported(&base) { base } else { "en".to_owned() }
+    if is_supported(&base) {
+        base
+    } else {
+        "en".to_owned()
+    }
 }
 
 fn is_supported(lang: &str) -> bool {
@@ -156,7 +160,10 @@ missing_arg = "source: missing file argument"
 
     #[test]
     fn t_with_interpolates_params() {
-        let result = t_with("builtin.cd.error", &[("path", "/foo"), ("error", "not found")]);
+        let result = t_with(
+            "builtin.cd.error",
+            &[("path", "/foo"), ("error", "not found")],
+        );
         assert!(result.contains("/foo"));
         assert!(result.contains("not found"));
     }

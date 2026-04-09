@@ -50,7 +50,10 @@ impl Guard for CriticalRedirectGuard {
             // Bloquea archivos críticos del sistema
             if CRITICAL_FILES.iter().any(|&f| target == f) {
                 return Err(GuardError::CriticalRedirect {
-                    reason: t!("guard.critical_redirect.system_file_blocked", target = target),
+                    reason: t!(
+                        "guard.critical_redirect.system_file_blocked",
+                        target = target
+                    ),
                 });
             }
         }

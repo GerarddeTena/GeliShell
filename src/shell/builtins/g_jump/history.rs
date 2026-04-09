@@ -85,7 +85,11 @@ impl GHistory {
             Vec::new()
         };
 
-        Self { entries, path, dirty: false }
+        Self {
+            entries,
+            path,
+            dirty: false,
+        }
     }
 
     /// Persiste en disco — no-op si no hay cambios pendientes
@@ -125,16 +129,14 @@ impl GHistory {
             .max_by(|(a, bonus_a), (b, bonus_b)| {
                 let score_a = a.score(*bonus_a);
                 let score_b = b.score(*bonus_b);
-                score_a
-                    .partial_cmp(&score_b)
-                    .unwrap_or_else(|| {
-                        // NaN-safe fallback: treat NaN scores as negative infinity
-                        match (score_a.is_nan(), score_b.is_nan()) {
-                            (true, false) => std::cmp::Ordering::Less,
-                            (false, true) => std::cmp::Ordering::Greater,
-                            _ => std::cmp::Ordering::Equal,
-                        }
-                    })
+                score_a.partial_cmp(&score_b).unwrap_or_else(|| {
+                    // NaN-safe fallback: treat NaN scores as negative infinity
+                    match (score_a.is_nan(), score_b.is_nan()) {
+                        (true, false) => std::cmp::Ordering::Less,
+                        (false, true) => std::cmp::Ordering::Greater,
+                        _ => std::cmp::Ordering::Equal,
+                    }
+                })
             })
             .map(|(entry, _)| entry)
     }
@@ -145,13 +147,12 @@ impl GHistory {
             self.entries.iter().map(|e| (e, e.score(0.0))).collect();
 
         scored.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1).unwrap_or_else(|| {
-                match (b.1.is_nan(), a.1.is_nan()) {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or_else(|| match (b.1.is_nan(), a.1.is_nan()) {
                     (true, false) => std::cmp::Ordering::Less,
                     (false, true) => std::cmp::Ordering::Greater,
                     _ => std::cmp::Ordering::Equal,
-                }
-            })
+                })
         });
 
         scored.into_iter().take(n).collect()

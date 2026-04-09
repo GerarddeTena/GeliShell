@@ -1,10 +1,7 @@
-use crate::cli::print_cli_help;
 use crate::cli::execute_show_commands;
+use crate::cli::print_cli_help;
 use crate::handlers::menu::handle_config_menu;
-use geli_shell::shell::{
-    config::ShellConfig,
-    reporter::Reporter,
-};
+use geli_shell::shell::{config::ShellConfig, reporter::Reporter};
 use geli_shell::t;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,4 +111,3 @@ mod tests {
         assert_eq!(parsed, Some(GeliInternalCommand::SetLang("es".to_owned())));
     }
 }
-

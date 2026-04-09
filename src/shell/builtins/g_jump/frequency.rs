@@ -50,7 +50,10 @@ pub fn elapsed_display(last_visit_secs: u64) -> String {
     if elapsed < MINUTE {
         t!("builtin.g_jump.elapsed_just_now")
     } else if elapsed < HOUR {
-        t!("builtin.g_jump.elapsed_minutes_ago", minutes = elapsed / MINUTE)
+        t!(
+            "builtin.g_jump.elapsed_minutes_ago",
+            minutes = elapsed / MINUTE
+        )
     } else if elapsed < DAY {
         t!("builtin.g_jump.elapsed_hours_ago", hours = elapsed / HOUR)
     } else if elapsed < DAY * 2 {

@@ -1,21 +1,18 @@
 use crate::handlers::menu::handle_special_command;
 use crate::utils::expand_custom_command;
 use geli_shell::{
-    t,
     parser::{ast::ASTNode, lexer::Lexer, parser::Parser},
     shell::{
         builtins::{BuiltinRegistry, BuiltinResult},
-        config::{ShellConfig, SelectorMode},
+        config::{SelectorMode, ShellConfig},
         executor::{ExecutionConfig as ExecutorConfig, Executor},
         guard::Guard,
         reporter::Reporter,
-        selector::{
-            CommandSelector, SelectionResult,
-            modal::ModalSelector,
-        },
+        selector::{CommandSelector, SelectionResult, modal::ModalSelector},
         translator::TranslationPipeline,
-        tui::repl_input::{parse_special_command, SpecialCommand},
+        tui::repl_input::{SpecialCommand, parse_special_command},
     },
+    t,
 };
 use std::collections::HashSet;
 use std::time::Duration;
@@ -106,7 +103,12 @@ pub async fn process_regular_command(
             // Show the selector only the first time a given command name is run
             // per session.  On subsequent invocations the preferred translation
             // is used directly — no interactive interruption.
-            let cmd_key = input.trim().split_whitespace().next().unwrap_or(input).to_owned();
+            let cmd_key = input
+                .trim()
+                .split_whitespace()
+                .next()
+                .unwrap_or(input)
+                .to_owned();
             if let Some(res) = resolved.as_ref() {
                 if res.has_alternatives() && !seen_once.contains(&cmd_key) {
                     match ModalSelector::new().select(res) {

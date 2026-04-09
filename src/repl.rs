@@ -1,17 +1,20 @@
 use crate::handlers::command::{drain_crossterm_events, process_regular_command};
 use crate::handlers::geli_internal::{handle_geli_internal_command, parse_geli_internal_command};
-use crate::handlers::menu::{handle_config_menu, handle_help_menu, handle_special_command, is_config_trigger, is_help_trigger, run_clear};
+use crate::handlers::menu::{
+    handle_config_menu, handle_help_menu, handle_special_command, is_config_trigger,
+    is_help_trigger, run_clear,
+};
 use crate::utils::{append_history_or_warn, build_completion_pool, render_prompt};
-use geli_shell::t;
 use geli_shell::shell::{
     builtins::BuiltinRegistry,
-    config::{history_store::PersistentCommandHistory, ShellConfig},
+    config::{ShellConfig, history_store::PersistentCommandHistory},
     executor::{ExecutionConfig as ExecutorConfig, Executor},
     guard::Guard,
     reporter::Reporter,
     translator::{CommandMap, Subsystem, TranslationPipeline},
-    tui::repl_input::{parse_special_command, read_repl_input, ReplInputAction, SpecialCommand},
+    tui::repl_input::{ReplInputAction, SpecialCommand, parse_special_command, read_repl_input},
 };
+use geli_shell::t;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -60,7 +63,8 @@ pub async fn run_repl(mut ctx: ReplContext, reporter: &dyn Reporter) {
             }
             Ok(ReplInputAction::OpenConfig) => {
                 if handle_config_menu(&mut ctx.config, reporter).await {
-                    completion_pool = build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
+                    completion_pool =
+                        build_completion_pool(ctx.map.as_ref(), &ctx.config, &ctx.subsystem);
                 }
                 continue;
             }

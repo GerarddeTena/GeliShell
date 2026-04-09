@@ -88,7 +88,11 @@ impl Executor {
             return Err(ExecutorError::EmptyCommand);
         }
 
-        reporter.info(&t!("executor.spawning", command = command, subsystem = self.subsystem));
+        reporter.info(&t!(
+            "executor.spawning",
+            command = command,
+            subsystem = self.subsystem
+        ));
 
         // ── Traza del comando ─────────────────────────────────
         let trace = config.capture_command_trace.then(|| ExecTrace {

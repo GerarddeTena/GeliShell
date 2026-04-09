@@ -88,7 +88,11 @@ impl Guard for MkfsGuard {
         }
 
         Err(GuardError::RequiresConfirmation {
-            reason: t!("guard.disk_destroyer.mkfs_format_blocked", cmd = cmd.name, flag = MKFS_CONFIRMATION_FLAG),
+            reason: t!(
+                "guard.disk_destroyer.mkfs_format_blocked",
+                cmd = cmd.name,
+                flag = MKFS_CONFIRMATION_FLAG
+            ),
         })
     }
 }

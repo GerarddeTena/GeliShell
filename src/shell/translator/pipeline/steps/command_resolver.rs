@@ -30,7 +30,11 @@ impl TranslationStep for CommandResolver {
         for fragment in ctx.fragments.iter_mut() {
             match ctx.map.get(&fragment.command) {
                 Some(def) => {
-                    reporter.info(&t!("pipeline.canonical_match", step = self.name(), command = fragment.command));
+                    reporter.info(&t!(
+                        "pipeline.canonical_match",
+                        step = self.name(),
+                        command = fragment.command
+                    ));
                     fragment.command_def = Some(def.clone());
                 }
                 None => {
@@ -40,7 +44,8 @@ impl TranslationStep for CommandResolver {
                     // el fragmento al nombre canónico para que el pipeline
                     // lo traduzca al subsistema activo.
                     if let Some(def) = ctx.map.find_by_exact(&fragment.command) {
-                        reporter.info(&t!("pipeline.reverse_lookup",
+                        reporter.info(&t!(
+                            "pipeline.reverse_lookup",
                             step = self.name(),
                             command = fragment.command,
                             canonical = def.name
@@ -49,7 +54,11 @@ impl TranslationStep for CommandResolver {
                         fragment.command_def = Some(def.clone());
                     } else {
                         // Pass-through — comando nativo sin equivalente canónico
-                        reporter.info(&t!("pipeline.passthrough", step = self.name(), command = fragment.command));
+                        reporter.info(&t!(
+                            "pipeline.passthrough",
+                            step = self.name(),
+                            command = fragment.command
+                        ));
                     }
                 }
             }

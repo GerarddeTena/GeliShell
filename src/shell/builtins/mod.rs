@@ -3,8 +3,8 @@ pub mod clear;
 mod customization;
 pub mod exit;
 pub mod export;
-pub mod gerisabet;
 pub mod g_jump;
+pub mod gerisabet;
 pub mod history;
 pub mod source;
 pub mod unset;
@@ -107,7 +107,11 @@ impl BuiltinRegistry {
                 reporter.info(&t!("builtin.history.cleared"));
             } else {
                 for (i, entry) in self.history.iter().enumerate() {
-                    reporter.info(&t!("builtin.history.entry", num = format!("{:4}", i + 1), entry = entry));
+                    reporter.info(&t!(
+                        "builtin.history.entry",
+                        num = format!("{:4}", i + 1),
+                        entry = entry
+                    ));
                 }
             }
             return BuiltinResult::Handled;

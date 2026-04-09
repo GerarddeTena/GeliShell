@@ -1,7 +1,7 @@
 use geli_shell::shell::{
     config::{
-        bootstrap::ensure_runtime_layout, first_run::run_first_run_wizard,
-        history_store::PersistentCommandHistory, ConfigError, ShellConfig,
+        ConfigError, ShellConfig, bootstrap::ensure_runtime_layout,
+        first_run::run_first_run_wizard, history_store::PersistentCommandHistory,
     },
     reporter::Reporter,
     translator::{self, CommandMap, Subsystem},
@@ -15,13 +15,15 @@ pub async fn bootstrap_runtime_layout(reporter: &dyn Reporter) {
     match ensure_runtime_layout().await {
         Ok(report) => {
             if !report.migrated_legacy_files.is_empty() {
-                reporter.info(&t!("bootstrap.migrated",
+                reporter.info(&t!(
+                    "bootstrap.migrated",
                     dir = ShellConfig::geli_config_dir().display(),
                     files = report.migrated_legacy_files.join(", ")
                 ));
             }
             if !report.seeded_model_files.is_empty() {
-                reporter.info(&t!("bootstrap.seeded",
+                reporter.info(&t!(
+                    "bootstrap.seeded",
                     dir = ShellConfig::assistant_models_dir().display(),
                     files = report.seeded_model_files.join(", ")
                 ));
@@ -80,7 +82,11 @@ pub async fn init_command_map_or_exit(reporter: &dyn Reporter) -> Arc<CommandMap
         }
     };
 
-    reporter.info(&t!("commands.loaded", count = result.map.len(), source = command_map_source));
+    reporter.info(&t!(
+        "commands.loaded",
+        count = result.map.len(),
+        source = command_map_source
+    ));
     result.report(reporter);
 
     Arc::new(result.map)
@@ -107,8 +113,13 @@ async fn load_command_map_for_startup() -> Result<(translator::LoadResult, Strin
         let raw = tokio::fs::read_to_string(&path)
             .await
             .map_err(|error| t!("commands.read_failed", path = path.display(), error = error))?;
-        let parsed = translator::load_from_str(&raw)
-            .map_err(|error| t!("commands.parse_failed", path = path.display(), error = error))?;
+        let parsed = translator::load_from_str(&raw).map_err(|error| {
+            t!(
+                "commands.parse_failed",
+                path = path.display(),
+                error = error
+            )
+        })?;
 
         return Ok((parsed, format!("runtime ({})", path.display())));
     }

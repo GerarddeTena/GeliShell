@@ -5,7 +5,6 @@ mod utils;
 
 mod handlers;
 
-
 use cli::handle_cli_args;
 use geli_shell::shell::{
     builtins::BuiltinRegistry,

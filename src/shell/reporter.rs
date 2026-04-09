@@ -140,37 +140,74 @@ impl BufferedReporter {
     }
 
     pub fn warnings(&self) -> Vec<String> {
-        self.warnings.lock().expect("BufferedReporter lock poisoned").clone()
+        self.warnings
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clone()
     }
 
     pub fn errors(&self) -> Vec<String> {
-        self.errors.lock().expect("BufferedReporter lock poisoned").clone()
+        self.errors
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clone()
     }
 
     pub fn infos(&self) -> Vec<String> {
-        self.infos.lock().expect("BufferedReporter lock poisoned").clone()
+        self.infos
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clone()
     }
 
     pub fn has_warnings(&self) -> bool {
-        !self.warnings.lock().expect("BufferedReporter lock poisoned").is_empty()
+        !self
+            .warnings
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .is_empty()
     }
 
     pub fn has_errors(&self) -> bool {
-        !self.errors.lock().expect("BufferedReporter lock poisoned").is_empty()
+        !self
+            .errors
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .is_empty()
     }
 
     /// Vacía todos los buffers — útil entre assertions en el mismo test
     pub fn clear(&self) {
-        self.warnings.lock().expect("BufferedReporter lock poisoned").clear();
-        self.errors.lock().expect("BufferedReporter lock poisoned").clear();
-        self.infos.lock().expect("BufferedReporter lock poisoned").clear();
+        self.warnings
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clear();
+        self.errors
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clear();
+        self.infos
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clear();
     }
 
     /// Total de mensajes acumulados de cualquier nivel
     pub fn total(&self) -> usize {
-        self.warnings.lock().expect("BufferedReporter lock poisoned").len()
-            + self.errors.lock().expect("BufferedReporter lock poisoned").len()
-            + self.infos.lock().expect("BufferedReporter lock poisoned").len()
+        self.warnings
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .len()
+            + self
+                .errors
+                .lock()
+                .expect("BufferedReporter lock poisoned")
+                .len()
+            + self
+                .infos
+                .lock()
+                .expect("BufferedReporter lock poisoned")
+                .len()
     }
 }
 
@@ -182,12 +219,21 @@ impl Default for BufferedReporter {
 
 impl Reporter for BufferedReporter {
     fn warn(&self, message: &str) {
-        self.warnings.lock().expect("BufferedReporter lock poisoned").push(message.to_owned());
+        self.warnings
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .push(message.to_owned());
     }
     fn error(&self, message: &str) {
-        self.errors.lock().expect("BufferedReporter lock poisoned").push(message.to_owned());
+        self.errors
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .push(message.to_owned());
     }
     fn info(&self, message: &str) {
-        self.infos.lock().expect("BufferedReporter lock poisoned").push(message.to_owned());
+        self.infos
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .push(message.to_owned());
     }
 }

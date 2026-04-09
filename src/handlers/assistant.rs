@@ -1,5 +1,4 @@
 use geli_shell::{
-    t,
     parser::{lexer::Lexer, parser::Parser},
     shell::{
         assistant::AssistantRuntime,
@@ -17,6 +16,7 @@ use geli_shell::{
             show_me::run_show_me_tui,
         },
     },
+    t,
 };
 use tokio::signal;
 
@@ -63,7 +63,11 @@ pub async fn handle_assistant_show_me(
         return;
     }
 
-    reporter.info(&t!("assistant.show_me_executing", subsystem = subsystem.as_str(), command = selected_command));
+    reporter.info(&t!(
+        "assistant.show_me_executing",
+        subsystem = subsystem.as_str(),
+        command = selected_command
+    ));
 
     tokio::select! {
         result = executor.run(&selected_command, exec_config, reporter) => {
@@ -165,8 +169,15 @@ pub async fn handle_assistant_how_to(
         return;
     }
 
-    reporter.info(&t!("assistant.explanation", explanation = suggestion.explanation));
-    reporter.info(&t!("assistant.executing", subsystem = subsystem.as_str(), command = suggestion.command));
+    reporter.info(&t!(
+        "assistant.explanation",
+        explanation = suggestion.explanation
+    ));
+    reporter.info(&t!(
+        "assistant.executing",
+        subsystem = subsystem.as_str(),
+        command = suggestion.command
+    ));
 
     tokio::select! {
         result = executor.run(&suggestion.command, exec_config, reporter) => {
@@ -188,4 +199,3 @@ pub async fn handle_assistant_how_to(
 
     assistant.release_resources().await;
 }
-

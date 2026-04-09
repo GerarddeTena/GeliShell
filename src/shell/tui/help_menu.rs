@@ -148,7 +148,7 @@ fn run_help_menu(out: &mut impl Write) -> io::Result<HelpMenuAction> {
         }
     }
 }
-
+
 /// Actualiza una única fila de datos en su posición Y exacta.
 /// Evita el Clear(All) completo — elimina el flicker en navegación.
 fn update_help_row(
@@ -159,13 +159,22 @@ fn update_help_row(
     col: usize,
 ) -> io::Result<()> {
     let y = HELP_DATA_START_ROW + row_idx as u16;
-    execute!(out, cursor::MoveTo(0, y), terminal::Clear(ClearType::CurrentLine))?;
+    execute!(
+        out,
+        cursor::MoveTo(0, y),
+        terminal::Clear(ClearType::CurrentLine)
+    )?;
     render_data_row(out, item, selected, col)?;
     out.flush()?;
     Ok(())
 }
 
-fn render_help_menu(out: &mut impl Write, row: usize, col: usize, rows: &[HelpRow]) -> io::Result<()> {
+fn render_help_menu(
+    out: &mut impl Write,
+    row: usize,
+    col: usize,
+    rows: &[HelpRow],
+) -> io::Result<()> {
     execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
 
     let border = "─".repeat(COL_SHORTCUT + COL_COMMAND + COL_DESCRIPTION + 10);
@@ -228,21 +237,39 @@ fn render_header(out: &mut impl Write) -> io::Result<()> {
         Print("│ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.help.column_shortcut"), COL_SHORTCUT, Color::Yellow, false)?;
+    render_cell(
+        out,
+        &t!("tui.help.column_shortcut"),
+        COL_SHORTCUT,
+        Color::Yellow,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.help.column_command"), COL_COMMAND, Color::Magenta, false)?;
+    render_cell(
+        out,
+        &t!("tui.help.column_command"),
+        COL_COMMAND,
+        Color::Magenta,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(" │ "),
         ResetColor,
     )?;
-    render_cell(out, &t!("tui.help.column_description"), COL_DESCRIPTION, Color::Blue, false)?;
+    render_cell(
+        out,
+        &t!("tui.help.column_description"),
+        COL_DESCRIPTION,
+        Color::Blue,
+        false,
+    )?;
     execute!(
         out,
         SetForegroundColor(Color::DarkGrey),

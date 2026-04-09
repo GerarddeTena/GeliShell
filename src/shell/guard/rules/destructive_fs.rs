@@ -99,7 +99,10 @@ impl Guard for ChmodChownGuard {
                 .any(|&p| args.iter().any(|a| a == p));
             if targets_protected {
                 return Err(GuardError::DestructiveFs {
-                    reason: t!("guard.destructive_fs.chmod_protected_blocked", cmd = cmd.name),
+                    reason: t!(
+                        "guard.destructive_fs.chmod_protected_blocked",
+                        cmd = cmd.name
+                    ),
                 });
             }
         }

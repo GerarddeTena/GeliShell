@@ -556,7 +556,7 @@ fn is_context_metadata_line(line: &str) -> bool {
         || lowercase.starts_with("[context]")        // EN (neutral)
         || lowercase.starts_with("[end context]")    // EN (neutral)
         || lowercase.starts_with("[contexto]")       // ES legacy
-        || lowercase.starts_with("[fin contexto]")   // ES legacy
+        || lowercase.starts_with("[fin contexto]") // ES legacy
 }
 
 fn looks_command_like(candidate: &str) -> bool {
@@ -585,7 +585,10 @@ fn build_how_to_explanation(rag_context: &str, subsystem: Option<&str>) -> Strin
     }
 
     if let Some(subsystem) = subsystem {
-        return crate::t!("assistant.how_to_expl_from_subsystem", subsystem = subsystem);
+        return crate::t!(
+            "assistant.how_to_expl_from_subsystem",
+            subsystem = subsystem
+        );
     }
 
     crate::t!("assistant.how_to_expl_generic")

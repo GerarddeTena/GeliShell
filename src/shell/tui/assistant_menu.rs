@@ -1,6 +1,6 @@
-use crate::t;
 use crate::shell::assistant::params::{AssistantParameter, filter_parameters};
 use crate::shell::assistant::qwen::BootstrapEvent;
+use crate::t;
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
@@ -226,7 +226,11 @@ fn render_how_to_confirmation_panel(
         out,
         SetForegroundColor(Color::DarkGrey),
         Print(format!("│ {:<width$}│\r\n", " ", width = width - 3)),
-        Print(format!("│ {:<width$}│\r\n", t!("tui.assistant.command_label"), width = width - 3)),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            t!("tui.assistant.command_label"),
+            width = width - 3
+        )),
         ResetColor,
     )?;
 
@@ -612,12 +616,19 @@ fn render_bootstrap_frame(out: &mut impl Write, state: &BootstrapState) -> io::R
         SetForegroundColor(Color::DarkGrey),
         Print(format!(
             "│ {:<width$}│\r\n",
-            format!("{} {}", t!("tui.assistant.model_path_label"), state.model_path),
+            format!(
+                "{} {}",
+                t!("tui.assistant.model_path_label"),
+                state.model_path
+            ),
             width = width - 3
         )),
         Print(format!(
             "│ {:<width$}│\r\n",
-            t!("tui.assistant.model_size_label", size = state.loaded_size.max(state.downloaded)),
+            t!(
+                "tui.assistant.model_size_label",
+                size = state.loaded_size.max(state.downloaded)
+            ),
             width = width - 3
         )),
         Print(format!(

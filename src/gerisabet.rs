@@ -6,9 +6,8 @@ mod handlers {
     pub mod assistant;
 }
 
-
-use gerisabet_cli::{handle_gerisabet_args, print_gerisabet_help};
 use geli_shell::shell::reporter::StderrReporter;
+use gerisabet_cli::{handle_gerisabet_args, print_gerisabet_help};
 
 #[tokio::main]
 async fn main() {
@@ -22,4 +21,3 @@ async fn main() {
 
     handle_gerisabet_args(&args[1..], &reporter).await;
 }
-

@@ -1,11 +1,7 @@
 use crate::handlers::assistant::{handle_assistant_how_to, handle_assistant_show_me};
 use geli_shell::shell::{
-    assistant::AssistantRuntime,
-    builtins::BuiltinRegistry,
-    config::ShellConfig,
-    executor::Executor,
-    guard::default_guard,
-    reporter::Reporter,
+    assistant::AssistantRuntime, builtins::BuiltinRegistry, config::ShellConfig,
+    executor::Executor, guard::default_guard, reporter::Reporter,
 };
 
 pub async fn handle_gerisabet_args(args: &[String], reporter: &dyn Reporter) {
@@ -131,4 +127,3 @@ fn strip_wrapping_quotes(input: &str) -> &str {
         input
     }
 }
-

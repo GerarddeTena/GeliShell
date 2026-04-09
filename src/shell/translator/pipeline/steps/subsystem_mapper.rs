@@ -30,13 +30,18 @@ impl TranslationStep for SubsystemMapper {
         for fragment in ctx.fragments.iter_mut() {
             let Some(def) = &fragment.command_def else {
                 // Pass-through — sin CommandDef no hay mapping
-                reporter.info(&t!("pipeline.mapped_passthrough", step = self.name(), command = fragment.command));
+                reporter.info(&t!(
+                    "pipeline.mapped_passthrough",
+                    step = self.name(),
+                    command = fragment.command
+                ));
                 continue;
             };
 
             match self.resolver.resolve(def, subsystem, reporter) {
                 Ok(resolved) => {
-                    reporter.info(&t!("pipeline.mapped",
+                    reporter.info(&t!(
+                        "pipeline.mapped",
                         step = self.name(),
                         command = fragment.command,
                         resolved = resolved.preferred,
@@ -47,7 +52,8 @@ impl TranslationStep for SubsystemMapper {
                 }
                 Err(e) => {
                     // Degraded — usa el comando original como fallback
-                    reporter.warn(&t!("pipeline.resolver_error",
+                    reporter.warn(&t!(
+                        "pipeline.resolver_error",
                         step = self.name(),
                         command = fragment.command,
                         error = e

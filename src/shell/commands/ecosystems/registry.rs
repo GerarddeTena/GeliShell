@@ -11,7 +11,15 @@ static PNPM: &str = include_str!("../../../../commands/ecosystems/pnpm.toml");
 static PYTHON: &str = include_str!("../../../../commands/ecosystems/python.toml");
 static TYPESCRIPT: &str = include_str!("../../../../commands/ecosystems/typescript.toml");
 
-const AVAILABLE: &[&str] = &["cargo", "docker", "dotnet", "git", "npm", "python", "typescript"];
+const AVAILABLE: &[&str] = &[
+    "cargo",
+    "docker",
+    "dotnet",
+    "git",
+    "npm",
+    "python",
+    "typescript",
+];
 
 #[derive(Debug, thiserror::Error)]
 pub enum EcosystemError {
@@ -56,12 +64,8 @@ impl EcosystemRegistry {
 }
 
 fn parse_catalog(name: &'static str, raw: &str) -> Result<EcosystemCatalog, EcosystemError> {
-    let catalog = toml::from_str::<EcosystemCatalog>(raw).map_err(|source| {
-        EcosystemError::Deserialize {
-            name,
-            source,
-        }
-    })?;
+    let catalog = toml::from_str::<EcosystemCatalog>(raw)
+        .map_err(|source| EcosystemError::Deserialize { name, source })?;
 
     if catalog.ops.is_empty() {
         return Err(EcosystemError::EmptyOps {
@@ -71,4 +75,3 @@ fn parse_catalog(name: &'static str, raw: &str) -> Result<EcosystemCatalog, Ecos
 
     Ok(catalog)
 }
-

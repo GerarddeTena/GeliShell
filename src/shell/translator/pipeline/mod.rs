@@ -71,8 +71,13 @@ impl TranslationPipeline {
         &self,
         node: &ASTNode,
         reporter: &dyn Reporter,
-    ) -> Result<(String, Option<crate::shell::translator::resolver::ResolvedCommand>), PipelineError>
-    {
+    ) -> Result<
+        (
+            String,
+            Option<crate::shell::translator::resolver::ResolvedCommand>,
+        ),
+        PipelineError,
+    > {
         let mut ctx = TranslationContext::new(node, &self.subsystem, &self.map);
 
         for step in &self.steps {

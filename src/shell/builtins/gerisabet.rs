@@ -1,6 +1,6 @@
+use super::{Builtin, BuiltinResult};
 use crate::shell::reporter::Reporter;
 use crate::t;
-use super::{Builtin, BuiltinResult};
 
 // ══════════════════════════════════════════════════════════════
 // GerisabetBuiltin
@@ -39,7 +39,10 @@ impl Builtin for GerisabetBuiltin {
             reporter.info("");
             reporter.info(&t!("builtin.gerisabet.manual_copy"));
             let default_dir = default_install_dir();
-            reporter.info(&t!("builtin.gerisabet.copy_hint_windows", dir = default_dir));
+            reporter.info(&t!(
+                "builtin.gerisabet.copy_hint_windows",
+                dir = default_dir
+            ));
         }
 
         #[cfg(not(target_os = "windows"))]

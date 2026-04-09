@@ -75,7 +75,11 @@ mod tests {
     use crate::parser::ast::Command;
 
     fn cmd(name: &str) -> ASTNode {
-        ASTNode::Command(Command { name: name.to_owned(), args: vec![], redirections: vec![] })
+        ASTNode::Command(Command {
+            name: name.to_owned(),
+            args: vec![],
+            redirections: vec![],
+        })
     }
 
     fn pipeline(cmds: Vec<ASTNode>) -> ASTNode {
@@ -90,14 +94,20 @@ mod tests {
     fn classic_fork_bomb_detected() {
         // :(){ :|:& };: → Background(Pipeline([cmd(":"), cmd(":")]))
         let node = background(pipeline(vec![cmd(":"), cmd(":")]));
-        assert_eq!(ForkBombGuard::new().check_node(&node), Err(GuardError::ForkBomb));
+        assert_eq!(
+            ForkBombGuard::new().check_node(&node),
+            Err(GuardError::ForkBomb)
+        );
     }
 
     #[test]
     fn three_stage_fork_bomb_detected() {
         // x|x|x & — three identical commands in background pipeline
         let node = background(pipeline(vec![cmd("x"), cmd("x"), cmd("x")]));
-        assert_eq!(ForkBombGuard::new().check_node(&node), Err(GuardError::ForkBomb));
+        assert_eq!(
+            ForkBombGuard::new().check_node(&node),
+            Err(GuardError::ForkBomb)
+        );
     }
 
     #[test]
@@ -124,21 +134,30 @@ mod tests {
         // echo; :(){ :|:& };:
         let bomb = background(pipeline(vec![cmd(":"), cmd(":")]));
         let node = ASTNode::Sequence(Box::new(cmd("echo")), Box::new(bomb));
-        assert_eq!(ForkBombGuard::new().check_node(&node), Err(GuardError::ForkBomb));
+        assert_eq!(
+            ForkBombGuard::new().check_node(&node),
+            Err(GuardError::ForkBomb)
+        );
     }
 
     #[test]
     fn fork_bomb_nested_in_and_detected() {
         let bomb = background(pipeline(vec![cmd("x"), cmd("x")]));
         let node = ASTNode::And(Box::new(cmd("true")), Box::new(bomb));
-        assert_eq!(ForkBombGuard::new().check_node(&node), Err(GuardError::ForkBomb));
+        assert_eq!(
+            ForkBombGuard::new().check_node(&node),
+            Err(GuardError::ForkBomb)
+        );
     }
 
     #[test]
     fn fork_bomb_nested_in_or_detected() {
         let bomb = background(pipeline(vec![cmd("x"), cmd("x")]));
         let node = ASTNode::Or(Box::new(cmd("false")), Box::new(bomb));
-        assert_eq!(ForkBombGuard::new().check_node(&node), Err(GuardError::ForkBomb));
+        assert_eq!(
+            ForkBombGuard::new().check_node(&node),
+            Err(GuardError::ForkBomb)
+        );
     }
 
     #[test]

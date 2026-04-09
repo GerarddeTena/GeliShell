@@ -1,5 +1,5 @@
-use crate::t;
 use super::params::AssistantParameter;
+use crate::t;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssistantSuggestion {

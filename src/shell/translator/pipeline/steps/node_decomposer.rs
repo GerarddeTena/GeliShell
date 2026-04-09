@@ -112,7 +112,11 @@ impl TranslationStep for NodeDecomposer {
             ));
         }
 
-        reporter.info(&t!("pipeline.decomposed", step = self.name(), count = ctx.fragments.len()));
+        reporter.info(&t!(
+            "pipeline.decomposed",
+            step = self.name(),
+            count = ctx.fragments.len()
+        ));
 
         ctx.snapshot(self.name());
         Ok(StepResult::Continue)

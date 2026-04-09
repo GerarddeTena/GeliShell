@@ -30,4 +30,3 @@ pub struct EcosystemCommand {
     pub subsystem: String,
     pub command: String,
 }
-

@@ -3,7 +3,7 @@ use crossterm::{
     style::{Color, SetBackgroundColor, SetForegroundColor},
 };
 use geli_shell::shell::{
-    config::{history_store::PersistentCommandHistory, ShellConfig, VisualConfig},
+    config::{ShellConfig, VisualConfig, history_store::PersistentCommandHistory},
     reporter::Reporter,
     translator::{CommandMap, Subsystem},
 };
@@ -50,27 +50,25 @@ pub fn render_prompt(subsystem: &Subsystem, visual: &VisualConfig) -> String {
     let sep = "";
     let prompt_char = "❯";
 
-    let segment_1 = format!(
-        "\x1b[38;5;{name_color}m[ {icon} GeliShell ]\x1b[0m"
-    );
+    let segment_1 = format!("\x1b[38;5;{name_color}m[ {icon} GeliShell ]\x1b[0m");
 
     let segment_2 = format!(
         "\x1b[38;5;{dim_color}m{sep} \x1b[38;5;{sub_color}m_{}_\x1b[38;5;{dim_color}m\x1b[0m",
         subsystem.as_str().to_uppercase()
     );
 
-    let segment_3 = format!(
-        "\x1b[38;5;{path_color}m{cwd}\x1b[0m"
-    );
+    let segment_3 = format!("\x1b[38;5;{path_color}m{cwd}\x1b[0m");
 
-    let prompt = format!(
-        "\x1b[1m\x1b[38;5;{name_color}m{prompt_char}\x1b[0m "
-    );
+    let prompt = format!("\x1b[1m\x1b[38;5;{name_color}m{prompt_char}\x1b[0m ");
 
     format!("{segment_1} {segment_2} {segment_3} {prompt}")
 }
 
-pub fn build_completion_pool(map: &CommandMap, config: &ShellConfig, subsystem: &Subsystem) -> Vec<String> {
+pub fn build_completion_pool(
+    map: &CommandMap,
+    config: &ShellConfig,
+    subsystem: &Subsystem,
+) -> Vec<String> {
     let mut set = BTreeSet::new();
 
     for builtin in [
@@ -166,4 +164,3 @@ pub fn apply_visual_settings(config: &ShellConfig, reporter: &dyn Reporter) {
         reporter.warn(&format!("visual flush failed: {error}"));
     }
 }
-

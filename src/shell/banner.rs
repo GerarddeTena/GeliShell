@@ -65,7 +65,10 @@ pub fn print_banner(version: &str, out: &mut dyn Write) {
     let _ = writeln!(out, "{BOLD}{PURPLE}  ██║  ███╗█████╗  ██║     ██║{RESET}");
     let _ = writeln!(out, "{BOLD}{DARKPINK}  ██║   ██║██╔══╝  ██║     ██║{RESET}");
     let _ = writeln!(out, "{BOLD}{PURPLE}  ╚██████╔╝███████╗███████╗██║{RESET}");
-    let _ = writeln!(out, "{BOLD}{DARKPINK}   ╚═════╝ ╚══════╝╚══════╝╚═╝  v{version}{RESET}");
+    let _ = writeln!(
+        out,
+        "{BOLD}{DARKPINK}   ╚═════╝ ╚══════╝╚══════╝╚═╝  v{version}{RESET}"
+    );
     let _ = writeln!(out);
     let _ = writeln!(
         out,

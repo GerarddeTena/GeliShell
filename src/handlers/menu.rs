@@ -1,16 +1,16 @@
 use crate::utils::apply_visual_settings;
 use geli_shell::{
-    t,
     shell::{
-    builtins::clear::clear_console_buffer,
-    config::ShellConfig,
-    reporter::Reporter,
-    tui::{
-        config_menu::{show_config_menu, ConfigMenuSelection},
-        help_menu::{show_help_menu, HelpMenuAction},
-        repl_input::SpecialCommand,
+        builtins::clear::clear_console_buffer,
+        config::ShellConfig,
+        reporter::Reporter,
+        tui::{
+            config_menu::{ConfigMenuSelection, show_config_menu},
+            help_menu::{HelpMenuAction, show_help_menu},
+            repl_input::SpecialCommand,
+        },
     },
-    },
+    t,
 };
 
 pub async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporter) -> bool {
@@ -30,7 +30,10 @@ pub async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporte
         Ok(ConfigMenuSelection::TomlEditor) => {
             reporter.warn(&t!("config.toml_warning"));
             let commands_path = ShellConfig::geli_config_dir().join("commands.toml");
-            reporter.info(&t!("config.customization_path", path = commands_path.display()));
+            reporter.info(&t!(
+                "config.customization_path",
+                path = commands_path.display()
+            ));
             false
         }
         Err(error) => {

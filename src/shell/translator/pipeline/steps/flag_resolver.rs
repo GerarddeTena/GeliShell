@@ -45,7 +45,8 @@ impl TranslationStep for FlagResolver {
                         Some(flag_def) => {
                             match flag_def.get_by_name(subsystem.as_str()) {
                                 Some(translated) => {
-                                    reporter.info(&t!("pipeline.flag_resolved",
+                                    reporter.info(&t!(
+                                        "pipeline.flag_resolved",
                                         step = self.name(),
                                         flag = arg,
                                         translated = translated
@@ -55,7 +56,8 @@ impl TranslationStep for FlagResolver {
                                 None => {
                                     // Flag no soportado en este subsistema
                                     // Degraded — continúa sin este flag
-                                    reporter.warn(&t!("pipeline.flag_not_supported",
+                                    reporter.warn(&t!(
+                                        "pipeline.flag_not_supported",
                                         step = self.name(),
                                         flag = arg,
                                         subsystem = subsystem.as_str()

@@ -56,11 +56,9 @@ fn show_wizard(stdout: &mut impl Write) -> Result<ShellConfig, ConfigError> {
         terminal::Clear(ClearType::All),
         cursor::MoveTo(0, 0),
     )
-        .map_err(ConfigError::Read)?;
+    .map_err(ConfigError::Read)?;
 
-    let start_row = cursor::position()
-        .map(|(_, row)| row)
-        .unwrap_or(0);
+    let start_row = cursor::position().map(|(_, row)| row).unwrap_or(0);
 
     render_wizard(stdout, selected, start_row)?;
 
@@ -127,7 +125,7 @@ fn render_wizard(
         Print(format!("│{:^width$}│\r\n", " ", width = width - 2)),
         ResetColor,
     )
-        .map_err(ConfigError::Read)?;
+    .map_err(ConfigError::Read)?;
 
     for (i, opt) in OPTIONS.iter().enumerate() {
         let is_selected = i == selected;
@@ -143,7 +141,7 @@ fn render_wizard(
                 )),
                 ResetColor,
             )
-                .map_err(ConfigError::Read)?;
+            .map_err(ConfigError::Read)?;
         } else {
             execute!(
                 stdout,
@@ -155,7 +153,7 @@ fn render_wizard(
                 )),
                 ResetColor,
             )
-                .map_err(ConfigError::Read)?;
+            .map_err(ConfigError::Read)?;
         }
     }
 
@@ -171,7 +169,7 @@ fn render_wizard(
         Print(format!("└{}┘\r\n", border)),
         ResetColor,
     )
-        .map_err(ConfigError::Read)?;
+    .map_err(ConfigError::Read)?;
 
     stdout.flush().map_err(ConfigError::Read)?;
     Ok(())
@@ -184,7 +182,7 @@ fn clear_from(stdout: &mut impl Write, start_row: u16, lines: usize) -> Result<(
             cursor::MoveTo(0, start_row + i as u16),
             terminal::Clear(ClearType::CurrentLine),
         )
-            .map_err(ConfigError::Read)?;
+        .map_err(ConfigError::Read)?;
     }
     execute!(stdout, cursor::MoveTo(0, start_row)).map_err(ConfigError::Read)?;
     stdout.flush().map_err(ConfigError::Read)?;

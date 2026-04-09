@@ -1,20 +1,19 @@
 use crate::handlers::menu::handle_config_menu;
 use crate::setup::resolve_subsystem;
 use geli_shell::{
-    t,
     parser::{lexer::Lexer, parser::Parser},
     shell::{
-    commands::ecosystems::registry::EcosystemRegistry,
-    builtins::BuiltinRegistry,
-    config::ShellConfig,
-    executor::Executor,
-    guard::{Guard, default_guard},
-    reporter::{Reporter, StderrReporter},
-    tui::ecosystem::EcosystemTui,
+        builtins::BuiltinRegistry,
+        commands::ecosystems::registry::EcosystemRegistry,
+        config::ShellConfig,
+        executor::Executor,
+        guard::{Guard, default_guard},
+        reporter::{Reporter, StderrReporter},
+        tui::ecosystem::EcosystemTui,
     },
+    t,
 };
 use tokio::signal;
-
 
 pub async fn handle_cli_args(args: &[String]) {
     let reporter = StderrReporter::new();
@@ -38,12 +37,10 @@ pub async fn handle_cli_args(args: &[String]) {
             }
             std::process::exit(0);
         }
-        "--show" => {
-            match run_show_commands_args(args, &reporter).await {
-                Ok(()) => std::process::exit(0),
-                Err(_) => std::process::exit(1),
-            }
-        }
+        "--show" => match run_show_commands_args(args, &reporter).await {
+            Ok(()) => std::process::exit(0),
+            Err(_) => std::process::exit(1),
+        },
         unknown => {
             reporter.error(&t!("cli.unknown_flag", flag = unknown));
             print_cli_help();
@@ -64,7 +61,10 @@ pub async fn run_show_commands_args(args: &[String], reporter: &dyn Reporter) ->
         Some(name) => name.as_str(),
         None => {
             reporter.error(&t!("cli.missing_ecosystem"));
-            reporter.info(&t!("cli.available_ecosystems", list = EcosystemRegistry::available().join(", ")));
+            reporter.info(&t!(
+                "cli.available_ecosystems",
+                list = EcosystemRegistry::available().join(", ")
+            ));
             return Err(());
         }
     };
@@ -111,7 +111,8 @@ pub async fn execute_show_commands(ecosystem: &str, reporter: &dyn Reporter) -> 
     let catalog = match registry.get(ecosystem) {
         Some(catalog) => catalog.clone(),
         None => {
-            reporter.error(&t!("cli.unknown_ecosystem",
+            reporter.error(&t!(
+                "cli.unknown_ecosystem",
                 name = ecosystem,
                 list = EcosystemRegistry::available().join(", ")
             ));
@@ -119,7 +120,10 @@ pub async fn execute_show_commands(ecosystem: &str, reporter: &dyn Reporter) -> 
         }
     };
 
-    let selected = match EcosystemTui::new(catalog, subsystem.clone()).run(reporter).await {
+    let selected = match EcosystemTui::new(catalog, subsystem.clone())
+        .run(reporter)
+        .await
+    {
         Ok(selected) => selected,
         Err(error) => {
             reporter.error(&t!("cli.tui_failed", error = error));
@@ -151,7 +155,11 @@ pub async fn execute_show_commands(ecosystem: &str, reporter: &dyn Reporter) -> 
         return Err(());
     }
 
-    reporter.info(&t!("cli.command_executing", subsystem = subsystem.as_str(), command = command));
+    reporter.info(&t!(
+        "cli.command_executing",
+        subsystem = subsystem.as_str(),
+        command = command
+    ));
 
     tokio::select! {
         result = executor.run(&command, &exec_config, reporter) => {

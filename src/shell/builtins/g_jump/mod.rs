@@ -145,10 +145,7 @@ impl Builtin for GJumpBuiltin {
                         GJumpBuiltin::record_visit(&self.history);
                     }
                     None => {
-                        reporter.warn(&t!(
-                            "builtin.g_jump.no_match",
-                            pattern = pattern
-                        ));
+                        reporter.warn(&t!("builtin.g_jump.no_match", pattern = pattern));
                     }
                 }
             }
