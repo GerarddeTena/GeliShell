@@ -123,9 +123,10 @@ These rules are non-negotiable. Apply them to every line of code.
 ```
 Lexer::tokenize()              MAX 64KB input
 Parser::parse()                ASTNode
-BuiltinRegistry::try_execute() cd/clear/exit/export/unset/source/history/g
+BuiltinRegistry::try_execute() cd/clear/exit/export/gerisabet/source/unset/history/g
+  └── history handled inline (not via Builtin trait)
   └── record_g_visit() after Handled
-Guard::check()                 7 semantic rules on AST
+Guard::check()                 NormalizedCompositeGuard — normalizes native→canonical, then 7 rules
 TranslationPipeline::run()     5 steps → native String
   └── NodeDecomposer → CommandResolver → FlagResolver
       → VariableExpander → SubsystemMapper
@@ -141,18 +142,180 @@ Executor::run()                tokio async, streaming hybrid
 3. #[cfg(target_os)]            PowerShell on Windows, Bash elsewhere
 ```
 
+## i18n Detection (priority order)
+```
+1. $GELISHELL_LANG env var      explicit user override
+2. config.behavior.language     persisted preference
+3. $LANG env var                Unix only
+4. "en"                         fallback
+Supported: "en", "es"
+```
+
 ## Key File Locations
 ```
-commands/commands.toml          command translation map (compiled into binary)
-~/.config/geliShell/config.toml user preferences
-~/.config/geliShell/g_history.toml g jump history
+commands/commands.toml                 translation map (embedded + runtime override)
+~/.config/geliShell/config.toml        user preferences
+~/.config/geliShell/history.txt        REPL command history
+~/.config/geliShell/g_history.toml     g jump frecency history
+~/.config/geliShell/models/            AI model files directory
+~/.config/geliShell/docs/docs.db       assistant RAG database
+
+commands.toml search order (first match wins):
+  $GELI_COMMANDS_PATH → ~/.config/geliShell/commands.toml
+  → cwd/commands.toml → exe_dir/commands.toml
+  → embedded (fallback compiled into binary)
+```
+
+## Module Map
+
+### Binaries
+```
+src/main.rs              → binary: geli          (main REPL entry point)
+src/gerisabet.rs         → binary: gerisabet     (AI assistant CLI)
+src/bin/build_docs_db.rs → binary: build_docs_db (dev-only — tech debt)
+```
+
+### Library crate: geli_shell  (src/lib.rs re-exports)
+```
+src/lib.rs                              public re-exports + t!() macro
+src/parser/
+  ├── ast.rs                            ASTNode, Command, Redirection
+  ├── lexer.rs                          Lexer::tokenize() — MAX 64KB
+  ├── parser.rs                         Parser::parse() → ASTNode
+  ├── token.rs                          Token enum
+  └── mod.rs
+src/shell/
+  ├── mod.rs
+  ├── banner.rs                         print_banner()
+  ├── reporter.rs                       Reporter trait + implementations:
+  │                                     StderrReporter / SilentReporter / BufferedReporter
+  │                                     Macros: report_warn! / report_error! / report_info!
+  ├── assistant/
+  │   ├── mod.rs                        LLM client trait
+  │   ├── params.rs                     predefined parameter menu
+  │   ├── qwen.rs                       Qwen 0.5B/1.5B (candle/llama.cpp)
+  │   ├── rag.rs                        RAG + embeddings on docs.db
+  │   └── suggest.rs                    command suggestion output
+  ├── builtins/
+  │   ├── mod.rs                        BuiltinRegistry, Builtin trait, BuiltinResult
+  │   ├── cd.rs                         CdBuiltin (shares Arc<Mutex<Option<PathBuf>>> for OLDPWD)
+  │   ├── clear.rs                      ClearBuiltin
+  │   ├── exit.rs                       ExitBuiltin
+  │   ├── export.rs                     ExportBuiltin
+  │   ├── gerisabet.rs                  GerisabetBuiltin (spawns gerisabet binary)
+  │   ├── history.rs                    HistoryBuiltin (dead code — handled inline in registry)
+  │   ├── source.rs                     SourceBuiltin (stub — blocked by P3)
+  │   ├── unset.rs                      UnsetBuiltin
+  │   ├── customization/mod.rs
+  │   └── g_jump/
+  │       ├── mod.rs                    GJumpBuiltin (frecency navigation)
+  │       ├── frequency.rs              visit scoring + decay
+  │       ├── history.rs                GHistory (dirty flag, persists on Drop)
+  │       └── matcher.rs                fuzzy/exact/case matching
+  ├── commands/
+  │   ├── mod.rs
+  │   └── ecosystems/
+  │       ├── mod.rs                    EcosystemCatalog, EcosystemOperation, EcosystemCommand
+  │       └── registry.rs               EcosystemRegistry (9 embedded TOML catalogs)
+  ├── config/
+  │   ├── mod.rs                        ShellConfig + sub-structs, SelectorMode, ConfigError
+  │   ├── bootstrap.rs                  ensure_runtime_layout(), migration, seeding
+  │   ├── first_run.rs                  run_first_run_wizard() (TUI wizard — tech debt: EN only)
+  │   └── history_store.rs              PersistentCommandHistory
+  ├── executor/
+  │   ├── mod.rs                        Executor::run() — tokio async, streaming hybrid
+  │   ├── config.rs                     ExecutionConfig (capture flags, timeout, tty_commands)
+  │   ├── error.rs                      ExecutorError
+  │   ├── platform.rs                   build_command() per subsystem
+  │   └── result.rs                     ExecutionResult, ExecTrace
+  ├── guard/
+  │   ├── mod.rs                        Guard trait, CompositeGuard, NormalizedCompositeGuard
+  │   ├── error.rs                      GuardError variants
+  │   └── rules/
+  │       ├── mod.rs
+  │       ├── critical_redirect.rs      CriticalRedirectGuard
+  │       ├── destructive_fs.rs         RmGuard + ChmodChownGuard
+  │       ├── disk_destroyer.rs         DdGuard + MkfsGuard
+  │       ├── fork_bomb.rs              ForkBombGuard
+  │       └── pipe_execution.rs         PipeExecutionGuard
+  ├── i18n/mod.rs                       t!(), t_with(), init_i18n(), detect_language()
+  ├── selector/
+  │   ├── mod.rs                        CommandSelector trait, SelectionResult
+  │   └── modal.rs                      ModalSelector (TUI picker for alternatives)
+  ├── translator/
+  │   ├── mod.rs
+  │   ├── commands_map.rs               CommandMap + CommandDef + FlagDef + reverse_index
+  │   ├── resolver.rs                   Resolve trait, ResolvedCommand, SuggestionResolver
+  │   ├── subsystem.rs                  Subsystem enum + detect()
+  │   └── pipeline/
+  │       ├── mod.rs                    TranslationPipeline (run/run_resolving/run_with_trace)
+  │       ├── context.rs                TranslationContext, CommandFragment, FragmentOperator
+  │       ├── step.rs                   TranslationStep trait, PipelineError, StepResult
+  │       └── steps/
+  │           ├── mod.rs
+  │           ├── node_decomposer.rs    ASTNode → Vec<CommandFragment>  ← ONLY match on ASTNode
+  │           ├── command_resolver.rs   canonical name → native command
+  │           ├── flag_resolver.rs      canonical flags → native flags
+  │           ├── variable_expander.rs  $VAR expansion
+  │           └── subsystem_mapper.rs   assembles final native command string
+  └── tui/
+      ├── mod.rs
+      ├── assistant_menu.rs             assistant TUI (P2)
+      ├── config_menu.rs                ConfigMenuSelection, show_config_menu()
+      ├── help_menu.rs                  HelpMenuAction, show_help_menu()
+      ├── repl_input.rs                 read_repl_input(), ReplInputAction, SpecialCommand
+      ├── ecosystem/
+      │   ├── mod.rs                    EcosystemTui (interactive ecosystem browser)
+      │   └── error.rs                  EcosystemTuiError
+      └── show_me/
+          ├── mod.rs                    run_show_me_tui(), ShowMeTui
+          ├── catalog.rs                CatalogTree, build_catalog()
+          ├── db.rs                     DocsDb (SQLite via rusqlite + sqlite-vec)
+          ├── error.rs                  ShowMeError
+          └── placeholder.rs            resolve_placeholders()
+```
+
+### Binary-only modules (not re-exported from geli_shell lib)
+```
+src/cli.rs                      handle_cli_args(), print_cli_help(), execute_show_commands()
+src/cli/gerisabet.rs            handle_gerisabet_args() (gerisabet CLI entry)
+src/handlers/
+  ├── mod.rs
+  ├── assistant.rs              P2 stub — #[allow(dead_code)], not wired to REPL
+  ├── command.rs                process_regular_command(), parse_ast(), drain_crossterm_events()
+  ├── geli_internal.rs          GeliInternalCommand, parse_geli_internal_command()
+  └── menu.rs                   handle_config_menu(), handle_help_menu(), handle_special_command()
+src/repl.rs                     ReplContext, run_repl()
+src/setup.rs                    bootstrap_runtime_layout(), load_or_init_config(),
+                                init_command_map_or_exit(), resolve_subsystem()
+src/utils.rs                    render_prompt(), build_completion_pool(),
+                                expand_custom_command(), append_history_or_warn(),
+                                apply_visual_settings()
+```
+
+### Data files (embedded at compile time)
+```
+commands/commands.toml          canonical→native translation map
+commands/ecosystems/
+  ├── cargo-lang.toml           Cargo/Rust operations
+  ├── docker.toml               Docker operations
+  ├── dotnet.toml               .NET operations
+  ├── git.toml                  Git operations
+  ├── node.toml                 Node.js operations
+  ├── npm.toml                  npm operations
+  ├── pnpm.toml                 pnpm operations  (⚠ see tech debt: not in AVAILABLE)
+  ├── python.toml               Python operations
+  └── typescript.toml           TypeScript operations
+locales/en.toml                 English strings (fallback)
+locales/es.toml                 Spanish strings
 ```
 
 ## TOML Structure (commands.toml)
 ```toml
 [[commands]]
-name     = "canonical-name"
-category = "filesystem|file-ops|process|network|text|system|dev"
+name        = "canonical-name"
+description = "human-readable description"
+category    = "filesystem|file-ops|process|network|text|system|dev"
 translate = {
   bash       = { exact = "cmd", suggestions = ["alt1", "alt2"] },
   zsh        = { exact = "cmd", suggestions = ["alt1"] },
@@ -166,6 +329,78 @@ canonical  = "--flag-name"
 bash       = "-f"
 powershell = "-Flag"
 # omit key if not supported — serde reads as None
+```
+
+## ShellConfig Structure (config.toml)
+```toml
+[behavior]
+selector_mode = "always"    # always | auto | once
+language      = ""          # "" = auto-detect | "en" | "es"
+
+[subsystem]
+override_subsystem = ""     # "" = auto | "bash" | "zsh" | "fish" | "powershell" | "cmd"
+
+[execution]
+capture_output        = false
+capture_duration      = false
+capture_command_trace = false
+timeout_secs          = 0   # 0 = no timeout
+
+[visual]
+terminal_foreground_ansi256 = 253
+terminal_background_ansi256 = 0
+prompt_path_ansi256         = 253
+prompt_subsystem_ansi256    = 141
+prompt_name_ansi256         = 213
+prompt_dim_ansi256          = 240
+font_family                 = "Cascadia Mono"
+
+[customization]
+tty_commands    = []        # extra TTY tools: ["lazygit", "btop"]
+custom_commands = []        # [{name = "alias", template = "real command"}]
+
+[assistant]
+model_variant          = "qwen-0.5b"  # qwen-0.5b | qwen-1.5b
+rag_top_k              = 4
+auto_unload_after_secs = 300
+```
+
+## CLI Interface
+
+### geli binary (CLI mode, no REPL)
+```
+geli                            starts the REPL
+geli --help / -h                prints CLI help
+geli --config-me                opens config TUI (exits after)
+geli --show --commands <eco>    opens ecosystem TUI for <eco>
+```
+
+### geli internal commands (typed in REPL)
+```
+geli                            shows warning (no args)
+geli --help / -h                prints CLI help
+geli --config-me                opens config TUI mid-session
+geli --show --commands <eco>    opens ecosystem browser mid-session
+geli lang set <lang>            changes language for the session
+geli lang set                   warns: missing language argument
+geli-reset-config               resets config.toml to defaults
+```
+
+### gerisabet binary
+```
+gerisabet --how-to <query>      AI explanation (P2, needs model files)
+gerisabet --show-me             RAG docs browser (P2, needs docs.db)
+```
+
+### REPL hotkeys
+```
+F1 or ?           → OpenHelp menu
+Esc               → OpenConfig menu
+Ctrl+Alt+G        → Assistant warning (redirects to gerisabet binary)
+Ctrl+L            → Clear screen
+Ctrl+F / Ctrl+R   → Search (skeleton — not implemented)
+Ctrl+D            → Exit
+Ctrl+C            → SIGINT to running child process
 ```
 
 ## Scoring Algorithm (g jump)
@@ -185,16 +420,32 @@ case_bonus:
   full path match only          →  -5.0
 ```
 
+## Guard — Active Rules (default_guard_normalized)
+```
+RmGuard               destructive_fs.rs     rm -rf / patterns
+ChmodChownGuard       destructive_fs.rs     chmod 777 on root paths
+DdGuard               disk_destroyer.rs     dd destructive patterns
+MkfsGuard             disk_destroyer.rs     mkfs on device paths
+CriticalRedirectGuard critical_redirect.rs  > /etc/passwd etc.
+PipeExecutionGuard    pipe_execution.rs     curl | sh patterns
+ForkBombGuard         fork_bomb.rs          :(){ :|:& };: pattern
+```
+
 ## Guard Error Types
 ```rust
+// Produced by active default rules:
 GuardError::DestructiveFs        { reason: String }
 GuardError::DiskDestroyer        { reason: String }
 GuardError::CriticalRedirect     { reason: String }
 GuardError::PipeExecution        { reason: String }
 GuardError::ForkBomb
-GuardError::BlacklistedCommand   { name, args }
-GuardError::ForbiddenArgument    { command, arg }
-GuardError::RequiresConfirmation { reason: String }  // not fatal
+
+// Extensibility hooks — NOT produced by any default rule:
+GuardError::BlacklistedCommand   { name: String, args: Vec<String> }
+GuardError::ForbiddenArgument    { command: String, arg: String }
+
+// Non-fatal (is_fatal() → false):
+GuardError::RequiresConfirmation { reason: String }
 ```
 
 ## Prompt Colors (ANSI 256)
@@ -213,7 +464,7 @@ dim       → \x1b[38;5;240m  gray (brackets, separators)
 1. **Selector ↔ Pipeline connection** — ✅ IMPLEMENTED
    `pipeline.run_resolving()` returns `(String, Option<ResolvedCommand>)`.
    `handlers/command.rs` checks `SelectorMode` and calls `ModalSelector` when alternatives exist.
-   ⚠️ Remaining gap: `SelectorMode::Once` behaves identically to `Always` (see tech debt).
+   `SelectorMode::Once` tracks seen commands via `HashSet<String>` (`seen_once`) in `run_repl()`.
 
 2. **Reverse index in CommandMap** — ✅ IMPLEMENTED
    `reverse_index: HashMap<String, String>` is in `CommandMap` (commands_map.rs).
@@ -281,6 +532,8 @@ Windows: MSI, Linux: .deb/.rpm/AUR, macOS: Homebrew
 
 | Priority | Issue | Location | Proposed Fix |
 |---|---|---|---|
+| 🔴 HIGH | `pnpm` se carga en `EcosystemRegistry::load()` (línea 51) pero **NO aparece en la constante `AVAILABLE`** (líneas 14–22). `EcosystemRegistry::available()` no lista pnpm → CLI nunca lo muestra como opción válida en mensajes de ayuda y error, aunque `geli --show --commands pnpm` funciona. | `src/shell/commands/ecosystems/registry.rs:14-22 vs 51` | Añadir `"pnpm"` a la constante `AVAILABLE` |
+| 🟡 MEDIUM | `ValidationWarning` usa `#[derive(Debug, Deserialize)]` + `impl Display` manual. Viola Prime Directive #7 (thiserror en todo error enum). | `src/shell/translator/commands_map.rs:17-48` | Cambiar a `#[derive(Debug, thiserror::Error)]`, eliminar `Deserialize` del enum y el `Display` manual |
 | 🟡 MEDIUM | `build_docs_db.rs` compilado silenciosamente por autodiscovery de Cargo (`autobins = true`). No está previsto para distribución; infla el tiempo de build; `cargo install` lo instalaría. | `src/bin/build_docs_db.rs`, `Cargo.toml` | Añadir `autobins = false` a `[package]` y un `[[bin]]` explícito gateado con `--features dev-tools`, o moverlo a un workspace crate separado. |
 | 🟡 MEDIUM | `println!` / `eprintln!` en `spawn_stdout_task` / `spawn_stderr_task` violan Prime Directive #2 (todo output por Reporter). Las tareas `tokio::spawn` no tienen acceso al reporter. | `src/shell/executor/mod.rs:211,229` | Refactorizar `Reporter` como `Arc<dyn Reporter + Send + Sync + 'static>` para poder clonarlo en los spawns. Bloqueado por el trait signature actual. |
 | 🟡 MEDIUM | Múltiples mensajes de detección de subsistema hardcodeados en inglés, no pasan por `t!()`. | `src/shell/translator/subsystem.rs:24–55` | Añadir sección `[subsystem]` a los locales y envolver con `t!()`. |

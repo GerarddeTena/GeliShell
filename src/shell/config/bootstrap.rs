@@ -1,8 +1,19 @@
 use super::ShellConfig;
+use crate::shell::reporter::Reporter;
+use crate::t;
+use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
 };
+
+// ── sqlite-vec release configuration ────────────────────────────
+const SQLITE_VEC_RELEASE_API: &str =
+    "https://api.github.com/repos/asg017/sqlite-vec/releases/latest";
+
+// ── GeliShell release configuration ─────────────────────────────
+const GELISHELL_RELEASE_API: &str =
+    "https://api.github.com/repos/GerarddeTena/GeliShell/releases/latest";
 
 #[derive(Debug, Clone, Default)]
 pub struct RuntimeBootstrapReport {
@@ -10,7 +21,9 @@ pub struct RuntimeBootstrapReport {
     pub seeded_model_files: Vec<String>,
 }
 
-pub async fn ensure_runtime_layout() -> Result<RuntimeBootstrapReport, std::io::Error> {
+pub async fn ensure_runtime_layout(
+    reporter: &dyn Reporter,
+) -> Result<RuntimeBootstrapReport, std::io::Error> {
     let config_dir = ShellConfig::geli_config_dir();
     let docs_dir = ShellConfig::assistant_docs_dir();
     let models_dir = ShellConfig::assistant_models_dir();
@@ -24,6 +37,7 @@ pub async fn ensure_runtime_layout() -> Result<RuntimeBootstrapReport, std::io::
 
     let roots = candidate_roots();
 
+    // ── docs.db: seed from local candidates, then try HTTP download ──
     let docs_db_target = ShellConfig::assistant_docs_db_path();
     let docs_db_candidates = prepend_env_sources(
         &["GELI_DOCS_DB_SOURCE", "GELI_DOCS_DB_PATH"],
@@ -33,8 +47,21 @@ pub async fn ensure_runtime_layout() -> Result<RuntimeBootstrapReport, std::io::
         report
             .seeded_model_files
             .push(format!("docs.db <= {}", seed.display()));
+    } else if !file_exists(&docs_db_target).await {
+        match download_docs_db_if_absent(&docs_db_target, reporter).await {
+            Ok(true) => {
+                report
+                    .seeded_model_files
+                    .push("docs.db <= GitHub release".to_owned());
+            }
+            Ok(false) => {}
+            Err(error) => {
+                reporter.warn(&t!("bootstrap.download_failed", name = "docs.db", error = error));
+            }
+        }
     }
 
+    // ── sqlite-vec: seed from local candidates, then try HTTP download ──
     let sqlite_vec_target = models_dir.join(default_sqlite_vec_filename());
     let sqlite_vec_candidates = prepend_env_sources(
         &["GELI_SQLITE_VEC_SOURCE", "GELI_SQLITE_VEC_PATH"],
@@ -46,8 +73,26 @@ pub async fn ensure_runtime_layout() -> Result<RuntimeBootstrapReport, std::io::
             sqlite_vec_target.display(),
             seed.display()
         ));
+    } else if !file_exists(&sqlite_vec_target).await {
+        match download_sqlite_vec_if_absent(&sqlite_vec_target, reporter).await {
+            Ok(true) => {
+                report.seeded_model_files.push(format!(
+                    "{} <= GitHub release",
+                    sqlite_vec_target.display()
+                ));
+            }
+            Ok(false) => {}
+            Err(error) => {
+                reporter.warn(&t!(
+                    "bootstrap.download_failed",
+                    name = default_sqlite_vec_filename(),
+                    error = error
+                ));
+            }
+        }
     }
 
+    // ── dbjson: seed from local candidates only (no HTTP fallback) ──
     let dbjson_target = models_dir.join("dbjson");
     let dbjson_candidates = prepend_env_sources(
         &["GELI_DBJSON_SOURCE"],
@@ -60,6 +105,281 @@ pub async fn ensure_runtime_layout() -> Result<RuntimeBootstrapReport, std::io::
     }
 
     Ok(report)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HTTP download helpers — non-fatal (warn on failure)
+// ═══════════════════════════════════════════════════════════════
+
+/// Downloads sqlite-vec from the latest GitHub release for the current platform.
+/// Returns Ok(true) on success, Ok(false) if skipped, Err on failure.
+async fn download_sqlite_vec_if_absent(
+    target: &Path,
+    reporter: &dyn Reporter,
+) -> Result<bool, DownloadError> {
+    let asset_pattern = sqlite_vec_asset_pattern();
+    reporter.info(&t!("bootstrap.downloading_sqlite_vec", pattern = asset_pattern));
+
+    let http = build_http_client()?;
+    let release: GithubRelease = fetch_github_release(&http, SQLITE_VEC_RELEASE_API).await?;
+    let tag = &release.tag_name;
+
+    let asset = release
+        .assets
+        .iter()
+        .find(|a| a.name.contains(asset_pattern) && a.name.ends_with(".tar.gz"))
+        .ok_or_else(|| DownloadError::AssetNotFound {
+            pattern: asset_pattern.to_owned(),
+            tag: tag.clone(),
+        })?;
+
+    // Fetch checksums.txt for SHA-256 verification
+    let checksums_url = format!(
+        "https://github.com/asg017/sqlite-vec/releases/download/{tag}/checksums.txt"
+    );
+    let expected_hash = fetch_expected_hash(&http, &checksums_url, &asset.name).await;
+
+    let archive_bytes = download_asset(&http, &asset.browser_download_url).await?;
+
+    if let Some(ref hash) = expected_hash {
+        verify_sha256(&archive_bytes, hash)?;
+        reporter.info(&t!("bootstrap.sha256_verified"));
+    }
+
+    let extracted = extract_file_from_tar_gz(&archive_bytes, default_sqlite_vec_filename())?;
+    write_with_parent_dirs(target, &extracted).await?;
+    reporter.info(&t!(
+        "bootstrap.installed",
+        name = default_sqlite_vec_filename(),
+        tag = tag
+    ));
+    Ok(true)
+}
+
+/// Downloads docs.db from the latest GeliShell GitHub release.
+/// Returns Ok(true) on success, Ok(false) if skipped, Err on failure.
+async fn download_docs_db_if_absent(
+    target: &Path,
+    reporter: &dyn Reporter,
+) -> Result<bool, DownloadError> {
+    reporter.info(&t!("bootstrap.downloading_docs_db"));
+
+    let http = build_http_client()?;
+    let release: GithubRelease = fetch_github_release(&http, GELISHELL_RELEASE_API).await?;
+    let tag = &release.tag_name;
+
+    let asset = release
+        .assets
+        .iter()
+        .find(|a| a.name == "docs.db")
+        .ok_or_else(|| DownloadError::AssetNotFound {
+            pattern: "docs.db".to_owned(),
+            tag: tag.clone(),
+        })?;
+
+    // Fetch checksums.txt for SHA-256 verification
+    let checksums_url = format!(
+        "https://github.com/GerarddeTena/GeliShell/releases/download/{tag}/checksums.txt"
+    );
+    let expected_hash = fetch_expected_hash(&http, &checksums_url, &asset.name).await;
+
+    let file_bytes = download_asset(&http, &asset.browser_download_url).await?;
+
+    if let Some(ref hash) = expected_hash {
+        verify_sha256(&file_bytes, hash)?;
+        reporter.info(&t!("bootstrap.sha256_verified"));
+    }
+
+    write_with_parent_dirs(target, &file_bytes).await?;
+    reporter.info(&t!("bootstrap.installed", name = "docs.db", tag = tag));
+    Ok(true)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Download infrastructure
+// ═══════════════════════════════════════════════════════════════
+
+#[derive(Debug, thiserror::Error)]
+enum DownloadError {
+    #[error("http request failed: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("GitHub API returned non-success status {status} for {url}")]
+    HttpStatus { url: String, status: u16 },
+
+    #[error("no asset matching '{pattern}' found in release {tag}")]
+    AssetNotFound { pattern: String, tag: String },
+
+    #[error("SHA-256 mismatch: expected {expected}, got {actual}")]
+    ChecksumMismatch { expected: String, actual: String },
+
+    #[error("tar.gz extraction failed: {0}")]
+    Extraction(String),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    assets: Vec<GithubAsset>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct GithubAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+fn build_http_client() -> Result<reqwest::Client, DownloadError> {
+    reqwest::Client::builder()
+        .user_agent("GeliShell-Bootstrap/0.1")
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(DownloadError::Http)
+}
+
+async fn fetch_github_release(
+    http: &reqwest::Client,
+    api_url: &str,
+) -> Result<GithubRelease, DownloadError> {
+    let response = http
+        .get(api_url)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        return Err(DownloadError::HttpStatus {
+            url: api_url.to_owned(),
+            status: response.status().as_u16(),
+        });
+    }
+
+    Ok(response.json().await?)
+}
+
+async fn download_asset(
+    http: &reqwest::Client,
+    url: &str,
+) -> Result<Vec<u8>, DownloadError> {
+    let response = http.get(url).send().await?;
+    if !response.status().is_success() {
+        return Err(DownloadError::HttpStatus {
+            url: url.to_owned(),
+            status: response.status().as_u16(),
+        });
+    }
+    Ok(response.bytes().await?.to_vec())
+}
+
+/// Fetches checksums.txt and extracts the SHA-256 hash for the given asset name.
+/// Returns None on any failure (non-fatal — verification is best-effort).
+async fn fetch_expected_hash(
+    http: &reqwest::Client,
+    checksums_url: &str,
+    asset_name: &str,
+) -> Option<String> {
+    let response = http.get(checksums_url).send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let text = response.text().await.ok()?;
+    for line in text.lines() {
+        if line.contains(asset_name) {
+            // Format: "<hash>  <filename>" or "<hash> <filename>"
+            return line.split_whitespace().next().map(|s| s.to_owned());
+        }
+    }
+    None
+}
+
+fn verify_sha256(data: &[u8], expected_hex: &str) -> Result<(), DownloadError> {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let actual_hex = format!("{:x}", hasher.finalize());
+
+    if actual_hex.eq_ignore_ascii_case(expected_hex) {
+        Ok(())
+    } else {
+        Err(DownloadError::ChecksumMismatch {
+            expected: expected_hex.to_owned(),
+            actual: actual_hex,
+        })
+    }
+}
+
+/// Extracts a single file by name from an in-memory tar.gz archive.
+fn extract_file_from_tar_gz(
+    archive_bytes: &[u8],
+    target_filename: &str,
+) -> Result<Vec<u8>, DownloadError> {
+    use std::io::Read;
+
+    let gz = flate2::read::GzDecoder::new(archive_bytes);
+    let mut tar = tar::Archive::new(gz);
+
+    for entry_result in tar.entries().map_err(|e| DownloadError::Extraction(e.to_string()))? {
+        let mut entry = entry_result.map_err(|e| DownloadError::Extraction(e.to_string()))?;
+        let path = entry
+            .path()
+            .map_err(|e| DownloadError::Extraction(e.to_string()))?;
+
+        let matches = path
+            .file_name()
+            .is_some_and(|name| name == target_filename);
+
+        if matches {
+            let mut buf = Vec::new();
+            entry
+                .read_to_end(&mut buf)
+                .map_err(|e| DownloadError::Extraction(e.to_string()))?;
+            return Ok(buf);
+        }
+    }
+
+    Err(DownloadError::Extraction(format!(
+        "{target_filename} not found in archive"
+    )))
+}
+
+async fn write_with_parent_dirs(target: &Path, data: &[u8]) -> Result<(), std::io::Error> {
+    if let Some(parent) = target.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    tokio::fs::write(target, data).await
+}
+
+async fn file_exists(path: &Path) -> bool {
+    tokio::fs::metadata(path).await.is_ok()
+}
+
+fn sqlite_vec_asset_pattern() -> &'static str {
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        "loadable-windows-x86_64"
+    }
+
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        "loadable-linux-x86_64"
+    }
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        "loadable-linux-aarch64"
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        "loadable-macos-x86_64"
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        "loadable-macos-aarch64"
+    }
 }
 
 fn legacy_config_dir() -> PathBuf {

@@ -16,6 +16,11 @@ selection_cancelled = "selección cancelada"
 migrated = "archivos de configuración migrados a {dir}: {files}"
 seeded = "activos del modelo de asistente inicializados en {dir}: {files}"
 failed = "error al inicializar el layout: {error}"
+downloading_sqlite_vec = "descargando sqlite-vec ({pattern})..."
+downloading_docs_db = "descargando docs.db desde la release de GeliShell..."
+sha256_verified = "SHA-256 verificado"
+installed = "{name} instalado (release {tag})"
+download_failed = "descarga de {name} falló: {error}"
 
 [config]
 wizard_failed = "error en el asistente: {error} — usando valores por defecto"

@@ -16,6 +16,11 @@ selection_cancelled = "selection cancelled"
 migrated = "migrated legacy config files to {dir}: {files}"
 seeded = "initialized assistant model assets in {dir}: {files}"
 failed = "bootstrap layout failed: {error}"
+downloading_sqlite_vec = "downloading sqlite-vec ({pattern})..."
+downloading_docs_db = "downloading docs.db from GeliShell release..."
+sha256_verified = "SHA-256 verified"
+installed = "{name} installed (release {tag})"
+download_failed = "{name} download failed: {error}"
 
 [config]
 wizard_failed = "wizard failed: {error} — using defaults"

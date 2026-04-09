@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub async fn bootstrap_runtime_layout(reporter: &dyn Reporter) {
-    match ensure_runtime_layout().await {
+    match ensure_runtime_layout(reporter).await {
         Ok(report) => {
             if !report.migrated_legacy_files.is_empty() {
                 reporter.info(&t!(
