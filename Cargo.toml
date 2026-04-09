@@ -2,9 +2,9 @@
 name = "geli_shell"
 version = "0.1.0"
 edition = "2024"
-license = "LicenseRef-NC"
+license = "Apache-2.0"
 repository = "https://github.com/GerarddeTena/GeliShell"
-description = "Cross-platform shell REPL with canonical command translation and security guardrails. Non-commercial use only."
+description = "Cross-platform shell REPL with canonical command translation and security guardrails."
 autobins = false
 exclude = ["geli-docs/"]
 
