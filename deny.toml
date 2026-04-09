@@ -38,12 +38,21 @@ allow = [
     "BSD-3-Clause",
     "ISC",
     "Zlib",
+    "MPL-2.0",           # option-ext (transitive via dirs)
+    "CDLA-Permissive-2.0", # webpki-roots (transitive via reqwest/rustls)
     "Unicode-3.0",
     "Unicode-DFS-2016",
 ]
 
 # Warn if allowlist contains licenses that are not used
 unused-allowed-license = "warn"
+
+# geli_shell uses a custom non-SPDX license identifier — exempt from the
+# allow list check since it applies only to distribution, not dependencies.
+[[licenses.exceptions]]
+name = "geli_shell"
+version = "*"
+allow = ["LicenseRef-NC"]
 
 # ------------------------------------------------------------
 # Dependency graph hygiene
@@ -55,14 +64,8 @@ highlight = "all"
 
 # ------------------------------------------------------------
 # Source policy (supply chain)
+# All dependencies come from crates.io — no git sources allowed.
 # ------------------------------------------------------------
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-
-[sources.allow-org]
-github = [
-    "rust-lang",
-    "tokio-rs",
-    "serde-rs",
-]
