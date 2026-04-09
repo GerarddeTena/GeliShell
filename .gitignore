@@ -7,7 +7,7 @@
 # Generated vector DB artifacts
 # (built locally by src/bin/build_docs_db.rs)
 # ======================================
-docs.db
+# docs.db --allowing docs.db only for first release version
 docs.db-shm
 docs.db-wal
 # NOTE: `docs/kb/*.md` is source-of-truth for RAG and must stay versioned.
