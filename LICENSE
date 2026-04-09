@@ -1,71 +1,64 @@
 GeliShell — Gerisabet Ecosystem
-=================================
+===============================
 
 GeliShell is a cross-platform shell REPL with canonical command
 translation, security guardrails, and an integrated AI assistant.
 
 It is part of the Gerisabet ecosystem:
 
-  • Gerisabet-AI  — Desktop RAG/chat application (Tauri v2 + React 19)
-  • GeliShell     — Shell REPL with translation and guardrails (Rust)
-  • Gerisabet.Gateway — Centralized API Gateway (ASP.NET Core 10)
-
-This project is open source. It is provided free for non-commercial use.
-All forms of commercial monetization and exploitation are strictly forbidden.
+  • Gerisabet-AI        — Desktop RAG/chat application (Tauri v2 + React 19)
+  • GeliShell           — Shell REPL with translation and guardrails (Rust)
+  • Gerisabet.Gateway   — Centralized API Gateway (ASP.NET Core 10)
 
 ---------------------------------------------------------------------------
+Licensing Model
+---------------------------------------------------------------------------
 
-NON-COMMERCIAL LICENSE (NC-v1)
+This project is distributed as Open Source software under the terms of the
+Mozilla Public License, version 2.0 (MPL-2.0).
 
-Copyright (c) 2025-present Gerard de Tena
+The MPL-2.0 permits use of this software for any purpose, including
+commercial use, subject to the conditions defined in the license.
 
-TERMS AND CONDITIONS:
+In particular:
 
-1. GRANT OF RIGHTS
-   Permission is hereby granted to any person to download, copy, modify,
-   and distribute this software, subject to the restrictions in this license.
+• You may use this software commercially.
+• You may distribute it as source code or binaries.
+• You may integrate it into proprietary systems.
 
-2. RESTRICTIONS
-   You may NOT:
-   - Use this software for any commercial purpose
-   - Sell, rent, lease, or charge for access to this software
-   - Use this software as part of a commercial product or service
-   - Accept payment in exchange for derivative works using this software
-   - Host this software on a commercial service and charge users for access
-   - Use this software for profit, whether directly or indirectly
-   - Bundle this software with commercial products without explicit permission
+However:
 
-3. PERMITTED USES
-   Non-commercial use is permitted, including:
-   - Personal use and experimentation
-   - Educational use and teaching
-   - Research and academic purposes
-   - Community-driven projects without revenue
-   - Internal use within non-profit organizations
-   - Modification for personal or non-profit purposes
+• Any modifications made to files originally licensed under the MPL-2.0
+  must be made publicly available under the same license.
+• Files that are not derived from MPL-covered files may be licensed
+  under different terms.
 
-4. DISTRIBUTION
-   You may distribute unmodified or modified copies, provided that:
-   - This license is included in all copies
-   - All modifications are clearly marked
-   - The non-commercial restriction is prominently displayed
-   - No commercial use is implied or permitted
+This "file-level copyleft" ensures that improvements to the core project
+remain open, while still allowing broad commercial and enterprise adoption.
 
-5. DISCLAIMER
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
+---------------------------------------------------------------------------
+Mozilla Public License, Version 2.0
+---------------------------------------------------------------------------
 
-6. TERMINATION
-   This license is automatically terminated if you violate any of its terms.
-   Upon termination, you must immediately cease all use and delete all copies
-   of this software.
+This Source Code Form is subject to the terms of the Mozilla Public License,
+v. 2.0. If a copy of the MPL was not distributed with this file, You can
+obtain one at https://mozilla.org/MPL/2.0/.
 
-7. EXCEPTIONS
-   Commercial use requires explicit written permission from the copyright holder.
-   Contact: gerarddtm@gmail.com
+---------------------------------------------------------------------------
+Disclaimer
+---------------------------------------------------------------------------
 
+This software is provided "AS IS", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and non-infringement.
+
+In no event shall the authors or copyright holders be liable for any claim,
+damages, or other liability, whether in an action of contract, tort, or
+otherwise, arising from, out of, or in connection with the software or the
+use or other dealings in the software.
+
+---------------------------------------------------------------------------
+Copyright
+
+Copyright (c) 2025–present
+Gerard de Tena

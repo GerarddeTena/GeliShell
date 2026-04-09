@@ -1,3 +1,8 @@
+# ------------------------------------------------------------
+# Cargo Deny Configuration
+# Compatible with cargo-deny >= 0.14
+# ------------------------------------------------------------
+
 [graph]
 targets = [
     "x86_64-unknown-linux-gnu",
@@ -8,45 +13,56 @@ targets = [
     "x86_64-pc-windows-msvc",
 ]
 all-features = true
-[advisories]
-vulnerability = "deny"
-unmaintained = "workspace"
-unsound = "all"
-yanked = "deny"
-notice = "warn"
 
+# ------------------------------------------------------------
+# Security advisories
+# ------------------------------------------------------------
+[advisories]
+yanked = "deny"
+unsound = "all"
+unmaintained = "workspace"
+
+# ------------------------------------------------------------
+# License policy
+# ------------------------------------------------------------
 [licenses]
-unlicensed = "deny"
+# Minimum confidence for license detection
+confidence-threshold = 0.8
+
+# ONLY licenses explicitly allowed.
+# Everything else (GPL, AGPL, CC, custom, missing) is denied by default.
 allow = [
     "MIT",
     "Apache-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
+    "Zlib",
     "Unicode-3.0",
     "Unicode-DFS-2016",
-    "Zlib",
 ]
-deny = [
-    "GPL-2.0-only",
-    "GPL-2.0-or-later",
-    "GPL-3.0-only",
-    "GPL-3.0-or-later",
-    "AGPL-3.0-only",
-    "AGPL-3.0-or-later",
-]
-unused-allowed-license = "warn"
-confidence-threshold = 0.8
-copyleft = "deny"
 
+# Warn if allowlist contains licenses that are not used
+unused-allowed-license = "warn"
+
+# ------------------------------------------------------------
+# Dependency graph hygiene
+# ------------------------------------------------------------
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
 highlight = "all"
 
+# ------------------------------------------------------------
+# Source policy (supply chain)
+# ------------------------------------------------------------
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 
 [sources.allow-org]
-github = ["rust-lang", "tokio-rs", "serde-rs"]
+github = [
+    "rust-lang",
+    "tokio-rs",
+    "serde-rs",
+]
