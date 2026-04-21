@@ -104,11 +104,7 @@ pub async fn process_regular_command(
             // Show the selector only the first time a given command name is run
             // per session.  On subsequent invocations the preferred translation
             // is used directly — no interactive interruption.
-            let cmd_key = input
-                .split_whitespace()
-                .next()
-                .unwrap_or(input)
-                .to_owned();
+            let cmd_key = input.split_whitespace().next().unwrap_or(input).to_owned();
             if let Some(res) = resolved.as_ref() {
                 if res.has_alternatives() && !seen_once.contains(&cmd_key) {
                     match ModalSelector::new().select(res) {

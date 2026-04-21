@@ -1,3 +1,4 @@
+use crate::shell::reporter::Reporter;
 use serde::Deserialize;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -14,34 +15,44 @@ pub enum CommandMapError {
 }
 
 // ------- Validación Acumulativa ---------
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationWarning {
+    #[error("empty exact translation")]
     EmptyExact { command: String, subsystem: String },
+    #[error("empty suggestions")]
     EmptySuggestions { command: String, subsystem: String },
+    #[error("missing subsystem translation")]
     MissingSubsystem { command: String, subsystem: String },
+    #[error("duplicate command")]
     DuplicateCommand { name: String },
 }
 
-impl std::fmt::Display for ValidationWarning {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ValidationWarning {
+    fn localized_message(&self) -> String {
         match self {
             Self::EmptyExact { command, subsystem } => {
-                write!(f, "warning: '{command}' has empty exact for '{subsystem}'")
+                crate::t!(
+                    "commands.warning_empty_exact",
+                    command = command,
+                    subsystem = subsystem
+                )
             }
             Self::EmptySuggestions { command, subsystem } => {
-                write!(
-                    f,
-                    "warning: '{command}' has no suggestions for '{subsystem}'"
+                crate::t!(
+                    "commands.warning_empty_suggestions",
+                    command = command,
+                    subsystem = subsystem
                 )
             }
             Self::MissingSubsystem { command, subsystem } => {
-                write!(
-                    f,
-                    "warning: '{command}' missing translation for '{subsystem}'"
+                crate::t!(
+                    "commands.warning_missing_subsystem",
+                    command = command,
+                    subsystem = subsystem
                 )
             }
             Self::DuplicateCommand { name } => {
-                write!(f, "warning: duplicate command '{name}' — last entry wins")
+                crate::t!("commands.warning_duplicate_command", name = name)
             }
         }
     }
@@ -58,9 +69,9 @@ impl LoadResult {
         !self.warnings.is_empty()
     }
 
-    pub fn report(&self, reporter: &dyn crate::shell::reporter::Reporter) {
+    pub fn report(&self, reporter: &dyn Reporter) {
         for w in &self.warnings {
-            reporter.warn(&w.to_string());
+            reporter.warn(&w.localized_message());
         }
     }
 }
@@ -290,7 +301,8 @@ pub fn load() -> Result<LoadResult, CommandMapError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::shell::translator::FlagDef;
+    use super::*;
+    use crate::{BufferedReporter, init_i18n};
 
     #[test]
     fn flag_get_by_name_returns_correct_translation() {
@@ -306,5 +318,60 @@ mod tests {
         assert_eq!(flag.get_by_name("powershell"), Some("-Recurse"));
         assert_eq!(flag.get_by_name("cmd"), Some("/s"));
         assert_eq!(flag.get_by_name("unknown"), None);
+    }
+
+    #[test]
+    fn report_emits_localized_validation_warnings() {
+        let result = LoadResult {
+            map: CommandMap {
+                index: HashMap::new(),
+                reverse_index: HashMap::new(),
+            },
+            warnings: vec![
+                ValidationWarning::EmptyExact {
+                    command: "list".to_owned(),
+                    subsystem: "bash".to_owned(),
+                },
+                ValidationWarning::EmptySuggestions {
+                    command: "copy".to_owned(),
+                    subsystem: "zsh".to_owned(),
+                },
+                ValidationWarning::MissingSubsystem {
+                    command: "move".to_owned(),
+                    subsystem: "powershell".to_owned(),
+                },
+                ValidationWarning::DuplicateCommand {
+                    name: "list".to_owned(),
+                },
+            ],
+        };
+
+        init_i18n("en");
+        let reporter = BufferedReporter::new();
+        result.report(&reporter);
+        assert_eq!(
+            reporter.warnings(),
+            vec![
+                "command 'list' has empty exact for 'bash'".to_owned(),
+                "command 'copy' has no suggestions for 'zsh'".to_owned(),
+                "command 'move' is missing translation for 'powershell'".to_owned(),
+                "duplicate command 'list'; last entry wins".to_owned(),
+            ]
+        );
+
+        init_i18n("es");
+        let reporter = BufferedReporter::new();
+        result.report(&reporter);
+        assert_eq!(
+            reporter.warnings(),
+            vec![
+                "el comando 'list' tiene exact vacío para 'bash'".to_owned(),
+                "el comando 'copy' no tiene sugerencias para 'zsh'".to_owned(),
+                "al comando 'move' le falta traducción para 'powershell'".to_owned(),
+                "comando duplicado 'list'; prevalece la última entrada".to_owned(),
+            ]
+        );
+
+        init_i18n("en");
     }
 }

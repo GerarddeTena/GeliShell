@@ -26,8 +26,6 @@ pub struct ExecutionConfig {
     pub extra_tty_commands: Vec<String>,
 }
 
-
-
 impl ExecutionConfig {
     /// Config mínima — solo exit code, sin overhead
     pub fn minimal() -> Self {

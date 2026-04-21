@@ -331,6 +331,13 @@ powershell = "-Flag"
 # omit key if not supported — serde reads as None
 ```
 
+> ⚠️ **Regla de unicidad de `exact`**: Dos comandos canónicos distintos
+> **NO DEBEN** compartir el mismo valor `exact` en ningún subsistema.
+> El reverse index (native → canonical) descarta entradas ambiguas,
+> lo que rompe la traducción inversa. Ejemplo: si `list` y `list-all`
+> comparten `powershell.exact = "Get-ChildItem"`, el reverse lookup de
+> `Get-ChildItem` falla y el comando se envía como pass-through.
+
 ## ShellConfig Structure (config.toml)
 ```toml
 [behavior]
@@ -554,6 +561,9 @@ git push origin v0.1.0
 | `build_docs_db.rs` compilado por autodiscovery de Cargo | `src/bin/build_docs_db.rs`, `Cargo.toml` | `autobins = false` ya en `[package]`; `[[bin]]` explícito con `required-features = ["dev-tools"]`. Resuelto antes de ser registrado como tech debt. |
 | `fetch_expected_hash` devuelve `Option<String>` — best-effort indiscriminado | `src/shell/config/bootstrap.rs` | Sustituido por `lookup_checksum() -> HashLookup`. `Found(hash)` → verificación fatal. `Absent` (404/red) → silencioso. `Unlisted` (checksums.txt existe, asset ausente) → `reporter.warn`. Locale key `bootstrap.sha256_not_listed` añadida a en/es. |
 | 53 errores de `cargo clippy -D warnings` en 24 archivos | múltiples | Resueltos en su totalidad: `new_without_default`, `derivable_impls`, `collapsible_if`, `single_match`, `implicit_saturating_sub`, `needless_borrow`, `trim_split_whitespace`, `too_many_arguments` (×3), `only_used_in_recursion`, `cloned_ref_to_slice_refs`, `doc_overindented_list_items`, `should_implement_trait` (rename `from_str`→`from_name`), `double_must_use`, `field_reassign_with_default`. `cargo clippy --all-targets --all-features -- -D warnings` pasa limpio. |
+| Reverse lookup de `Get-ChildItem` y `dir` roto — comandos PS no se traducían en Bash | `src/commands/commands.toml` líneas 663-667 | `list-all` compartía `powershell.exact = "Get-ChildItem"` y `cmd.exact = "dir"` con `list`, causando que el reverse index los marcara como ambiguos y los descartara. Cambiado `list-all` a `powershell.exact = "Get-ChildItem -Force"` y `cmd.exact = "dir /a"`. Se ajustaron `bash.exact` a `"ls -la"` y suggestions para consistencia semántica con la descripción del comando. 2 tests de regresión añadidos. |
+| `clear` builtin no purgaba scrollback en Unix — scroll-up mostraba contenido anterior | `src/shell/builtins/clear.rs:28-31` | Secuencia ANSI en orden incorrecto: `3J→2J→H`. El `2J` empuja contenido visible al scrollback *después* de que `3J` ya lo haya purgado. Corregido a `H→2J→3J` (igual que `clear` de ncurses): cursor home, borrar viewport, purgar scrollback. |
+| `ValidationWarning` mezclaba serialización/Display manual con warnings visibles hardcodeados | `src/shell/translator/commands_map.rs`, `locales/en.toml`, `locales/es.toml` | `ValidationWarning` ahora deriva `thiserror::Error`, ya no deriva `Deserialize`, y `LoadResult::report()` emite mensajes localizados mediante claves `commands.warning_*` en en/es. Tests con `BufferedReporter` cubren ambos locales. |
 
 ## 🔴 Active Technical Debt
 
@@ -561,7 +571,6 @@ git push origin v0.1.0
 
 | Priority | Issue | Location | Proposed Fix |
 |---|---|---|---|
-| 🟡 MEDIUM | `ValidationWarning` usa `#[derive(Debug, Deserialize)]` + `impl Display` manual. Viola Prime Directive #7 (thiserror en todo error enum). | `src/shell/translator/commands_map.rs:17-48` | Cambiar a `#[derive(Debug, thiserror::Error)]`, eliminar `Deserialize` del enum y el `Display` manual |
 | 🟡 MEDIUM | `println!` / `eprintln!` en `spawn_stdout_task` / `spawn_stderr_task` violan Prime Directive #2 (todo output por Reporter). Las tareas `tokio::spawn` no tienen acceso al reporter. | `src/shell/executor/mod.rs:211,229` | Refactorizar `Reporter` como `Arc<dyn Reporter + Send + Sync + 'static>` para poder clonarlo en los spawns. Bloqueado por el trait signature actual. |
 | 🟡 MEDIUM | Múltiples mensajes de detección de subsistema hardcodeados en inglés, no pasan por `t!()`. | `src/shell/translator/subsystem.rs:24–55` | Añadir sección `[subsystem]` a los locales y envolver con `t!()`. |
 | 🟡 MEDIUM | Mensajes de error en `append_history_or_warn` / `apply_visual_settings` hardcodeados en inglés. | `src/utils.rs:148,158–165` | Añadir claves `[utils]` a los locales y envolver con `t!()`. |
@@ -571,6 +580,7 @@ git push origin v0.1.0
 | 🟢 LOW | `source` builtin es un stub — emite un warning, no ejecuta scripts. | `shell/builtins/source.rs` | Bloqueado por P3 TriggerEngine. Implementar cuando el motor `@bash { }` esté listo. |
 | 🟢 LOW | `run_loop` en `show_me/mod.rs` recibe `_reporter` pero nunca lo usa dentro del bucle de eventos TUI. Indica reporting de errores incompleto en la TUI. | `src/shell/tui/show_me/mod.rs` | Pasar el reporter al manejador de eventos TUI para reportar fallos en tiempo real. |
 | 🟢 LOW | Función `handle_special_command(SpecialCommand::Search, reporter)` es un skeleton: solo emite `special.search_skeleton`, sin búsqueda real implementada. | `src/handlers/menu.rs` | Implementar motor de búsqueda (P4 o posterior). |
+| 🟡 MEDIUM | Ambigüedades residuales en reverse index: `cd` (change-dir/print-dir.cmd), `more` (read-paged/tail.cmd), `set` (env-get/env-set.cmd). | `src/commands/commands.toml` | Solapamientos semánticos reales de CMD/fish — el mismo token nativo tiene significados distintos según contexto. `cd` no es problema práctico (es builtin). Los demás son comandos que funcionan como pass-through nativo. |
 
 ---
 

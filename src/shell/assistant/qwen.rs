@@ -344,11 +344,7 @@ fn extract_how_to_subsystem(prompt: &str) -> Option<String> {
             continue;
         };
         let tail = &prompt[marker_idx + marker.len()..];
-        let subsystem = tail
-            .split([',', '\n'])
-            .next()?
-            .trim()
-            .trim_end_matches('.');
+        let subsystem = tail.split([',', '\n']).next()?.trim().trim_end_matches('.');
         if !subsystem.is_empty() {
             return Some(subsystem.to_owned());
         }
