@@ -664,4 +664,4 @@ cmd        = "-czf"
 name = "list-all"
 description = "List all files including hidden ones with detailed info"
 category = "dev"
-translate = { bash = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, zsh = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, fish = { exact = "ls -l", suggestions = ["ls -la", "ll"] }, powershell = { exact = "Get-ChildItem", suggestions = ["Get-ChildItem -Force", "dir", "ls"] }, cmd = { exact = "dir", suggestions = ["dir /a", "dir /w"] } }
+translate = { bash = { exact = "ls -la", suggestions = ["ls -l", "ll"] }, zsh = { exact = "ls -la", suggestions = ["ls -l", "ll"] }, fish = { exact = "ls -la", suggestions = ["ls -l", "ll"] }, powershell = { exact = "Get-ChildItem -Force", suggestions = ["gci -Force", "dir -Force", "ls"] }, cmd = { exact = "dir /a", suggestions = ["dir /a /w", "dir /w"] } }

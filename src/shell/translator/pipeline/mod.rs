@@ -349,6 +349,31 @@ translate = { bash = { exact = "echo", suggestions = [] }, zsh = { exact = "echo
         );
     }
 
+    /// Usuario en subsistema Bash escribe `Get-ChildItem` (nativo de PowerShell).
+    /// Regresión: antes list y list-all compartían powershell.exact = "Get-ChildItem",
+    /// causando que el reverse index lo marcara ambiguo y lo descartara.
+    #[test]
+    fn reverse_lookup_translates_get_childitem_to_bash() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let node = make_command_node("Get-ChildItem", vec![]);
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "ls");
+    }
+
+    /// Usuario en subsistema Bash escribe `Remove-Item` (nativo de PowerShell).
+    /// Verifica que comandos PS no ambiguos siguen traduciéndose correctamente.
+    #[test]
+    fn reverse_lookup_translates_remove_item_to_bash() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let node = make_command_node("Remove-Item", vec![]);
+        let result = pipeline.run(&node, &reporter).unwrap();
+        assert_eq!(result, "rm");
+    }
+
     /// Comando nativo sin equivalente canónico → pass-through intacto.
     #[test]
     fn reverse_lookup_passthrough_for_truly_unknown_native() {

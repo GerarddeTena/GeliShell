@@ -44,6 +44,10 @@ load_failed = "history load failed: {error} — continuing with empty history"
 loaded = "command map: loaded {count} commands from {source}"
 read_failed = "command map read failed ({path}): {error}"
 parse_failed = "command map parse failed ({path}): {error}"
+warning_empty_exact = "command '{command}' has empty exact for '{subsystem}'"
+warning_empty_suggestions = "command '{command}' has no suggestions for '{subsystem}'"
+warning_missing_subsystem = "command '{command}' is missing translation for '{subsystem}'"
+warning_duplicate_command = "duplicate command '{name}'; last entry wins"
 
 [cli]
 unknown_flag = "unknown flag '{flag}'"

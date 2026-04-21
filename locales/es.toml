@@ -44,6 +44,10 @@ load_failed = "error al cargar el historial: {error} — continuando con histori
 loaded = "mapa de comandos: {count} comandos cargados desde {source}"
 read_failed = "error al leer el mapa de comandos ({path}): {error}"
 parse_failed = "error al parsear el mapa de comandos ({path}): {error}"
+warning_empty_exact = "el comando '{command}' tiene exact vacío para '{subsystem}'"
+warning_empty_suggestions = "el comando '{command}' no tiene sugerencias para '{subsystem}'"
+warning_missing_subsystem = "al comando '{command}' le falta traducción para '{subsystem}'"
+warning_duplicate_command = "comando duplicado '{name}'; prevalece la última entrada"
 
 [cli]
 unknown_flag = "bandera desconocida '{flag}'"
