@@ -302,7 +302,7 @@ pub fn load() -> Result<LoadResult, CommandMapError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{init_i18n, BufferedReporter};
+    use crate::{BufferedReporter, init_i18n};
 
     #[test]
     fn flag_get_by_name_returns_correct_translation() {

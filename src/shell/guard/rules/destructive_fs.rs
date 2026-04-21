@@ -63,7 +63,8 @@ impl Guard for RmGuard {
         let args = token_args(&cmd.args);
 
         // Bloquea si: recursivo + forzado + target es raíz
-        if Self::has_recursive(&args) && Self::has_force(&args)
+        if Self::has_recursive(&args)
+            && Self::has_force(&args)
             && let Some(target) = Self::targets_root(&args)
         {
             return Err(GuardError::DestructiveFs {
