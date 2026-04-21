@@ -1,2 +1,5 @@
-- description: "GeliShell custom security rules — all .ql files in this directory"
+- description: "GeliShell custom security hardening rules"
+
+- include: codeql/rust-security-and-quality
+
 - queries: .
