@@ -1,5 +1,6 @@
 - description: "GeliShell custom security hardening rules"
 
-- include: codeql/rust-security-and-quality
+- include:
+    pack: codeql/rust-security-and-quality
 
 - queries: .
