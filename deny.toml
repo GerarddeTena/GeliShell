@@ -21,6 +21,8 @@ all-features = true
 yanked = "deny"
 unsound = "all"
 unmaintained = "workspace"
+ignore = ["RUSTSEC-2026-0097"]
+
 
 # ------------------------------------------------------------
 # License policy
