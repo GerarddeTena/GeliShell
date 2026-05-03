@@ -64,6 +64,8 @@ ask_yes_no() {
 # Files registered here are deleted by do_rollback().
 # Register every file copied during installation with register_rollback.
 ROLLBACK_FILES=()
+ROLLBACK_RESTORE_SRC=()
+ROLLBACK_RESTORE_DST=()
 _ROLLBACK_DONE=false
 
 # register_rollback <file_path>
@@ -71,17 +73,32 @@ register_rollback() {
     ROLLBACK_FILES+=("$1")
 }
 
+# register_restore <backup_path> <destination_path>
+register_restore() {
+    ROLLBACK_RESTORE_SRC+=("$1")
+    ROLLBACK_RESTORE_DST+=("$2")
+}
+
 # do_rollback
 # Idempotent — safe to call multiple times (only acts once).
 do_rollback() {
     if $_ROLLBACK_DONE; then return 0; fi
     _ROLLBACK_DONE=true
-    [[ ${#ROLLBACK_FILES[@]} -eq 0 ]] && return 0
+    [[ ${#ROLLBACK_FILES[@]} -eq 0 && ${#ROLLBACK_RESTORE_SRC[@]} -eq 0 ]] && return 0
     warn "Rolling back installation..."
     for f in "${ROLLBACK_FILES[@]}"; do
         if [[ -f "$f" ]]; then
             rm -f "$f" || true   # never let rollback itself fail
             info "removed: $f"
+        fi
+    done
+    local i
+    for ((i = 0; i < ${#ROLLBACK_RESTORE_SRC[@]}; i++)); do
+        local src="${ROLLBACK_RESTORE_SRC[$i]}"
+        local dst="${ROLLBACK_RESTORE_DST[$i]}"
+        if [[ -f "$src" ]]; then
+            cp -f "$src" "$dst" || true
+            info "restored: $dst"
         fi
     done
 }

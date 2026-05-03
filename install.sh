@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # GeliShell installer for Linux and macOS
 #
 # Installs:
@@ -13,6 +13,7 @@
 #   ./install.sh --force           # overwrite all existing files
 #   ./install.sh --skip-docs       # skip docs.db seeding from assets/
 #   ./install.sh --bin-dir <path>  # custom binary directory
+#   ./install.sh --release-tag <tag> # install binaries from a GitHub release tag
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -29,6 +30,17 @@ trap 'do_rollback' ERR
 FORCE=false
 SKIP_DOCS=false
 BIN_DIR=""
+RELEASE_TAG=""
+RELEASE_REPO="GerarddeTena/GeliShell"
+TEMP_DIR=""
+
+cleanup_temp_dir() {
+  if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+    rm -rf "$TEMP_DIR"
+  fi
+}
+
+trap cleanup_temp_dir EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,6 +58,14 @@ while [[ $# -gt 0 ]]; do
     ;;
   --bin-dir=*)
     BIN_DIR="${1#*=}"
+    shift
+    ;;
+  --release-tag)
+    RELEASE_TAG="$2"
+    shift 2
+    ;;
+  --release-tag=*)
+    RELEASE_TAG="${1#*=}"
     shift
     ;;
   -h | --help)
@@ -70,6 +90,7 @@ Darwin*) PLATFORM="macos" ;;
 esac
 
 ARCH="$(detect_arch)"
+[[ "$ARCH" == "unknown" ]] && fail "Unsupported architecture: $(uname -m)"
 info "platform: $PLATFORM  arch: $ARCH"
 
 # ── Project root ──────────────────────────────────────────────
@@ -77,13 +98,6 @@ PROJECT_ROOT="$SCRIPT_DIR"
 [[ -f "$PROJECT_ROOT/Cargo.toml" ]] ||
   fail "Run from the GeliShell project root (where Cargo.toml lives)"
 info "project root: $PROJECT_ROOT"
-
-# ── Pre-flight: require pre-compiled binaries ─────────────────
-# This installer copies pre-built binaries — it never invokes cargo.
-for BIN in geli gerisabet; do
-  [[ -f "$PROJECT_ROOT/target/release/$BIN" ]] ||
-    fail "Binary not found: target/release/$BIN"$'\n'"       Run first: cargo build --release"
-done
 
 # ── Resolve paths ─────────────────────────────────────────────
 HOME_DIR="${HOME:-}"
@@ -100,6 +114,79 @@ for DIR in "$BIN_DIR" "$CONFIG_ROOT" "$MODELS_DIR" "$DOCS_DIR"; do
   mkdir -p "$DIR"
 done
 
+TEMP_DIR="$(mktemp -d)"
+
+BIN_SOURCE_DIR=""
+DOCS_DB_SOURCE=""
+ARCHIVE_NAME=""
+
+snapshot_for_rollback() {
+  local dest="$1"
+  if [[ -f "$dest" ]]; then
+    local backup_path
+    backup_path="$(mktemp "$TEMP_DIR/rollback.XXXXXX")"
+    cp -f "$dest" "$backup_path"
+    register_restore "$backup_path" "$dest"
+  fi
+}
+
+install_file() {
+  local src="$1"
+  local dest="$2"
+  local mode="${3:-}"
+
+  snapshot_for_rollback "$dest"
+  cp -f "$src" "$dest"
+  if [[ -n "$mode" ]]; then
+    chmod "$mode" "$dest"
+  fi
+  register_rollback "$dest"
+}
+
+if [[ -n "$RELEASE_TAG" ]]; then
+  echo ""
+  step "downloading release assets for $RELEASE_TAG..."
+
+  ARCHIVE_NAME="geli-${PLATFORM}-${ARCH}.tar.gz"
+  RELEASE_BASE_URL="https://github.com/${RELEASE_REPO}/releases/download/${RELEASE_TAG}"
+  ARCHIVE_PATH="$TEMP_DIR/$ARCHIVE_NAME"
+  CHECKSUMS_PATH="$TEMP_DIR/checksums.txt"
+  DOCS_DB_PATH="$TEMP_DIR/docs.db"
+
+  download_file "$RELEASE_BASE_URL/$ARCHIVE_NAME" "$ARCHIVE_PATH"
+
+  EXPECTED_ARCHIVE_SHA=""
+  if download_text "$RELEASE_BASE_URL/checksums.txt" >"$CHECKSUMS_PATH"; then
+    EXPECTED_ARCHIVE_SHA="$({ grep "  $ARCHIVE_NAME$" "$CHECKSUMS_PATH" || true; } | cut -d' ' -f1 | head -n1)"
+  else
+    warn "checksums.txt could not be downloaded — archive verification will be skipped"
+  fi
+
+  verify_sha256 "$ARCHIVE_PATH" "$EXPECTED_ARCHIVE_SHA"
+  tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR"
+
+  BIN_SOURCE_DIR="$TEMP_DIR/geli-${PLATFORM}-${ARCH}"
+  for BIN in geli gerisabet; do
+    [[ -f "$BIN_SOURCE_DIR/$BIN" ]] ||
+      fail "Release archive is missing binary: $BIN"
+  done
+
+  if download_file "$RELEASE_BASE_URL/docs.db" "$DOCS_DB_PATH"; then
+    DOCS_DB_SOURCE="$DOCS_DB_PATH"
+    ok "docs.db downloaded from release"
+  else
+    warn "docs.db is not published in release $RELEASE_TAG"
+  fi
+else
+  # ── Pre-flight: require pre-compiled binaries ───────────────
+  # This installer copies pre-built binaries — it never invokes cargo.
+  for BIN in geli gerisabet; do
+    [[ -f "$PROJECT_ROOT/target/release/$BIN" ]] ||
+      fail "Binary not found: target/release/$BIN"$'\n'"       Run first: cargo build --release"
+  done
+  BIN_SOURCE_DIR="$PROJECT_ROOT/target/release"
+fi
+
 # ══════════════════════════════════════════════════════════════
 # STEP 1 — geli + gerisabet binaries
 # ══════════════════════════════════════════════════════════════
@@ -107,11 +194,9 @@ echo ""
 step "installing GeliShell binaries..."
 
 for BINARY in geli gerisabet; do
-  SRC="$PROJECT_ROOT/target/release/$BINARY"
+  SRC="$BIN_SOURCE_DIR/$BINARY"
   DST="$BIN_DIR/$BINARY"
-  cp -f "$SRC" "$DST"
-  chmod +x "$DST"
-  register_rollback "$DST"
+  install_file "$SRC" "$DST" "+x"
   ok "$BINARY -> $DST"
 done
 
@@ -159,18 +244,23 @@ if [[ -f "$DOCS_DB_DEST" ]] && ! $FORCE; then
 elif $SKIP_DOCS; then
   info "skipping docs.db seeding (--skip-docs)"
 else
-  for CANDIDATE in \
-    "$PROJECT_ROOT/assets/docs.db" \
-    "$PROJECT_ROOT/docs.db" \
-    "$PROJECT_ROOT/docs/docs.db"; do
-    if [[ -f "$CANDIDATE" ]]; then
-      cp -f "$CANDIDATE" "$DOCS_DB_DEST"
-      register_rollback "$DOCS_DB_DEST"
-      ok "docs.db seeded from: $CANDIDATE"
-      DOCS_DB_OK=true
-      break
-    fi
-  done
+  if [[ -z "$DOCS_DB_SOURCE" ]]; then
+    for CANDIDATE in \
+      "$PROJECT_ROOT/assets/docs.db" \
+      "$PROJECT_ROOT/docs.db" \
+      "$PROJECT_ROOT/docs/docs.db"; do
+      if [[ -f "$CANDIDATE" ]]; then
+        DOCS_DB_SOURCE="$CANDIDATE"
+        break
+      fi
+    done
+  fi
+
+  if [[ -n "$DOCS_DB_SOURCE" ]]; then
+    install_file "$DOCS_DB_SOURCE" "$DOCS_DB_DEST"
+    ok "docs.db seeded from: $DOCS_DB_SOURCE"
+    DOCS_DB_OK=true
+  fi
 
   if ! $DOCS_DB_OK; then
     warn "docs.db not found in release assets."
@@ -187,13 +277,25 @@ echo ""
 step "verifying installation..."
 
 GELI_VERSION_OK=false
-if "$GELI_DEST" --version &>/dev/null; then
-  GELI_VER="$("$GELI_DEST" --version 2>&1 | head -1)"
+GELI_VER="$("$GELI_DEST" --help 2>&1 || true)"
+GELI_VER="${GELI_VER%%$'\n'*}"
+if [[ "$GELI_VER" == GeliShell* ]]; then
   ok "geli --version: $GELI_VER"
   GELI_VERSION_OK=true
 else
-  warn "geli --version failed — binary may need additional system libraries"
-  info "Try running: $GELI_DEST --version"
+  warn "geli --help did not return the expected banner"
+  info "Try running: $GELI_DEST --help"
+fi
+
+GERISABET_VERSION_OK=false
+GERISABET_VER="$("$BIN_DIR/gerisabet" --help 2>&1 || true)"
+GERISABET_VER="${GERISABET_VER%%$'\n'*}"
+if [[ "$GERISABET_VER" == Gerisabet* ]]; then
+  ok "gerisabet --version: $GERISABET_VER"
+  GERISABET_VERSION_OK=true
+else
+  warn "gerisabet --help did not return the expected banner"
+  info "Try running: $BIN_DIR/gerisabet --help"
 fi
 
 # ══════════════════════════════════════════════════════════════
