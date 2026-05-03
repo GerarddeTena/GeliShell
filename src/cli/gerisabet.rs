@@ -1,7 +1,7 @@
 use crate::handlers::assistant::{handle_assistant_how_to, handle_assistant_show_me};
 use geli_shell::shell::{
     assistant::AssistantRuntime, builtins::BuiltinRegistry, config::ShellConfig,
-    executor::Executor, guard::default_guard, reporter::Reporter,
+    executor::Executor, guard::default_guard_normalized, reporter::Reporter, translator::load,
 };
 
 pub async fn handle_gerisabet_args(args: &[String], reporter: &dyn Reporter) {
@@ -69,7 +69,14 @@ async fn execute_how_to_cli(query: &str, reporter: &dyn Reporter) {
     let config = ShellConfig::load_async().await.unwrap_or_default();
 
     let subsystem = config.resolve_subsystem(reporter);
-    let guard = Box::new(default_guard());
+    let map = match load() {
+        Ok(result) => std::sync::Arc::new(result.map),
+        Err(error) => {
+            reporter.error(&error.to_string());
+            return;
+        }
+    };
+    let guard = Box::new(default_guard_normalized(map));
     let executor = Executor::new(subsystem.clone());
     let exec_config = config.to_executor_config();
     let builtins = BuiltinRegistry::new();
@@ -93,7 +100,14 @@ async fn execute_show_me_cli(reporter: &dyn Reporter) {
     let config = ShellConfig::load_async().await.unwrap_or_default();
 
     let subsystem = config.resolve_subsystem(reporter);
-    let guard = Box::new(default_guard());
+    let map = match load() {
+        Ok(result) => std::sync::Arc::new(result.map),
+        Err(error) => {
+            reporter.error(&error.to_string());
+            return;
+        }
+    };
+    let guard = Box::new(default_guard_normalized(map));
     let executor = Executor::new(subsystem.clone());
     let exec_config = config.to_executor_config();
     let builtins = BuiltinRegistry::new();

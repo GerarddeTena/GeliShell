@@ -169,6 +169,10 @@ pub struct CommandMap {
     /// Índice inverso: exact_value (cualquier subsistema) → canonical_name.
     /// Solo contiene entradas sin ambigüedad (un único canónico por exact).
     reverse_index: HashMap<String, String>,
+
+    /// Índice inverso por prefijo de comando nativo base → posibles canónicos.
+    /// Se usa para exacts multi-token como "Get-ChildItem -Force".
+    reverse_prefix_index: HashMap<String, Vec<String>>,
 }
 
 impl CommandMap {
@@ -181,6 +185,14 @@ impl CommandMap {
     pub fn find_by_exact(&self, native: &str) -> Option<&CommandDef> {
         let canonical = self.reverse_index.get(native)?;
         self.index.get(canonical)
+    }
+
+    pub fn find_by_native_prefix(&self, native_prefix: &str) -> Option<&CommandDef> {
+        let candidates = self.reverse_prefix_index.get(native_prefix)?;
+        if candidates.len() != 1 {
+            return None;
+        }
+        self.index.get(&candidates[0])
     }
 
     pub fn by_category(&self, category: &str) -> Vec<&CommandDef> {
@@ -260,6 +272,7 @@ pub fn load_from_str(raw_commands: &str) -> Result<LoadResult, CommandMapError> 
     // ── Construye el índice inverso: exact → canonical_name ───────────────
     // Solo incluye entradas sin ambigüedad (un único canónico por exact).
     let mut reverse_index: HashMap<String, String> = HashMap::new();
+    let mut reverse_prefix_index: HashMap<String, Vec<String>> = HashMap::new();
     let mut ambiguous: std::collections::HashSet<String> = Default::default();
 
     for cmd in index.values() {
@@ -268,6 +281,12 @@ pub fn load_from_str(raw_commands: &str) -> Result<LoadResult, CommandMapError> 
             let exact = entry.exact.trim().to_owned();
             if exact.is_empty() {
                 continue;
+            }
+            if let Some(prefix) = exact.split_whitespace().next() {
+                let slot = reverse_prefix_index.entry(prefix.to_owned()).or_default();
+                if !slot.iter().any(|name| name == &cmd.name) {
+                    slot.push(cmd.name.clone());
+                }
             }
             match reverse_index.entry(exact.clone()) {
                 std::collections::hash_map::Entry::Vacant(e) => {
@@ -290,6 +309,7 @@ pub fn load_from_str(raw_commands: &str) -> Result<LoadResult, CommandMapError> 
         map: CommandMap {
             index,
             reverse_index,
+            reverse_prefix_index,
         },
         warnings,
     })
@@ -326,6 +346,7 @@ mod tests {
             map: CommandMap {
                 index: HashMap::new(),
                 reverse_index: HashMap::new(),
+                reverse_prefix_index: HashMap::new(),
             },
             warnings: vec![
                 ValidationWarning::EmptyExact {

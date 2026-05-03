@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdout};
+use tokio::sync::mpsc;
 use tokio::sync::Mutex as TokioMutex;
 use tokio::task::JoinHandle;
 
@@ -23,6 +24,18 @@ use tokio::task::JoinHandle;
 
 pub struct Executor {
     subsystem: Subsystem,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StreamKind {
+    Stdout,
+    Stderr,
+}
+
+#[derive(Debug)]
+struct StreamLine {
+    kind: StreamKind,
+    text: String,
 }
 
 impl Executor {
@@ -167,32 +180,67 @@ impl Executor {
             .capture_output
             .then(|| Arc::new(TokioMutex::new(String::new())));
 
-        let mut stdout_task = Self::spawn_stdout_task(child.stdout.take(), captured.clone());
-        let mut stderr_task = Self::spawn_stderr_task(child.stderr.take(), captured.clone());
+        let (stream_tx, mut stream_rx) = mpsc::unbounded_channel();
+
+        let mut stdout_task = Self::spawn_stdout_task(
+            child.stdout.take(),
+            captured.clone(),
+            stream_tx.clone(),
+        );
+        let mut stderr_task = Self::spawn_stderr_task(child.stderr.take(), captured.clone(), stream_tx);
 
         let status = if let Some(secs) = config.timeout_secs {
-            let timeout = tokio::time::Duration::from_secs(secs);
-            match tokio::time::timeout(timeout, child.wait()).await {
-                Ok(result) => result.map_err(ExecutorError::SpawnFailed)?,
-                Err(_) => {
-                    if let Err(error) = child.kill().await {
-                        reporter.warn(&t!("executor.kill_failed", error = error));
+            let timeout = tokio::time::sleep(tokio::time::Duration::from_secs(secs));
+            tokio::pin!(timeout);
+            loop {
+                tokio::select! {
+                    maybe_line = stream_rx.recv() => {
+                        match maybe_line {
+                            Some(line) => Self::emit_stream_line(reporter, line),
+                            None => break child.wait().await.map_err(ExecutorError::SpawnFailed)?,
+                        }
                     }
-                    if let Err(error) = child.wait().await {
-                        reporter.warn(&t!("executor.wait_failed", error = error));
+                    result = child.wait() => {
+                        break result.map_err(ExecutorError::SpawnFailed)?;
                     }
+                    _ = &mut timeout => {
+                        if let Err(error) = child.kill().await {
+                            reporter.warn(&t!("executor.kill_failed", error = error));
+                        }
+                        if let Err(error) = child.wait().await {
+                            reporter.warn(&t!("executor.wait_failed", error = error));
+                        }
 
-                    Self::finish_stream_task(&mut stdout_task).await?;
-                    Self::finish_stream_task(&mut stderr_task).await?;
-                    return Err(ExecutorError::Timeout(secs));
+                        Self::finish_stream_task(&mut stdout_task).await?;
+                        Self::finish_stream_task(&mut stderr_task).await?;
+                        while let Ok(line) = stream_rx.try_recv() {
+                            Self::emit_stream_line(reporter, line);
+                        }
+                        return Err(ExecutorError::Timeout(secs));
+                    }
                 }
             }
         } else {
-            child.wait().await.map_err(ExecutorError::SpawnFailed)?
+            loop {
+                tokio::select! {
+                    maybe_line = stream_rx.recv() => {
+                        match maybe_line {
+                            Some(line) => Self::emit_stream_line(reporter, line),
+                            None => break child.wait().await.map_err(ExecutorError::SpawnFailed)?,
+                        }
+                    }
+                    result = child.wait() => {
+                        break result.map_err(ExecutorError::SpawnFailed)?;
+                    }
+                }
+            }
         };
 
         Self::finish_stream_task(&mut stdout_task).await?;
         Self::finish_stream_task(&mut stderr_task).await?;
+        while let Ok(line) = stream_rx.try_recv() {
+            Self::emit_stream_line(reporter, line);
+        }
 
         let output = match captured {
             Some(buffer) => Some(buffer.lock().await.clone()),
@@ -207,12 +255,16 @@ impl Executor {
     fn spawn_stdout_task(
         stdout: Option<ChildStdout>,
         captured: Option<Arc<TokioMutex<String>>>,
+        stream_tx: mpsc::UnboundedSender<StreamLine>,
     ) -> Option<JoinHandle<Result<(), std::io::Error>>> {
         let stdout = stdout?;
         Some(tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             while let Some(line) = reader.next_line().await? {
-                println!("{line}");
+                let _ = stream_tx.send(StreamLine {
+                    kind: StreamKind::Stdout,
+                    text: line.clone(),
+                });
                 if let Some(buffer) = &captured {
                     let mut locked = buffer.lock().await;
                     locked.push_str(&line);
@@ -226,12 +278,16 @@ impl Executor {
     fn spawn_stderr_task(
         stderr: Option<ChildStderr>,
         captured: Option<Arc<TokioMutex<String>>>,
+        stream_tx: mpsc::UnboundedSender<StreamLine>,
     ) -> Option<JoinHandle<Result<(), std::io::Error>>> {
         let stderr = stderr?;
         Some(tokio::spawn(async move {
             let mut reader = BufReader::new(stderr).lines();
             while let Some(line) = reader.next_line().await? {
-                eprintln!("{line}");
+                let _ = stream_tx.send(StreamLine {
+                    kind: StreamKind::Stderr,
+                    text: line.clone(),
+                });
                 if let Some(buffer) = &captured {
                     let mut locked = buffer.lock().await;
                     locked.push_str(&line);
@@ -256,6 +312,13 @@ impl Executor {
         })?;
 
         joined.map_err(ExecutorError::SpawnFailed)
+    }
+
+    fn emit_stream_line(reporter: &dyn Reporter, line: StreamLine) {
+        match line.kind {
+            StreamKind::Stdout => reporter.raw_stdout(&line.text),
+            StreamKind::Stderr => reporter.raw_stderr(&line.text),
+        }
     }
 
     // ──────────────────────────────────────────────────────────
@@ -294,7 +357,7 @@ fn normalize_token(token: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shell::reporter::SilentReporter;
+    use crate::shell::reporter::{BufferedReporter, SilentReporter};
     use crate::shell::translator::subsystem::Subsystem;
 
     fn subsystem() -> Subsystem {
@@ -429,6 +492,49 @@ mod tests {
 
         let result = executor.run(cmd, &config, &reporter).await;
         assert!(matches!(result, Err(ExecutorError::Timeout(1))));
+    }
+
+    #[tokio::test]
+    async fn streams_stdout_and_stderr_without_system_prefixes() {
+        let executor = Executor::new(subsystem());
+        let reporter = BufferedReporter::new();
+        let config = ExecutionConfig::minimal();
+
+        #[cfg(not(target_os = "windows"))]
+        let cmd = "printf 'out-line\n'; printf 'err-line\n' 1>&2";
+        #[cfg(target_os = "windows")]
+        let cmd = "Write-Output 'out-line'; [Console]::Error.WriteLine('err-line')";
+
+        let result = executor.run(cmd, &config, &reporter).await.unwrap();
+        assert!(result.success());
+
+        let stdout = reporter.stdout_lines().join("\n");
+        let stderr = reporter.stderr_lines().join("\n");
+        assert!(stdout.contains("out-line"));
+        assert!(stderr.contains("err-line"));
+        assert!(!stdout.contains("[ 󰋼 ]"));
+        assert!(!stderr.contains("[ 󰅖 ]"));
+    }
+
+    #[tokio::test]
+    async fn captures_combined_output_while_streaming_both_channels() {
+        let executor = Executor::new(subsystem());
+        let reporter = BufferedReporter::new();
+        let config = ExecutionConfig::minimal().with_capture_output();
+
+        #[cfg(not(target_os = "windows"))]
+        let cmd = "printf 'alpha\n'; printf 'beta\n' 1>&2; printf 'gamma\n'";
+        #[cfg(target_os = "windows")]
+        let cmd = "Write-Output 'alpha'; [Console]::Error.WriteLine('beta'); Write-Output 'gamma'";
+
+        let result = executor.run(cmd, &config, &reporter).await.unwrap();
+        let output = result.output_or_empty();
+
+        assert!(output.contains("alpha"));
+        assert!(output.contains("beta"));
+        assert!(output.contains("gamma"));
+        assert!(reporter.stdout_lines().iter().any(|line| line.contains("alpha")));
+        assert!(reporter.stderr_lines().iter().any(|line| line.contains("beta")));
     }
 
     // ──────────────────────────────────────────────────────────

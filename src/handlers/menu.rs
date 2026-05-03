@@ -5,7 +5,7 @@ use geli_shell::{
         config::ShellConfig,
         reporter::Reporter,
         tui::{
-            config_menu::{ConfigMenuSelection, show_config_menu},
+            config_menu::{ConfigMenuSelection, show_config_menu_with_behavior},
             help_menu::{HelpMenuAction, show_help_menu},
             repl_input::SpecialCommand,
         },
@@ -14,11 +14,21 @@ use geli_shell::{
 };
 
 pub async fn handle_config_menu(config: &mut ShellConfig, reporter: &dyn Reporter) -> bool {
-    match show_config_menu(&config.visual) {
+    match show_config_menu_with_behavior(&config.visual, config.behavior.reporter_level) {
         Ok(ConfigMenuSelection::Closed) => false,
         Ok(ConfigMenuSelection::UpdatedVisual(visual)) => {
             config.visual = visual;
             apply_visual_settings(config, reporter);
+
+            if let Err(error) = config.save_async().await {
+                reporter.error(&t!("config.menu_save_failed", error = error));
+            } else {
+                reporter.info(&t!("config.menu_updated"));
+            }
+            true
+        }
+        Ok(ConfigMenuSelection::UpdatedReporterLevel(level)) => {
+            config.behavior.reporter_level = level;
 
             if let Err(error) = config.save_async().await {
                 reporter.error(&t!("config.menu_save_failed", error = error));

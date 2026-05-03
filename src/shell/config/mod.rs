@@ -38,6 +38,39 @@ pub enum SelectorMode {
     Once,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReporterLevel {
+    Info,
+    Warning,
+    #[default]
+    Error,
+}
+
+impl ReporterLevel {
+    pub fn allows_info(self) -> bool {
+        matches!(self, Self::Info)
+    }
+
+    pub fn allows_warn(self) -> bool {
+        matches!(self, Self::Info | Self::Warning)
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Info => "info",
+            Self::Warning => "warning",
+            Self::Error => "error",
+        }
+    }
+}
+
+impl std::fmt::Display for ReporterLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl std::fmt::Display for SelectorMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -68,6 +101,7 @@ pub struct ShellConfig {
 pub struct BehaviorConfig {
     pub selector_mode: SelectorMode,
     pub language: String,
+    pub reporter_level: ReporterLevel,
 }
 
 impl Default for BehaviorConfig {
@@ -75,6 +109,7 @@ impl Default for BehaviorConfig {
         Self {
             selector_mode: SelectorMode::Always,
             language: String::new(),
+            reporter_level: ReporterLevel::Error,
         }
     }
 }
@@ -279,5 +314,29 @@ impl ShellConfig {
         } else {
             Subsystem::detect(reporter)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn behavior_defaults_reporter_level_to_error() {
+        let config = ShellConfig::default();
+        assert_eq!(config.behavior.reporter_level, ReporterLevel::Error);
+    }
+
+    #[test]
+    fn parses_reporter_level_from_toml() {
+        let raw = r#"
+[behavior]
+selector_mode = "always"
+language = ""
+reporter_level = "info"
+"#;
+
+        let config: ShellConfig = toml::from_str(raw).unwrap();
+        assert_eq!(config.behavior.reporter_level, ReporterLevel::Info);
     }
 }

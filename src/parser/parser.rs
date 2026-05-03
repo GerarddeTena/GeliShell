@@ -111,12 +111,12 @@ impl Parser {
                 Token::Word(_) | Token::Quoted(_) | Token::Variable(_) => {
                     args.push(self.advance().clone());
                 }
-                // Redirección: consume el operador y espera un Word destino
+                // Redirección: consume el operador y espera un Word/Quoted/Variable destino
                 Token::Redirect(kind) if *kind != RedirectKind::Pipe => {
                     let kind = kind.clone();
                     self.advance();
                     match self.peek() {
-                        Token::Word(_) => {
+                        Token::Word(_) | Token::Quoted(_) | Token::Variable(_) => {
                             let target = self.advance().clone();
                             redirections.push(Redirection { kind, target });
                         }
@@ -170,5 +170,27 @@ impl Parser {
             }
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::lexer::Lexer;
+
+    #[test]
+    fn parses_redirection_targets_with_quotes_and_variables() {
+        let tokens = Lexer::new("search foo > \"out file.txt\" < $INPUT")
+            .tokenize()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let ASTNode::Command(command) = ast else {
+            panic!("expected command node");
+        };
+
+        assert_eq!(command.redirections.len(), 2);
+        assert!(matches!(command.redirections[0].target, Token::Quoted(_)));
+        assert!(matches!(command.redirections[1].target, Token::Variable(_)));
     }
 }

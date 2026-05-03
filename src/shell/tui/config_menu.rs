@@ -1,4 +1,4 @@
-use crate::shell::config::VisualConfig;
+use crate::shell::config::{ReporterLevel, VisualConfig};
 use crate::t;
 use crossterm::{
     cursor,
@@ -13,6 +13,7 @@ use std::io::{self, Write, stdout};
 pub enum ConfigMenuSelection {
     Closed,
     UpdatedVisual(VisualConfig),
+    UpdatedReporterLevel(ReporterLevel),
     TomlEditor,
 }
 
@@ -54,8 +55,19 @@ fn config_rows() -> Vec<ConfigRow> {
             action_name: "commands.toml",
             description: t!("tui.config.toml_desc"),
         },
+        ConfigRow {
+            feature: t!("tui.config.reporter_level"),
+            action_name: "behavior.reporter_level",
+            description: t!("tui.config.reporter_desc"),
+        },
     ]
 }
+
+const REPORTER_LEVELS: &[ReporterLevel] = &[
+    ReporterLevel::Info,
+    ReporterLevel::Warning,
+    ReporterLevel::Error,
+];
 
 struct ColorPreset {
     label: &'static str,
@@ -107,6 +119,13 @@ const COLOR_FIELDS: &[&str] = &[
 ];
 
 pub fn show_config_menu(current_visual: &VisualConfig) -> io::Result<ConfigMenuSelection> {
+    show_config_menu_with_behavior(current_visual, ReporterLevel::Error)
+}
+
+pub fn show_config_menu_with_behavior(
+    current_visual: &VisualConfig,
+    current_reporter_level: ReporterLevel,
+) -> io::Result<ConfigMenuSelection> {
     let mut out = stdout();
     terminal::enable_raw_mode()?;
     execute!(
@@ -117,7 +136,7 @@ pub fn show_config_menu(current_visual: &VisualConfig) -> io::Result<ConfigMenuS
         cursor::Hide,
     )?;
 
-    let result = run_config_menu(&mut out, current_visual);
+    let result = run_config_menu(&mut out, current_visual, current_reporter_level);
 
     let screen_cleanup = execute!(
         out,
@@ -136,6 +155,7 @@ pub fn show_config_menu(current_visual: &VisualConfig) -> io::Result<ConfigMenuS
 fn run_config_menu(
     out: &mut impl Write,
     current_visual: &VisualConfig,
+    current_reporter_level: ReporterLevel,
 ) -> io::Result<ConfigMenuSelection> {
     let mut row = 0usize;
     let mut col = 0usize;
@@ -188,6 +208,12 @@ fn run_config_menu(
                         render_config_menu(out, row, col, &rows)?;
                     }
                     2 => return Ok(ConfigMenuSelection::TomlEditor),
+                    3 => {
+                        if let Some(updated) = show_reporter_level_editor(out, current_reporter_level)? {
+                            return Ok(ConfigMenuSelection::UpdatedReporterLevel(updated));
+                        }
+                        render_config_menu(out, row, col, &rows)?;
+                    }
                     _ => {}
                 },
                 KeyCode::Esc | KeyCode::Char('q') => {
@@ -202,6 +228,44 @@ fn run_config_menu(
                 update_config_row(out, row, &rows[row], true, col)?;
             } else if col != prev_col {
                 update_config_row(out, row, &rows[row], true, col)?;
+            }
+        }
+    }
+}
+
+fn show_reporter_level_editor(
+    out: &mut impl Write,
+    current_level: ReporterLevel,
+) -> io::Result<Option<ReporterLevel>> {
+    let mut selected = REPORTER_LEVELS
+        .iter()
+        .position(|level| *level == current_level)
+        .unwrap_or(2);
+
+    render_reporter_level_editor(out, selected)?;
+
+    loop {
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                continue;
+            }
+
+            match key.code {
+                KeyCode::Up => {
+                    if selected > 0 {
+                        selected -= 1;
+                        render_reporter_level_editor(out, selected)?;
+                    }
+                }
+                KeyCode::Down => {
+                    if selected + 1 < REPORTER_LEVELS.len() {
+                        selected += 1;
+                        render_reporter_level_editor(out, selected)?;
+                    }
+                }
+                KeyCode::Enter => return Ok(Some(REPORTER_LEVELS[selected])),
+                KeyCode::Esc | KeyCode::Char('q') => return Ok(None),
+                _ => {}
             }
         }
     }
@@ -341,6 +405,65 @@ fn render_font_editor(out: &mut impl Write, selected: usize) -> io::Result<()> {
                 out,
                 SetForegroundColor(Color::Magenta),
                 Print(format!("│    {:<width$}│\r\n", font, width = width - 6)),
+                ResetColor,
+            )?;
+        }
+    }
+
+    execute!(
+        out,
+        SetForegroundColor(Color::Cyan),
+        Print(format!("└{}┘\r\n", border)),
+        ResetColor,
+    )?;
+    out.flush()?;
+    Ok(())
+}
+
+fn render_reporter_level_editor(out: &mut impl Write, selected: usize) -> io::Result<()> {
+    execute!(out, cursor::MoveTo(0, 0), terminal::Clear(ClearType::All),)?;
+
+    let width = 72usize;
+    let border = "─".repeat(width - 2);
+
+    execute!(
+        out,
+        SetForegroundColor(Color::Cyan),
+        Print(format!("┌{}┐\r\n", border)),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            t!("tui.config.reporter_editor_title"),
+            width = width - 3
+        )),
+        Print(format!(
+            "│ {:<width$}│\r\n",
+            t!("tui.config.reporter_editor_help"),
+            width = width - 3
+        )),
+        Print(format!("├{}┤\r\n", border)),
+        ResetColor,
+    )?;
+
+    for (idx, level) in REPORTER_LEVELS.iter().enumerate() {
+        let label = match level {
+            ReporterLevel::Info => t!("tui.config.reporter_level_info"),
+            ReporterLevel::Warning => t!("tui.config.reporter_level_warning"),
+            ReporterLevel::Error => t!("tui.config.reporter_level_error"),
+        };
+
+        if idx == selected {
+            execute!(
+                out,
+                SetBackgroundColor(Color::DarkBlue),
+                SetForegroundColor(Color::White),
+                Print(format!("│  ❯ {:<width$}│\r\n", label, width = width - 6)),
+                ResetColor,
+            )?;
+        } else {
+            execute!(
+                out,
+                SetForegroundColor(Color::Magenta),
+                Print(format!("│    {:<width$}│\r\n", label, width = width - 6)),
                 ResetColor,
             )?;
         }

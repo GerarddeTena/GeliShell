@@ -20,9 +20,6 @@ use geli_shell::{
 };
 use tokio::signal;
 
-// These handlers implement the P2 assistant integration for the geli REPL.
-// They are not yet wired to ReplInputAction::OpenAssistant — that wiring is
-// deferred to P2 (see AGENTS.md § Pending Features).
 #[allow(dead_code)]
 pub async fn handle_assistant_show_me(
     subsystem: &Subsystem,

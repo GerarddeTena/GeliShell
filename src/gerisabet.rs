@@ -6,12 +6,13 @@ mod handlers {
     pub mod assistant;
 }
 
-use geli_shell::shell::reporter::StderrReporter;
+use geli_shell::shell::{config::ShellConfig, reporter::StderrReporter};
 use gerisabet_cli::{handle_gerisabet_args, print_gerisabet_help};
 
 #[tokio::main]
 async fn main() {
-    let reporter = StderrReporter::new();
+    let config = ShellConfig::load_async().await.unwrap_or_default();
+    let reporter = StderrReporter::new(config.behavior.reporter_level);
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {

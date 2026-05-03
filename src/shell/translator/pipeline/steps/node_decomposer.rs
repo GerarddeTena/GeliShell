@@ -2,7 +2,7 @@ use crate::parser::ast::ASTNode;
 use crate::parser::token::Token;
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::{
-    CommandFragment, FragmentOperator, TranslationContext,
+    CommandFragment, FragmentOperator, FragmentRedirection, TranslationContext,
 };
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
 use crate::t;
@@ -20,16 +20,15 @@ impl NodeDecomposer {
     fn decompose(&self, node: &ASTNode, out: &mut Vec<CommandFragment>, reporter: &dyn Reporter) {
         match node {
             ASTNode::Command(cmd) => {
-                let args = cmd
-                    .args
+                let command_token = Token::Word(cmd.name.clone());
+                let args = cmd.args.clone();
+                let redirections = cmd
+                    .redirections
                     .iter()
-                    .filter_map(|t| match t {
-                        Token::Word(s) | Token::Quoted(s) | Token::Variable(s) => Some(s.clone()),
-                        _ => None,
-                    })
+                    .map(|redir| FragmentRedirection::new(redir.kind.clone(), redir.target.clone()))
                     .collect();
 
-                out.push(CommandFragment::new(cmd.name.clone(), args));
+                out.push(CommandFragment::new(command_token, args, redirections));
             }
 
             ASTNode::Pipeline(nodes) => {
@@ -72,9 +71,16 @@ impl NodeDecomposer {
             ASTNode::Background(inner) => {
                 let before = out.len();
                 self.decompose(inner, out, reporter);
-                // Marca todos los fragments generados como background
+                // Marca el grupo entero como background para preservar un pipeline
+                // compuesto, pero envuelve solo el fragment final al ensamblar.
+                let generated = out.len().saturating_sub(before);
                 for f in out[before..].iter_mut() {
-                    f.background = true;
+                    f.background_group = true;
+                }
+                if generated > 0
+                    && let Some(last) = out.last_mut()
+                {
+                    last.background = true;
                 }
             }
         }

@@ -23,10 +23,11 @@ pub enum RagError {
     #[error("sqlite retrieval failed: {0}")]
     Sql(#[from] rusqlite::Error),
 
-    #[error("embedding endpoint '{endpoint}' returned status {status}")]
+    #[error("embedding endpoint '{endpoint}' returned status {status}\n\nDetails: {details}")]
     HttpStatus {
         endpoint: String,
         status: StatusCode,
+        details: String,
     },
 
     #[error("embedding model returned {got} dimensions, expected {expected}")]
@@ -132,9 +133,16 @@ impl RagEngine {
             .await?;
 
         if !response.status().is_success() {
+            let status = response.status();
+            let details = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "(unable to read response body)".to_string());
+            
             return Err(RagError::HttpStatus {
                 endpoint,
-                status: response.status(),
+                status,
+                details,
             });
         }
 

@@ -1,4 +1,5 @@
 # GeliShell
+
 ![Rust](https://img.shields.io/badge/rust-edition%202024-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -22,7 +23,9 @@ GeliShell traduce comandos canónicos (`list`, `copy`, `find`…) al subsistema 
 - Asistente local con recuperación RAG sobre `docs.db`, catálogo interactivo `--show-me` y consultas `--how-to`.
 
 ## ¿Por qué GeliShell? (Filosofía)
+
 A diferencia de las shells tradicionales que te obligan a aprender una sintaxis nueva o limitan tu entorno, GeliShell actúa como un **metacompilador interactivo de comandos**.
+
 - **Escribe una vez, ejecuta en cualquier parte:** Aprende los comandos canónicos de GeliShell y úsalos indistintamente en Windows, Linux o macOS. La shell se encarga de traducirlos al subsistema subyacente.
 - **Seguridad por diseño:** El guardrail semántico evita desastres (borrado recursivo accidental, fork bombs, pipe-executions de red) interceptando el AST antes de que el OS lo vea.
 - **IA integrada y determinista:** No es un wrapper de ChatGPT. Es un sistema RAG local, confinado a tu documentación técnica, diseñado para ser útil sin ser impredecible.
@@ -109,7 +112,7 @@ install.bat -BinDir "C:\bin"
 1. Abre una terminal nueva (si el script modificó `PATH`).
 2. Ejecuta `geli` para la shell o `gerisabet --help` para el asistente.
 
-Si faltan componentes opcionales, el core sigue funcionando; puedes completar Assistant/RAG después.
+Si faltan componentes opcionales, el core sigue funcionando; puedes completar Assistant/RAG después
 ---
 
 ## Flujo de ejecución real
@@ -141,10 +144,12 @@ Detalle por etapa:
 En Windows, el executor detecta automáticamente el ejecutable disponible en este orden: `pwsh` (PowerShell 7+) → `powershell` (Windows PowerShell 5) → ruta absoluta conocida. Esto evita el error `NotFound` en máquinas donde solo `pwsh.exe` está en `PATH`.
 
 Todos los comandos PowerShell incluyen el preámbulo UTF-8:
+
 ```
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8;
 $OutputEncoding = [System.Text.Encoding]::UTF8;
 ```
+
 necesario para usuarios con caracteres no-ASCII en rutas o variables de entorno.
 
 ---
@@ -270,12 +275,17 @@ Tipos de error relevantes (`src/shell/guard/error.rs`):
 - `ForbiddenArgument`
 
 ---
+
 ## Interfaz de Usuario Avanzada (TUI)
+
 GeliShell abandona la rigidez del prompt tradicional en favor de una experiencia inmersiva utilizando `crossterm`:
+
 - **Máquinas de Estado Modales:** Navegación por menús complejos sin ensuciar el historial de la terminal (Alternate Screen).
 - **Catálogo Interactivo (`--show-me`):** Explora y ejecuta comandos del RAG desde una máquina de estados (`CategoryList` y `CommandTable`) construida dinámicamente desde SQLite, sin hardcodeo de categorías/operaciones.
 - **Filtrado por subsistema + placeholders:** En Estado B filtra por subsistema activo cuando aplica (con fallback visible) y resuelve parámetros `<marcador>` antes de confirmar ejecución.
+
 ---
+
 ## Assistant y RAG local
 
 Componentes:
@@ -291,10 +301,13 @@ Variables de entorno utilizadas:
 - `GELI_SQLITE_VEC_PATH`
 - `GELI_EMBED_MODEL` (default: `nomic-embed-text`)
 - `GELI_OLLAMA_URL` (default: `http://127.0.0.1:11434`)
+
 > **IMPORTANTE**
+>
 > - El retrieval RAG está integrado.
 > - La respuesta del asistente se sintetiza localmente a partir del contexto recuperado.
 > - La base RAG no se incluye en el repo; se genera con `cargo run --bin build_docs_db`.
+>
 ---
 
 ## Configuración y rutas de runtime
@@ -319,10 +332,12 @@ Rutas canónicas:
   - `vec0.dll` (Windows) / variante de plataforma
 
 Resolución del root:
+
 - Windows: `%USERPROFILE%\.config\geliShell`
 - Unix: `$HOME/.config/geliShell`
 
 Override opcional:
+
 - `GELI_DOCS_DB_PATH` apunta a una ruta explícita y tiene prioridad sobre la ruta canónica.
 
 ---

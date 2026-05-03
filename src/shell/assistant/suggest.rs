@@ -40,7 +40,12 @@ pub fn build_retrieval_query(parameter: AssistantParameter, filter: &str) -> Str
 }
 
 pub fn build_user_action(parameter: AssistantParameter, _filter: &str) -> String {
-    parameter.label.to_owned()
+    let filter = _filter.trim();
+    if filter.is_empty() {
+        parameter.label.to_owned()
+    } else {
+        format!("{} :: {}", parameter.label, filter)
+    }
 }
 
 pub fn build_chatml_prompt(user_action: &str, rag_context: &str) -> String {
@@ -65,7 +70,7 @@ pub fn build_how_to_retrieval_query(
     }
 
     Ok(format!(
-        "Subsystem target: {subsystem}. User goal: {trimmed}"
+        "Subsystem target: {subsystem}. User goal: {trimmed}. Expected answer: exact command plus one-line explanation. Prioritize Bash and PowerShell operational mappings."
     ))
 }
 
@@ -145,6 +150,21 @@ mod tests {
     }
 
     #[test]
+    fn user_action_includes_filter_for_short_ambiguous_request() {
+        let parameter = AssistantParameter {
+            id: "search",
+            label: "Search in files",
+            description: "desc",
+            prompt_prefix: "Base prompt.",
+        };
+
+        assert_eq!(
+            build_user_action(parameter, "logs in src"),
+            "Search in files :: logs in src"
+        );
+    }
+
+    #[test]
     fn chatml_prompt_contains_strict_sections() {
         let prompt = build_chatml_prompt("Search in files", "doc chunk 1");
         assert!(prompt.contains("<|im_start|>system"));
@@ -175,6 +195,13 @@ mod tests {
         assert!(prompt.contains("[END CONTEXT]"));
         assert!(prompt.contains("EXPLANATION: [Your one-line explanation]"));
         assert!(prompt.contains("COMMAND: [The command extracted from context]"));
+    }
+
+    #[test]
+    fn retrieval_query_adds_precision_hints_for_short_prompt() {
+        let query = build_how_to_retrieval_query("compress folder", "powershell").unwrap();
+        assert!(query.contains("Subsystem target: powershell"));
+        assert!(query.contains("Expected answer: exact command plus one-line explanation"));
     }
 
     #[test]

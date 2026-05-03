@@ -3,7 +3,7 @@ use crate::shell::guard::Guard;
 use crate::shell::guard::error::GuardError;
 use crate::t;
 
-const NETWORK_FETCHERS: &[&str] = &["curl", "wget", "fetch", "http"];
+const NETWORK_FETCHERS: &[&str] = &["curl", "wget", "fetch", "http", "http-get", "download"];
 const SHELL_EXECUTORS: &[&str] = &[
     "bash",
     "sh",
@@ -11,9 +11,10 @@ const SHELL_EXECUTORS: &[&str] = &[
     "fish",
     "dash",
     "ksh",
-    "geliShell",
-    "geli",
-];
+        "geliShell",
+        "geli",
+        "run-background",
+    ];
 
 pub struct PipeExecutionGuard;
 

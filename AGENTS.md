@@ -77,10 +77,10 @@ Always announce which agent is active:
 These rules are non-negotiable. Apply them to every line of code.
 
 ## Architecture
-1. **NodeDecomposer is the ONLY place** with `match` on `ASTNode`
-   All pipeline steps work exclusively on `Vec<CommandFragment>`
+1. **NodeDecomposer is the ONLY place in the translator** with `match` on `ASTNode`
+   All pipeline steps after decomposition work exclusively on `Vec<CommandFragment>`
 
-2. **Reporter pattern everywhere** — zero `eprintln!`/`println!` in lib code
+2. **Reporter pattern everywhere** — avoid direct `eprintln!`/`println!` in lib code
    Every function that emits output accepts `&dyn Reporter`
 
 3. **Open/Closed strictly** — new behavior via new trait impl
@@ -153,7 +153,7 @@ Supported: "en", "es"
 
 ## Key File Locations
 ```
-commands/commands.toml                 translation map (embedded + runtime override)
+src/commands/commands.toml             translation map (embedded + runtime override)
 ~/.config/geliShell/config.toml        user preferences
 ~/.config/geliShell/history.txt        REPL command history
 ~/.config/geliShell/g_history.toml     g jump frecency history
@@ -193,7 +193,7 @@ src/shell/
   ├── assistant/
   │   ├── mod.rs                        LLM client trait
   │   ├── params.rs                     predefined parameter menu
-  │   ├── qwen.rs                       Qwen 0.5B/1.5B (candle/llama.cpp)
+   │   ├── qwen.rs                       Qwen bootstrap + current heuristic local response synthesis
   │   ├── rag.rs                        RAG + embeddings on docs.db
   │   └── suggest.rs                    command suggestion output
   ├── builtins/
@@ -295,7 +295,7 @@ src/utils.rs                    render_prompt(), build_completion_pool(),
 
 ### Data files (embedded at compile time)
 ```
-commands/commands.toml          canonical→native translation map
+src/commands/commands.toml      canonical→native translation map
 commands/ecosystems/
   ├── cargo-lang.toml           Cargo/Rust operations
   ├── docker.toml               Docker operations
@@ -477,12 +477,14 @@ dim       → \x1b[38;5;240m  gray (brackets, separators)
    `reverse_index: HashMap<String, String>` is in `CommandMap` (commands_map.rs).
    `find_by_exact()` resolves native commands (e.g. `"Get-ChildItem"`) back to canonical names.
    Used by `NormalizedCompositeGuard` and `CommandResolver`.
+   Longest-match reverse lookup now also handles multi-token exacts like
+   `Get-ChildItem -Force` and `Stop-Process -Id` before falling back to shorter prefixes.
 
 ## P2 — AI Assistant
 ```
 src/shell/assistant/    (implemented in gerisabet binary, NOT wired to geli REPL)
 ├── mod.rs      LLM client trait
-├── qwen.rs     Qwen 1.5B via candle or llama.cpp
+├── qwen.rs     Qwen bootstrap + heuristic local command synthesis over RAG context
 ├── rag.rs      RAG + embeddings on custom docs
 ├── params.rs   predefined parameter menu
 └── suggest.rs  command suggestion output
@@ -490,6 +492,7 @@ src/shell/assistant/    (implemented in gerisabet binary, NOT wired to geli REPL
 Trigger: `help` builtin or `?` prefix (currently only in `gerisabet` binary)
 UX: predefined parameter selector (not free text input)
 ⚠️ REPL `OpenAssistant` shortcut (Ctrl+Alt+G) only shows a warning — not wired to assistant.
+⚠️ Current backend is still heuristic, not real local model inference yet.
 
 ## P3 — TriggerEngine / ScriptRunner
 ```
@@ -562,6 +565,11 @@ git push origin v0.1.0
 | `fetch_expected_hash` devuelve `Option<String>` — best-effort indiscriminado | `src/shell/config/bootstrap.rs` | Sustituido por `lookup_checksum() -> HashLookup`. `Found(hash)` → verificación fatal. `Absent` (404/red) → silencioso. `Unlisted` (checksums.txt existe, asset ausente) → `reporter.warn`. Locale key `bootstrap.sha256_not_listed` añadida a en/es. |
 | 53 errores de `cargo clippy -D warnings` en 24 archivos | múltiples | Resueltos en su totalidad: `new_without_default`, `derivable_impls`, `collapsible_if`, `single_match`, `implicit_saturating_sub`, `needless_borrow`, `trim_split_whitespace`, `too_many_arguments` (×3), `only_used_in_recursion`, `cloned_ref_to_slice_refs`, `doc_overindented_list_items`, `should_implement_trait` (rename `from_str`→`from_name`), `double_must_use`, `field_reassign_with_default`. `cargo clippy --all-targets --all-features -- -D warnings` pasa limpio. |
 | Reverse lookup de `Get-ChildItem` y `dir` roto — comandos PS no se traducían en Bash | `src/commands/commands.toml` líneas 663-667 | `list-all` compartía `powershell.exact = "Get-ChildItem"` y `cmd.exact = "dir"` con `list`, causando que el reverse index los marcara como ambiguos y los descartara. Cambiado `list-all` a `powershell.exact = "Get-ChildItem -Force"` y `cmd.exact = "dir /a"`. Se ajustaron `bash.exact` a `"ls -la"` y suggestions para consistencia semántica con la descripción del comando. 2 tests de regresión añadidos. |
+| El pipeline perdía redirecciones, quoting y variables entre subsistemas | `src/shell/translator/pipeline/context.rs`, `src/shell/translator/pipeline/steps/node_decomposer.rs`, `src/parser/parser.rs` | `CommandFragment` ahora conserva tokens tipados y redirecciones. El ensamblado final reconstruye quotes/variables por subsistema y el parser acepta targets de redirección `Word` / `Quoted` / `Variable`. Tests cubren pipelines complejos con quoting, variables y redirecciones. |
+| `Background` rompía pipelines compuestos al envolver cada fragment por separado | `src/shell/translator/pipeline/steps/node_decomposer.rs`, `src/shell/translator/pipeline/context.rs` | Se añadió distinción entre `background` terminal y `background_group` para envolver solo el fragmento final del compuesto. Regresión cubierta con `list | search foo &`. |
+| `NormalizedCompositeGuard` no bloqueaba equivalentes PowerShell de comandos destructivos | `src/shell/guard/mod.rs`, `src/shell/guard/rules/destructive_fs.rs`, `src/cli.rs`, `src/cli/gerisabet.rs` | El guard ahora normaliza el AST completo y también traduce flags nativos a flags canónicos cuando existe un comando canónico equivalente. Las reglas destructivas se alinearon con nombres canónicos reales (`remove`, `permissions`) y `gerisabet` / CLI usan `default_guard_normalized`. Tests cubren `Remove-Item -Recurse -Force /` y `curl | bash`. |
+| El assistant ignoraba parte del prompt corto y seleccionaba contexto con scoring demasiado superficial | `src/shell/assistant/suggest.rs`, `src/shell/assistant/qwen.rs` | `build_user_action()` ahora conserva el filtro, la retrieval query añade precisión sobre el formato esperado y el selector heurístico pondera mejor subsistema, forma del comando y tokens del propio comando. Tests cubren prompts cortos ambiguos en Bash y PowerShell. |
+| `println!` / `eprintln!` en el streaming del executor rompían el patrón Reporter | `src/shell/reporter.rs`, `src/shell/executor/mod.rs` | El trait `Reporter` ahora expone `raw_stdout()` / `raw_stderr()` para salida cruda sin prefijos. El executor mantiene lectura concurrente de stdout/stderr vía `tokio::spawn`, pero reenvía cada línea al reporter desde el hilo principal mediante canal interno. Tests cubren stdout+stderr simultáneos, captura combinada y ausencia de prefijos visuales en el output del proceso. |
 | `clear` builtin no purgaba scrollback en Unix — scroll-up mostraba contenido anterior | `src/shell/builtins/clear.rs:28-31` | Secuencia ANSI en orden incorrecto: `3J→2J→H`. El `2J` empuja contenido visible al scrollback *después* de que `3J` ya lo haya purgado. Corregido a `H→2J→3J` (igual que `clear` de ncurses): cursor home, borrar viewport, purgar scrollback. |
 | `ValidationWarning` mezclaba serialización/Display manual con warnings visibles hardcodeados | `src/shell/translator/commands_map.rs`, `locales/en.toml`, `locales/es.toml` | `ValidationWarning` ahora deriva `thiserror::Error`, ya no deriva `Deserialize`, y `LoadResult::report()` emite mensajes localizados mediante claves `commands.warning_*` en en/es. Tests con `BufferedReporter` cubren ambos locales. |
 
@@ -571,7 +579,7 @@ git push origin v0.1.0
 
 | Priority | Issue | Location | Proposed Fix |
 |---|---|---|---|
-| 🟡 MEDIUM | `println!` / `eprintln!` en `spawn_stdout_task` / `spawn_stderr_task` violan Prime Directive #2 (todo output por Reporter). Las tareas `tokio::spawn` no tienen acceso al reporter. | `src/shell/executor/mod.rs:211,229` | Refactorizar `Reporter` como `Arc<dyn Reporter + Send + Sync + 'static>` para poder clonarlo en los spawns. Bloqueado por el trait signature actual. |
+| 🟡 MEDIUM | El backend de `qwen.rs` sigue siendo heurístico: verifica/carga el GGUF pero no ejecuta inferencia local real. La precisión depende del prompt y del selector de contexto, no de un modelo real en memoria. | `src/shell/assistant/qwen.rs` | Integrar un backend real de inferencia local detrás de `generate()` manteniendo el contrato actual. |
 | 🟡 MEDIUM | Múltiples mensajes de detección de subsistema hardcodeados en inglés, no pasan por `t!()`. | `src/shell/translator/subsystem.rs:24–55` | Añadir sección `[subsystem]` a los locales y envolver con `t!()`. |
 | 🟡 MEDIUM | Mensajes de error en `append_history_or_warn` / `apply_visual_settings` hardcodeados en inglés. | `src/utils.rs:148,158–165` | Añadir claves `[utils]` a los locales y envolver con `t!()`. |
 | 🟡 MEDIUM | Mensajes hardcodeados en inglés en la TUI de `show_me` ("docs.db was not found", "catalog is empty"). | `src/shell/tui/show_me/mod.rs:73–85` | Añadir claves `[show_me]` a los locales y envolver con `t!()`. |

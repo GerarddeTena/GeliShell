@@ -7,16 +7,18 @@ use geli_shell::{
         commands::ecosystems::registry::EcosystemRegistry,
         config::ShellConfig,
         executor::Executor,
-        guard::{Guard, default_guard},
+        guard::{Guard, default_guard_normalized},
         reporter::{Reporter, StderrReporter},
         tui::ecosystem::EcosystemTui,
+        translator::load,
     },
     t,
 };
 use tokio::signal;
 
 pub async fn handle_cli_args(args: &[String]) {
-    let reporter = StderrReporter::new();
+    let config = ShellConfig::load_async().await.unwrap_or_default();
+    let reporter = StderrReporter::new(config.behavior.reporter_level);
 
     if args.is_empty() {
         return;
@@ -30,7 +32,7 @@ pub async fn handle_cli_args(args: &[String]) {
             std::process::exit(0);
         }
         "--config-me" => {
-            let mut config = ShellConfig::load_async().await.unwrap_or_default();
+            let mut config = config;
 
             if handle_config_menu(&mut config, &reporter).await {
                 reporter.info(&t!("cli.config_updated"));
@@ -97,7 +99,14 @@ pub async fn execute_show_commands(ecosystem: &str, reporter: &dyn Reporter) -> 
     let subsystem = resolve_subsystem(&config, reporter);
     let executor = Executor::new(subsystem.clone());
     let exec_config = config.to_executor_config();
-    let guard = Box::new(default_guard());
+    let map = match load() {
+        Ok(result) => std::sync::Arc::new(result.map),
+        Err(error) => {
+            reporter.error(&error.to_string());
+            return Err(());
+        }
+    };
+    let guard = Box::new(default_guard_normalized(map));
     let builtins = BuiltinRegistry::new();
 
     let registry = match EcosystemRegistry::load() {

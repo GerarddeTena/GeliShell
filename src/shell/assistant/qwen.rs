@@ -410,12 +410,38 @@ fn select_command_from_context(
         let start = candidate.line_index.saturating_sub(2);
         let end = usize::min(candidate.line_index + 2, lines.len().saturating_sub(1));
         let window = lines[start..=end].join(" ").to_ascii_lowercase();
+        let command_lower = candidate.command.to_ascii_lowercase();
         let token_score = action_tokens
             .iter()
-            .filter(|token| window.contains(token.as_str()))
+            .filter(|token| window.contains(token.as_str()) || command_lower.contains(token.as_str()))
             .count() as i32;
 
-        let score = token_score * 5;
+        let subsystem_bonus = if line_matches_subsystem(candidate.line_label.as_deref(), &subsystem_targets) {
+            8
+        } else {
+            0
+        };
+
+        let command_shape_bonus = if !subsystem_targets.is_empty()
+            && (command_lower.contains('-')
+            || command_lower.contains(" --")
+            || command_lower.contains(" /")
+            || command_lower.contains('|'))
+        {
+            3
+        } else {
+            0
+        };
+
+        let placeholder_bonus = if command_lower.contains('<') || command_lower.contains('{') {
+            2
+        } else {
+            0
+        };
+
+        let generic_penalty = if is_generic_context_line(&command_lower) { 6 } else { 0 };
+
+        let score = token_score * 5 + subsystem_bonus + command_shape_bonus + placeholder_bonus - generic_penalty;
         let should_replace = match &best {
             None => true,
             Some((best_score, best_index, _)) => {
@@ -543,6 +569,13 @@ fn fallback_context_line(rag_context: &str) -> Option<String> {
     None
 }
 
+fn is_generic_context_line(line: &str) -> bool {
+    line.starts_with("contexto_rag_sin_comando")
+        || line.starts_with("no encontré")
+        || line.starts_with("command extracted")
+        || line.starts_with("comando extraído")
+}
+
 fn is_context_metadata_line(line: &str) -> bool {
     let lowercase = line.to_ascii_lowercase();
     lowercase.starts_with("- source:")          // EN (neutral)
@@ -593,6 +626,12 @@ fn build_how_to_explanation(rag_context: &str, subsystem: Option<&str>) -> Strin
 fn extract_intent_line(rag_context: &str) -> Option<String> {
     for line in rag_context.lines().map(str::trim) {
         if let Some(intent) = line.strip_prefix("## Intención:") {
+            let cleaned = intent.trim();
+            if !cleaned.is_empty() {
+                return Some(cleaned.to_owned());
+            }
+        }
+        if let Some(intent) = line.strip_prefix("## Intent:") {
             let cleaned = intent.trim();
             if !cleaned.is_empty() {
                 return Some(cleaned.to_owned());
@@ -670,6 +709,24 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert!(lines[0].starts_with("EXPLANATION: "));
         assert!(lines[1].starts_with("COMMAND: "));
+    }
+
+    #[test]
+    fn how_to_selection_prefers_subsystem_specific_command_for_short_prompt() {
+        let prompt = "<|im_start|>system\nYou are a strict terminal assistant. Your only purpose is to extract the exact command for subsystem: powershell, based EXCLUSIVELY on the following context.\n[CONTEXT]\n## Intent: Compress a folder\n- Bash/Zsh: `tar -czf <archive.tar.gz> <folder>`\n- PowerShell: `Compress-Archive -Path <folder> -DestinationPath <archive.zip>`\n[END CONTEXT]\nRULE: Your response must have this exact two-line format, without adding markdown or greetings:\nEXPLANATION: [Your one-line explanation]\nCOMMAND: [The command extracted from context]\n<|im_end|>\n<|im_start|>user\ncompress folder\n<|im_end|>\n<|im_start|>assistant\n";
+        let generated = synthesize_response("qwen2.5-1.5b-instruct-q4_k_m", prompt);
+        let lines: Vec<&str> = generated.lines().collect();
+
+        assert_eq!(lines[1], "COMMAND: Compress-Archive -Path <folder> -DestinationPath <archive.zip>");
+    }
+
+    #[test]
+    fn how_to_selection_uses_command_tokens_when_context_window_is_ambiguous() {
+        let prompt = "<|im_start|>system\nYou are a strict terminal assistant. Your only purpose is to extract the exact command for subsystem: bash, based EXCLUSIVELY on the following context.\n[CONTEXT]\n## Intent: Search logs recursively\n- Bash/Zsh: `grep -r \"error\" /var/log`\n- PowerShell: `Select-String -Path \"C:\\logs\\*\" -Pattern \"error\" -Recurse`\n[END CONTEXT]\nRULE: Your response must have this exact two-line format, without adding markdown or greetings:\nEXPLANATION: [Your one-line explanation]\nCOMMAND: [The command extracted from context]\n<|im_end|>\n<|im_start|>user\nfind errors in logs\n<|im_end|>\n<|im_start|>assistant\n";
+        let generated = synthesize_response("qwen2.5-0.5b-instruct-q4_k_m", prompt);
+        let lines: Vec<&str> = generated.lines().collect();
+
+        assert_eq!(lines[1], "COMMAND: grep -r \"error\" /var/log");
     }
 
     #[test]

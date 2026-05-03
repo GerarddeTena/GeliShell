@@ -56,7 +56,7 @@ impl Default for RmGuard {
 
 impl Guard for RmGuard {
     fn check_command(&self, cmd: &Command) -> Result<(), GuardError> {
-        if cmd.name != "rm" {
+        if cmd.name != "remove" {
             return Ok(());
         }
 
@@ -97,7 +97,7 @@ impl Default for ChmodChownGuard {
 
 impl Guard for ChmodChownGuard {
     fn check_command(&self, cmd: &Command) -> Result<(), GuardError> {
-        if !matches!(cmd.name.as_str(), "chmod" | "chown") {
+        if !matches!(cmd.name.as_str(), "permissions" | "chown") {
             return Ok(());
         }
 

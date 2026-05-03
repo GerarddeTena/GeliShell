@@ -42,18 +42,19 @@ fn main() {
 }
 
 async fn async_main() {
-    // ── Parseo de flags CLI ───────────────────────────────────
+    // ── CLI Flags pareser ───────────────────────────────────
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {
         handle_cli_args(&args[1..]).await;
         return;
     }
 
-    let reporter = StderrReporter::new();
+    let bootstrap_reporter = StderrReporter::default();
 
-    bootstrap_runtime_layout(&reporter).await;
+    bootstrap_runtime_layout(&bootstrap_reporter).await;
 
-    let config = load_or_init_config(&reporter).await;
+    let config = load_or_init_config(&bootstrap_reporter).await;
+    let reporter = StderrReporter::new(config.behavior.reporter_level);
     let lang = geli_shell::shell::i18n::detect_language(&config.behavior.language);
     geli_shell::shell::i18n::init_i18n(&lang);
     let command_history = load_history_or_default(&reporter).await;

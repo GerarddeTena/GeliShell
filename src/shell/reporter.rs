@@ -1,3 +1,5 @@
+use crate::shell::config::ReporterLevel;
+
 /// Contrato de presentación de mensajes del sistema.
 /// Cualquier módulo que necesite emitir output implementa
 /// este trait en vez de llamar a eprintln! directamente.
@@ -5,6 +7,8 @@ pub trait Reporter: Send + Sync {
     fn warn(&self, message: &str);
     fn error(&self, message: &str);
     fn info(&self, message: &str);
+    fn raw_stdout(&self, message: &str);
+    fn raw_stderr(&self, message: &str);
 
     // Helper con formato — no sobreescribir
     fn warn_fmt(&self, args: std::fmt::Arguments<'_>) {
@@ -52,22 +56,31 @@ macro_rules! report_info {
 // ══════════════════════════════════════════════════════════════
 
 /// Reporter de producción — escribe a stderr con prefijos visuales
-pub struct StderrReporter;
+pub struct StderrReporter {
+    level: ReporterLevel,
+}
 
 impl StderrReporter {
-    pub fn new() -> Self {
-        Self
+    pub fn new(level: ReporterLevel) -> Self {
+        Self { level }
+    }
+
+    pub fn level(&self) -> ReporterLevel {
+        self.level
     }
 }
 
 impl Default for StderrReporter {
     fn default() -> Self {
-        Self::new()
+        Self::new(ReporterLevel::Error)
     }
 }
 
 impl Reporter for StderrReporter {
     fn warn(&self, message: &str) {
+        if !self.level.allows_warn() {
+            return;
+        }
         // Yellow [ 󰀦 ]
         eprintln!("\x1b[38;5;220m[ 󰀦 ]\x1b[0m  {message}");
     }
@@ -76,8 +89,19 @@ impl Reporter for StderrReporter {
         eprintln!("\x1b[38;5;196m[ 󰅖 ]\x1b[0m  {message}");
     }
     fn info(&self, message: &str) {
+        if !self.level.allows_info() {
+            return;
+        }
         // Blue/Cyan [ 󰋼 ]
         eprintln!("\x1b[38;5;39m[ 󰋼 ]\x1b[0m  {message}");
+    }
+
+    fn raw_stdout(&self, message: &str) {
+        println!("{message}");
+    }
+
+    fn raw_stderr(&self, message: &str) {
+        eprintln!("{message}");
     }
 }
 
@@ -104,6 +128,8 @@ impl Reporter for SilentReporter {
     fn warn(&self, _message: &str) {}
     fn error(&self, _message: &str) {}
     fn info(&self, _message: &str) {}
+    fn raw_stdout(&self, _message: &str) {}
+    fn raw_stderr(&self, _message: &str) {}
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -127,6 +153,8 @@ pub struct BufferedReporter {
     warnings: Arc<Mutex<Vec<String>>>,
     errors: Arc<Mutex<Vec<String>>>,
     infos: Arc<Mutex<Vec<String>>>,
+    stdout: Arc<Mutex<Vec<String>>>,
+    stderr: Arc<Mutex<Vec<String>>>,
 }
 
 impl BufferedReporter {
@@ -135,6 +163,8 @@ impl BufferedReporter {
             warnings: Arc::new(Mutex::new(Vec::new())),
             errors: Arc::new(Mutex::new(Vec::new())),
             infos: Arc::new(Mutex::new(Vec::new())),
+            stdout: Arc::new(Mutex::new(Vec::new())),
+            stderr: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -154,6 +184,20 @@ impl BufferedReporter {
 
     pub fn infos(&self) -> Vec<String> {
         self.infos
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clone()
+    }
+
+    pub fn stdout_lines(&self) -> Vec<String> {
+        self.stdout
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clone()
+    }
+
+    pub fn stderr_lines(&self) -> Vec<String> {
+        self.stderr
             .lock()
             .expect("BufferedReporter lock poisoned")
             .clone()
@@ -189,6 +233,14 @@ impl BufferedReporter {
             .lock()
             .expect("BufferedReporter lock poisoned")
             .clear();
+        self.stdout
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clear();
+        self.stderr
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .clear();
     }
 
     /// Total de mensajes acumulados de cualquier nivel
@@ -204,6 +256,16 @@ impl BufferedReporter {
                 .len()
             + self
                 .infos
+                .lock()
+                .expect("BufferedReporter lock poisoned")
+                .len()
+            + self
+                .stdout
+                .lock()
+                .expect("BufferedReporter lock poisoned")
+                .len()
+            + self
+                .stderr
                 .lock()
                 .expect("BufferedReporter lock poisoned")
                 .len()
@@ -234,5 +296,42 @@ impl Reporter for BufferedReporter {
             .lock()
             .expect("BufferedReporter lock poisoned")
             .push(message.to_owned());
+    }
+
+    fn raw_stdout(&self, message: &str) {
+        self.stdout
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .push(message.to_owned());
+    }
+
+    fn raw_stderr(&self, message: &str) {
+        self.stderr
+            .lock()
+            .expect("BufferedReporter lock poisoned")
+            .push(message.to_owned());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reporter_levels_allow_expected_verbosity() {
+        assert!(ReporterLevel::Info.allows_info());
+        assert!(ReporterLevel::Info.allows_warn());
+
+        assert!(!ReporterLevel::Warning.allows_info());
+        assert!(ReporterLevel::Warning.allows_warn());
+
+        assert!(!ReporterLevel::Error.allows_info());
+        assert!(!ReporterLevel::Error.allows_warn());
+    }
+
+    #[test]
+    fn stderr_reporter_default_is_error_level() {
+        let reporter = StderrReporter::default();
+        assert_eq!(reporter.level(), ReporterLevel::Error);
     }
 }

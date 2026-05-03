@@ -47,10 +47,6 @@ pub fn run_first_run_wizard() -> Result<ShellConfig, ConfigError> {
 fn show_wizard(stdout: &mut impl Write) -> Result<ShellConfig, ConfigError> {
     let mut selected = 0usize;
 
-    // ── Posición absoluta garantizada ─────────────────────────
-    // En Windows Terminal (conpty) el cursor puede estar en una
-    // posición inesperada al activar raw_mode. Movemos a (0,0)
-    // explícitamente antes de leer la posición real para el modal.
     execute!(
         stdout,
         terminal::Clear(ClearType::All),

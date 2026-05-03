@@ -143,6 +143,8 @@ impl TranslationPipeline {
 mod tests {
     use super::*;
     use crate::parser::ast::{ASTNode, Command};
+    use crate::parser::lexer::Lexer;
+    use crate::parser::parser::Parser;
     use crate::parser::token::Token;
     use crate::shell::reporter::{BufferedReporter, SilentReporter};
     use crate::shell::translator::commands_map::{load, load_from_str};
@@ -383,5 +385,76 @@ translate = { bash = { exact = "echo", suggestions = [] }, zsh = { exact = "echo
         let node = make_command_node("docker", vec!["ps"]);
         let result = pipeline.run(&node, &reporter).unwrap();
         assert_eq!(result, "docker ps");
+    }
+
+    #[test]
+    fn preserves_quoted_args_and_redirections_for_complex_pipeline() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let tokens = Lexer::new("search --recursive \"foo bar\" src | count --lines > \"report file.txt\"")
+            .tokenize()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let result = pipeline.run(&ast, &reporter).unwrap();
+        assert_eq!(result, "grep -r \"foo bar\" src | wc -l > \"report file.txt\"");
+    }
+
+    #[test]
+    fn preserves_variable_redirection_and_cross_subsystem_translation() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::PowerShell);
+        let reporter = SilentReporter::new();
+        let tokens = Lexer::new("search --recursive $PATTERN src > $OUTFILE")
+            .tokenize()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let result = pipeline.run(&ast, &reporter).unwrap();
+        assert_eq!(
+            result,
+            "Select-String -Path ** -CaseSensitive -Recurse $env:PATTERN src > $env:OUTFILE"
+        );
+    }
+
+    #[test]
+    fn reverse_lookup_handles_multi_token_native_exact() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let tokens = Lexer::new("Get-ChildItem -Force \"My Folder\"")
+            .tokenize()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let result = pipeline.run(&ast, &reporter).unwrap();
+        assert_eq!(result, "ls -la \"My Folder\"");
+    }
+
+    #[test]
+    fn reverse_lookup_handles_multi_token_native_exact_with_flags_and_args() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let tokens = Lexer::new("Stop-Process -Id 4242 -Force")
+            .tokenize()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let result = pipeline.run(&ast, &reporter).unwrap();
+        assert_eq!(result, "kill 4242 -9");
+    }
+
+    #[test]
+    fn background_pipeline_wraps_only_final_compound() {
+        let map = make_pipeline();
+        let pipeline = TranslationPipeline::new(map, Subsystem::Bash);
+        let reporter = SilentReporter::new();
+        let tokens = Lexer::new("list | search foo &").tokenize().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let result = pipeline.run(&ast, &reporter).unwrap();
+        assert_eq!(result, "ls | grep foo &");
     }
 }

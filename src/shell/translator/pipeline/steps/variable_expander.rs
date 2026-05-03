@@ -1,5 +1,6 @@
 // src/shell/translator/pipeline/steps/variable_expander.rs
 
+use crate::parser::token::Token;
 use crate::shell::reporter::Reporter;
 use crate::shell::translator::pipeline::context::TranslationContext;
 use crate::shell::translator::pipeline::step::{PipelineError, StepResult, TranslationStep};
@@ -32,24 +33,41 @@ impl TranslationStep for VariableExpander {
         let subsystem = ctx.subsystem;
 
         for fragment in ctx.fragments.iter_mut() {
-            // Expande variables en el nombre del comando
-            if fragment.command.starts_with('$') {
-                let var_name = fragment.command.trim_start_matches('$');
-                fragment.command = subsystem.variable_syntax(var_name);
+            if let Token::Variable(var_name) = &fragment.command_token {
+                let expanded = subsystem.variable_syntax(var_name);
+                reporter.info(&t!(
+                    "pipeline.variable_expanded",
+                    step = self.name(),
+                    var = format!("${var_name}"),
+                    expanded = expanded
+                ));
+                fragment.command = expanded;
             }
 
             // Expande variables en los args
             for arg in fragment.args.iter_mut() {
-                if arg.starts_with('$') {
-                    let var_name = arg.trim_start_matches('$');
+                if let Token::Variable(var_name) = arg {
                     let expanded = subsystem.variable_syntax(var_name);
                     reporter.info(&t!(
                         "pipeline.variable_expanded",
                         step = self.name(),
-                        var = arg,
+                        var = format!("${var_name}"),
                         expanded = expanded
                     ));
-                    *arg = expanded;
+                    *arg = Token::Word(expanded);
+                }
+            }
+
+            for redirection in &mut fragment.redirections {
+                if let Token::Variable(var_name) = &redirection.target {
+                    let expanded = subsystem.variable_syntax(var_name);
+                    reporter.info(&t!(
+                        "pipeline.variable_expanded",
+                        step = self.name(),
+                        var = format!("${var_name}"),
+                        expanded = expanded
+                    ));
+                    redirection.target = Token::Word(expanded);
                 }
             }
         }
