@@ -50,7 +50,10 @@ pub async fn handle_gerisabet_args(args: &[String], reporter: &dyn Reporter) {
 }
 
 pub fn print_gerisabet_help() {
-    println!("Gerisabet 0.1.0 - GeliShell AI Assistant");
+    println!(
+        "Gerisabet {} - GeliShell AI Assistant",
+        env!("CARGO_PKG_VERSION")
+    );
     println!();
     println!("USAGE:");
     println!("    gerisabet [FLAGS]");

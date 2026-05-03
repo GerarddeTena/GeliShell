@@ -75,7 +75,7 @@ pub async fn run_show_commands_args(args: &[String], reporter: &dyn Reporter) ->
 }
 
 pub fn print_cli_help() {
-    println!("{}", t!("cli.help.title"));
+    println!("{}", t!("cli.help.title", version = env!("CARGO_PKG_VERSION")));
     println!();
     println!("{}", t!("cli.help.usage_header"));
     println!("{}", t!("cli.help.usage"));

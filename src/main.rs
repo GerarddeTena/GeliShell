@@ -70,7 +70,7 @@ async fn async_main() {
 
     reporter.info(&geli_shell::t!("startup.ready"));
     use geli_shell::shell::banner::print_banner;
-    print_banner("0.1.0", &mut std::io::stdout());
+    print_banner(env!("CARGO_PKG_VERSION"), &mut std::io::stdout());
     reporter.info(&geli_shell::t!("startup.subsystem", subsystem = subsystem));
 
     let ctx = repl::ReplContext {

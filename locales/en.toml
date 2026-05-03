@@ -67,7 +67,7 @@ ctrl_c = "^C - ecosystem command cancelled"
 config_updated = "config updated"
 
 [cli.help]
-title = "GeliShell 0.1.0"
+title = "GeliShell {version}"
 usage_header = "USAGE:"
 usage = "    geli [FLAGS]"
 flags_header = "FLAGS:"
